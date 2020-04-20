@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package brpc;
+
+service gateway {
+    rpc routing(routeReq) returns (routeRes) {}
+}
+
+message routeReq {
+    string box = 1;
+    string service = 2;
+    bytes reqBody = 3;
+}
+
+message Header {
+    string key = 1;
+    string val = 2;
+}
+
+message routeRes {
+    bytes resBody = 1;
+    repeated Header headers = 2;
+}
