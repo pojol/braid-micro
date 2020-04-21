@@ -53,9 +53,9 @@ type ComposeConf struct {
 	Tracing bool   `yaml:"tracing"`
 
 	Depend struct {
-		Consul string `yaml:"consul"`
-		Redis  string `yaml:"redis"`
-		Jaeger string `yaml:"jaeger"`
+		Consul string `yaml:"consul_addr"`
+		Redis  string `yaml:"redis_addr"`
+		Jaeger string `yaml:"jaeger_addr"`
 	}
 
 	Install struct {
