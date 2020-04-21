@@ -25,7 +25,7 @@ type (
 	// Config Sync Config
 	Config struct {
 		// 同步节点信息间隔
-		Interval int64
+		Interval int
 
 		ConsulAddress string
 	}
