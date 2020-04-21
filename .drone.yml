@@ -1,0 +1,10 @@
+kind: pipeline
+name: braid
+
+steps:
+    - name: build
+      image: golang:1.13.3
+      commands:
+        - pwd
+        - go version
+        - go test ./...
