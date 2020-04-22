@@ -260,7 +260,7 @@ func Regist(serviceName string, fc service.ServiceFunc) {
 		s := b.Nodes[Service].(*service.Service)
 		s.Regist(serviceName, fc)
 	} else {
-		panic(errors.New("No subscription service nod"))
+		panic(errors.New("No subscription service module"))
 	}
 }
 
@@ -271,7 +271,17 @@ func Call(parentCtx context.Context, boxName string, serviceName string, token s
 		return c.Call(parentCtx, boxName, serviceName, token, body)
 	}
 
-	panic(errors.New("No subscription service nod"))
+	panic(errors.New("No subscription caller module"))
+}
+
+// IsMaster 当前节点是否为主节点
+func IsMaster() (bool, error) {
+	if _, ok := b.Nodes[Election]; ok {
+		e := b.Nodes[Election].(*election.Election)
+		return e.IsLocked(), nil
+	}
+
+	return false, errors.New("No subscription election module")
 }
 
 // Run 运行box
