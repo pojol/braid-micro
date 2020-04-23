@@ -17,12 +17,14 @@ type (
 	Service struct {
 		rpc          *grpc.Server
 		tracerCloser io.Closer
+		listen       string
 	}
 
 	// Config Service 配置
 	Config struct {
-		Tracing bool
-		Name    string
+		Tracing       bool
+		Name          string
+		ListenAddress string
 	}
 
 	// ctx 上下文
@@ -44,11 +46,6 @@ var (
 	ErrServiceUnavailiable = errors.New("service unavailable")
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
-)
-
-const (
-	// ListenAddress rpc 侦听地址
-	ListenAddress = ":1201"
 )
 
 // New 构建service
@@ -77,6 +74,7 @@ func (s *Service) Init(cfg interface{}) error {
 
 	s.rpc = rpcServer
 	s.tracerCloser = closer
+	s.listen = sCfg.ListenAddress
 
 	return err
 }
@@ -137,7 +135,7 @@ func (s *Service) Regist(serviceName string, fc ServiceFunc) {
 func (s *Service) Run() {
 	brpc.RegisterGatewayServer(s.rpc, &server{})
 
-	rpcListen, err := net.Listen("tcp", ListenAddress)
+	rpcListen, err := net.Listen("tcp", s.listen)
 	if err != nil {
 		log.Fatalf("echo server start err:%v", err)
 	}
@@ -149,6 +147,7 @@ func (s *Service) Run() {
 	}()
 }
 
+// Close 退出处理
 func (s *Service) Close() {
 
 }

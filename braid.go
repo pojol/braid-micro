@@ -44,6 +44,9 @@ const (
 
 	// Tracer 链路追踪
 	Tracer = "tracer"
+
+	// DefaultListen 默认的侦听端口，和dockerfile中开放的端口保持一致
+	DefaultListen = ":1201"
 )
 
 // DependConf braid 需要依赖的服务地址配置
@@ -243,8 +246,9 @@ func Compose(compose ComposeConf, depend DependConf) error {
 	if compose.Install.Service.Open {
 		se := service.New()
 		err := se.Init(service.Config{
-			Tracing: compose.Tracing,
-			Name:    compose.Name,
+			Tracing:       compose.Tracing,
+			Name:          compose.Name,
+			ListenAddress: DefaultListen,
 		})
 		if err != nil {
 			return err

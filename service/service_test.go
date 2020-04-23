@@ -23,8 +23,9 @@ func TestNew(t *testing.T) {
 
 	s := New()
 	err := s.Init(Config{
-		Tracing: false,
-		Name:    "test",
+		Tracing:       false,
+		Name:          "test",
+		ListenAddress: ":1203",
 	})
 	if err != nil {
 		t.Error(err)
@@ -37,7 +38,7 @@ func TestNew(t *testing.T) {
 
 	s.Run()
 
-	conn, err := grpc.Dial("localhost"+ListenAddress, grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:1203", grpc.WithInsecure())
 	rres := new(brpc.RouteRes)
 
 	err = conn.Invoke(context.Background(), "/brpc.gateway/routing", &brpc.RouteReq{
