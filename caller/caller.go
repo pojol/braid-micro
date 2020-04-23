@@ -56,8 +56,8 @@ var (
 	}
 	c *Caller
 
-	// ErrBoxUnavailiable 没有可用的box
-	ErrBoxUnavailiable = errors.New("caller box unavailable")
+	// ErrCoordinateUnavailiable caller依赖coordinate节点
+	ErrCoordinateUnavailiable = errors.New("caller need coordinate")
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )
@@ -82,7 +82,7 @@ func (c *Caller) Init(cfg interface{}) error {
 	}
 
 	if len(services) == 0 {
-		log.Fatalf(ErrBoxUnavailiable.Error())
+		log.Fatalf(ErrCoordinateUnavailiable.Error())
 	} else {
 		proxys := []string{}
 		for k := range services {

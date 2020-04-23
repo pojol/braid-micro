@@ -40,9 +40,9 @@ func SysRoutingError(serviceName string, desc string) {
 }
 
 // SysWelcome 欢迎日志
-func SysWelcome(box string, mode string, ty string, info string) {
+func SysWelcome(nodeName string, mode string, ty string, info string) {
 	logPtr.gSysLog.Info(info,
-		zap.String("box", box),
+		zap.String("node", nodeName),
 		zap.String("mode", mode),
 		zap.String("type", ty),
 	)

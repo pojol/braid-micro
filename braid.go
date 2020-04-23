@@ -46,17 +46,18 @@ const (
 	Tracer = "tracer"
 )
 
+// DependConf braid 需要依赖的服务地址配置
+type DependConf struct {
+	Consul string `yaml:"consul_addr"`
+	Redis  string `yaml:"redis_addr"`
+	Jaeger string `yaml:"jaeger_addr"`
+}
+
 // ComposeConf braid 编排结构
 type ComposeConf struct {
 	Name    string `yaml:"name"`
 	Mode    string `yaml:"mode"`
 	Tracing bool   `yaml:"tracing"`
-
-	Depend struct {
-		Consul string `yaml:"consul_addr"`
-		Redis  string `yaml:"redis_addr"`
-		Jaeger string `yaml:"jaeger_addr"`
-	}
 
 	Install struct {
 		Log struct {
@@ -132,19 +133,19 @@ func appendNode(name string, nod interface{}) {
 }
 
 // Compose 编排工具
-func Compose(conf ComposeConf) error {
+func Compose(compose ComposeConf, depend DependConf) error {
 
 	// 构造
 	b = &Braid{
 		Nodes: make(map[string]interface{}),
 	}
 
-	if conf.Install.Log.Open {
+	if compose.Install.Log.Open {
 		lo := log.New()
 		err := lo.Init(log.Config{
-			Mode:   conf.Mode,
-			Path:   conf.Install.Log.Path,
-			Suffex: conf.Install.Log.Suffex,
+			Mode:   compose.Mode,
+			Path:   compose.Install.Log.Path,
+			Suffex: compose.Install.Log.Suffex,
 		})
 		if err != nil {
 			return err
@@ -152,16 +153,16 @@ func Compose(conf ComposeConf) error {
 		appendNode(Logger, lo)
 	}
 
-	if conf.Install.Redis.Open {
+	if compose.Install.Redis.Open {
 		r := redis.New()
 		err := r.Init(redis.Config{
-			Address:        conf.Depend.Redis,
-			ReadTimeOut:    time.Millisecond * time.Duration(conf.Install.Redis.ReadTimeout),
-			WriteTimeOut:   time.Millisecond * time.Duration(conf.Install.Redis.WriteTimeout),
-			ConnectTimeOut: time.Millisecond * time.Duration(conf.Install.Redis.ConnTimeout),
-			IdleTimeout:    time.Millisecond * time.Duration(conf.Install.Redis.IdleTimeout),
-			MaxIdle:        conf.Install.Redis.MaxIdle,
-			MaxActive:      conf.Install.Redis.MaxActive,
+			Address:        depend.Redis,
+			ReadTimeOut:    time.Millisecond * time.Duration(compose.Install.Redis.ReadTimeout),
+			WriteTimeOut:   time.Millisecond * time.Duration(compose.Install.Redis.WriteTimeout),
+			ConnectTimeOut: time.Millisecond * time.Duration(compose.Install.Redis.ConnTimeout),
+			IdleTimeout:    time.Millisecond * time.Duration(compose.Install.Redis.IdleTimeout),
+			MaxIdle:        compose.Install.Redis.MaxIdle,
+			MaxActive:      compose.Install.Redis.MaxActive,
 		})
 		if err != nil {
 			return err
@@ -169,12 +170,12 @@ func Compose(conf ComposeConf) error {
 		appendNode(Redis, r)
 	}
 
-	if conf.Install.Tracer.Open {
+	if compose.Install.Tracer.Open {
 		tr := tracer.New()
 		err := tr.Init(tracer.Config{
-			Endpoint:      conf.Depend.Jaeger,
-			Name:          conf.Name,
-			Probabilistic: conf.Install.Tracer.Probabilistic,
+			Endpoint:      depend.Jaeger,
+			Name:          compose.Name,
+			Probabilistic: compose.Install.Tracer.Probabilistic,
 		})
 		if err != nil {
 			return err
@@ -182,7 +183,7 @@ func Compose(conf ComposeConf) error {
 		appendNode(Tracer, tr)
 	}
 
-	if conf.Install.Linker.Open {
+	if compose.Install.Linker.Open {
 		l := link.New()
 		err := l.Init(link.Config{})
 		if err != nil {
@@ -191,7 +192,7 @@ func Compose(conf ComposeConf) error {
 		appendNode(Linker, l)
 	}
 
-	if conf.Install.Balancer.Open {
+	if compose.Install.Balancer.Open {
 		ba := balancer.New()
 		err := ba.Init(balancer.SelectorCfg{})
 		if err != nil {
@@ -200,11 +201,11 @@ func Compose(conf ComposeConf) error {
 		appendNode(Balancer, ba)
 	}
 
-	if conf.Install.Discover.Open {
+	if compose.Install.Discover.Open {
 		di := discover.New()
 		err := di.Init(discover.Config{
-			ConsulAddress: conf.Depend.Consul,
-			Interval:      conf.Install.Discover.Interval,
+			ConsulAddress: depend.Consul,
+			Interval:      compose.Install.Discover.Interval,
 		})
 		if err != nil {
 			return err
@@ -212,11 +213,11 @@ func Compose(conf ComposeConf) error {
 		appendNode(Discover, di)
 	}
 
-	if conf.Install.Election.Open {
+	if compose.Install.Election.Open {
 		el := election.New()
 		err := el.Init(election.Config{
-			Address: conf.Depend.Consul,
-			Name:    conf.Name,
+			Address: depend.Consul,
+			Name:    compose.Name,
 		})
 		if err != nil {
 			return err
@@ -224,14 +225,14 @@ func Compose(conf ComposeConf) error {
 		appendNode(Election, el)
 	}
 
-	if conf.Install.Caller.Open {
+	if compose.Install.Caller.Open {
 		ca := caller.New()
 		err := ca.Init(caller.Config{
-			ConsulAddress: conf.Depend.Consul,
+			ConsulAddress: depend.Consul,
 			PoolInitNum:   8,
 			PoolCapacity:  32,
 			PoolIdle:      time.Second * 120,
-			Tracing:       conf.Tracing,
+			Tracing:       compose.Tracing,
 		})
 		if err != nil {
 			return err
@@ -239,11 +240,11 @@ func Compose(conf ComposeConf) error {
 		appendNode(Caller, ca)
 	}
 
-	if conf.Install.Service.Open {
+	if compose.Install.Service.Open {
 		se := service.New()
 		err := se.Init(service.Config{
-			Tracing: conf.Tracing,
-			Name:    conf.Name,
+			Tracing: compose.Tracing,
+			Name:    compose.Name,
 		})
 		if err != nil {
 			return err
