@@ -45,6 +45,8 @@ install :
     discover :
         open : true
         interval : 3000
+    caller : 
+        open : true
 `
 
 func TestCompose(t *testing.T) {
