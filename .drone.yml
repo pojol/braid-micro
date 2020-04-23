@@ -14,8 +14,6 @@ steps:
         - go test -cover ./...
 
     - name: coverage
-        image: plugins/codecov
-        settings:
-          token: 465725eb-a558-480c-9528-77392f194aba
-          files:
-            - *.xml
+      image: lddsb/drone-dingtalk-message
+      token: 465725eb-a558-480c-9528-77392f194aba
+      type: markdown
