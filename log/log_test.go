@@ -9,6 +9,22 @@ import (
 	"go.uber.org/zap"
 )
 
+func TestLog(t *testing.T) {
+	l := New()
+	l.Init(Config{
+		Mode:   "debug",
+		Path:   "/var/log/test",
+		Suffex: ".log",
+	})
+	defer l.Close()
+
+	Debugf("msg", 1)
+	SysError("log", "testlog", "test log")
+	SysSlow("/v1/login/guest", "xxx", 100, "slow request msg")
+	SysRoutingError("login", "routing warning")
+	SysWelcome("test", "debug", "?", "welcome")
+}
+
 func BenchmarkLog(b *testing.B) {
 	exePath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
