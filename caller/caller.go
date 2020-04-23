@@ -212,6 +212,7 @@ EXT:
 
 // Pool 获取grpc连接池
 func (c *Caller) pool(address string) (p *pool.GRPCPool, err error) {
+
 	factory := func() (*grpc.ClientConn, error) {
 		var conn *grpc.ClientConn
 		var err error
@@ -220,7 +221,7 @@ func (c *Caller) pool(address string) (p *pool.GRPCPool, err error) {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {
-			conn, err = grpc.Dial(address)
+			conn, err = grpc.Dial(address, grpc.WithInsecure())
 		}
 
 		if err != nil {
@@ -232,12 +233,13 @@ func (c *Caller) pool(address string) (p *pool.GRPCPool, err error) {
 
 	pi, ok := c.poolMgr.Load(address)
 	if !ok {
-		pool, err := pool.NewGRPCPool(factory, c.cfg.PoolInitNum, c.cfg.PoolCapacity, c.cfg.PoolIdle)
+		p, err = pool.NewGRPCPool(factory, c.cfg.PoolInitNum, c.cfg.PoolCapacity, c.cfg.PoolIdle)
 		if err != nil {
 			goto EXT
 		}
-		c.poolMgr.Store(address, pool)
-		pi = pool
+
+		c.poolMgr.Store(address, p)
+		pi = p
 	}
 
 	p = pi.(*pool.GRPCPool)
@@ -246,6 +248,7 @@ EXT:
 	if err != nil {
 		log.SysError("caller", "pool", err.Error())
 	}
+
 	return p, err
 }
 
