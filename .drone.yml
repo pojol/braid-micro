@@ -12,4 +12,10 @@ steps:
         - export MOCK_JAEGER_ADDR=http://172.16.208.30:9411/api/v2/spans
         - go version
         - go test -cover ./...
-        - curl -s https://codecov.io/bash -t 465725eb-a558-480c-9528-77392f194aba
+
+    - name: coverage
+        image: plugins/codecov
+        settings:
+          token: 465725eb-a558-480c-9528-77392f194aba
+          files:
+            - *.xml
