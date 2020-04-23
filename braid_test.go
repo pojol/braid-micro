@@ -14,11 +14,6 @@ name : coordinate
 mode : debug
 tracing : false
 
-depend :
-    consul_addr : http://127.0.0.1:8900
-    redis_addr : redis://127.0.0.1:6379/0
-    jaeger_addr : http://127.0.0.1:9411/api/v2/spans
-
 install : 
     log :
         open : true
@@ -59,11 +54,11 @@ func TestCompose(t *testing.T) {
 		t.Error(err)
 	}
 
-	conf.Depend.Consul = mock.ConsulAddr
-	conf.Depend.Redis = mock.RedisAddr
-	conf.Depend.Jaeger = mock.JaegerAddr
-
-	Compose(*conf)
+	Compose(*conf, DependConf{
+		Consul: mock.ConsulAddr,
+		Redis:  mock.RedisAddr,
+		Jaeger: mock.JaegerAddr,
+	})
 
 	Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		return nil, nil
