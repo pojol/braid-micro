@@ -136,6 +136,7 @@ func (p *GRPCPool) Get(ctx context.Context) (*ClientConn, error) {
 				pool: p,
 			}
 		}
+
 		// This is a new connection, reset its initiated time
 		wrapper.timeInitiated = time.Now()
 
