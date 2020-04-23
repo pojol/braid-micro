@@ -26,3 +26,7 @@ func TestGetBoxServices(t *testing.T) {
 	fmt.Println(lst)
 
 }
+
+func TestCatalog(t *testing.T) {
+	GetCatalogService(mock.ConsulAddr, "test")
+}
