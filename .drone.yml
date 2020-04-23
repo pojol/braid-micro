@@ -1,0 +1,21 @@
+kind: pipeline
+name: braid
+
+steps:
+    - name: build
+      image: golang:1.13.3
+      commands:
+        - pwd
+        - export GOPROXY=https://goproxy.io
+        - export MOCK_REDIS_ADDR=redis://172.16.208.30:6379/0
+        - export MOCK_CONSUL_ADDR=http://172.16.208.30:8900
+        - export MOCK_JAEGER_ADDR=http://172.16.208.30:9411/api/v2/spans
+        - go version
+        - go test -coverprofile=coverage.out ./...
+
+    - name: coverage
+      image: plugins/codecov
+      settings:
+        token: 465725eb-a558-480c-9528-77392f194aba
+        files:
+          - coverage.out

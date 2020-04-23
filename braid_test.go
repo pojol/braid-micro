@@ -67,6 +67,8 @@ func TestCompose(t *testing.T) {
 		return nil, nil
 	})
 
+	IsMaster()
+
 	Run()
 	time.Sleep(time.Second)
 	Close()
