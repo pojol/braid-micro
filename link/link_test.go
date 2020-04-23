@@ -44,4 +44,9 @@ func TestTarget(t *testing.T) {
 	err = l.Offline("address")
 	assert.Equal(t, err, nil)
 
+	assert.Equal(t, Get(), l)
+	l.UnLink("")
+	l.Run()
+	l.Close()
+
 }
