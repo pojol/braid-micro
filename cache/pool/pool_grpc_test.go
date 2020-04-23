@@ -2,55 +2,77 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/pojol/braid/caller/brpc"
+	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
-var testEndpoint = "192.168.50.138:10101"
-var testMethod = "/brpc.calculate/addition"
-
 func TestGRPCPool(t *testing.T) {
-	/*
-		f := func() (*grpc.ClientConn, error) {
-			conn, err := grpc.Dial(testEndpoint, grpc.WithInsecure())
-			if err != nil {
-				return nil, err
-			}
 
-			return conn, nil
-		}
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
 
-		p, err := NewGRPCPool(f, 10, 64, time.Second*120)
+	s := service.New()
+	err := s.Init(service.Config{
+		Tracing:       false,
+		Name:          "test",
+		ListenAddress: ":1202",
+	})
+	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
+		fmt.Println("pong")
+		return nil, nil
+	})
+	assert.Equal(t, err, nil)
+	s.Run()
+
+	f := func() (*grpc.ClientConn, error) {
+		conn, err := grpc.Dial("localhost:1202", grpc.WithInsecure())
 		if err != nil {
-			t.Error(err)
+			return nil, err
 		}
 
-		conn, err := p.Get(context.Background())
-		if err != nil {
-			t.Error(err)
-		}
+		return conn, nil
+	}
 
-		caCtx, caCancel := context.WithTimeout(context.Background(), time.Second)
-		defer caCancel()
+	p, err := NewGRPCPool(f, 10, 64, time.Second*120)
+	assert.Equal(t, err, nil)
 
-		rres := new(brpc.RouteRes)
-		err = conn.Invoke(caCtx, testMethod, &brpc.RouteReq{
-			ReqBody: []byte(`{"Val1":1, "Val2":2}`),
-		}, rres)
-		if err != nil {
-			conn.Unhealthy()
-			t.Error(err)
-		}
+	conn, err := p.Get(context.Background())
+	assert.Equal(t, err, nil)
 
-		conn.Put()
-		p.Close()
-	*/
+	caCtx, caCancel := context.WithTimeout(context.Background(), time.Second)
+	defer caCancel()
+
+	rres := new(brpc.RouteRes)
+	err = conn.Invoke(caCtx, "/brpc.gateway/routing", &brpc.RouteReq{
+		ReqBody: []byte(`{"Val1":1, "Val2":2}`),
+		Service: "test",
+		Box:     "normal",
+	}, rres)
+	assert.Equal(t, err, nil)
+
+	conn.Put()
+
+	p.Available()
+	p.Capacity()
+
+	p.Close()
+	s.Close()
 }
 
 func BenchmarkGRPCByOriginal(b *testing.B) {
+	testEndpoint := ""
+	testMethod := ""
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -67,6 +89,9 @@ func BenchmarkGRPCByOriginal(b *testing.B) {
 }
 
 func BenchmarkGRPCByPool(b *testing.B) {
+	testEndpoint := ""
+	testMethod := ""
+
 	f := func() (*grpc.ClientConn, error) {
 		conn, err := grpc.Dial(testEndpoint, grpc.WithInsecure())
 		if err != nil {
