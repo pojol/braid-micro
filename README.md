@@ -1,6 +1,7 @@
 ## braid
 轻量的微服务框架，通过compose.yml文件可以将braid提供的微服务组件轻易聚合到server上。
 
+[![drone](http://47.96.147.176:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
 > `注:`当前v1.1.x版本为`原型`版本 
