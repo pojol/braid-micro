@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -60,6 +59,9 @@ var (
 	ErrCoordinateUnavailiable = errors.New("caller need coordinate")
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
+
+	// ErrCantFindNode 在注册中心找不到对应的服务节点
+	ErrCantFindNode = errors.New("Can't find service node in center")
 )
 
 // New 构建指针
@@ -93,7 +95,6 @@ func (c *Caller) Init(cfg interface{}) error {
 	}
 
 	address := services[proxy].ServiceAddress + ":" + strconv.Itoa(services[proxy].ServicePort)
-	fmt.Println("discover coordinate", address)
 
 	c.coordinateAddress = address
 	c.cfg = callerCfg
@@ -291,6 +292,10 @@ func (c *Caller) getBoxWithCoordinate(parentCtx context.Context, boxName string,
 	}
 
 	json.Unmarshal(rres.ResBody, &fres)
+	if fres.Address == "" {
+		err = ErrCantFindNode
+		goto EXT
+	}
 	address = fres.Address
 
 EXT:
