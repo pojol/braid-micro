@@ -46,7 +46,8 @@ var (
 )
 
 const (
-	// DiscoverTag 适用于docker发现， 在Dockerfile 中设置ENV SERVICE_TAGS=braid
+	// DiscoverTag 用于docker发现的tag， 所有希望被discover服务发现的节点，
+	// 都应该在Dockerfile中设置 ENV SERVICE_TAGS=braid
 	DiscoverTag = "braid"
 )
 
