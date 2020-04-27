@@ -42,6 +42,9 @@ install :
         interval : 3000
     caller : 
         open : true
+    tracer : 
+        open : true
+        probabilistic : 0.01
 `
 
 func TestCompose(t *testing.T) {
