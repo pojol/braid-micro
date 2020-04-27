@@ -62,7 +62,11 @@ if err != nil {
     log.Fatalln(err)
 }
 
-err = braid.Compose(*conf)
+err = braid.Compose(*conf, braid.DependConf{
+		Consul: consulAddr,
+		Redis:  redisAddr,
+		Jaeger: jaegerAddr,
+	})
 if err != nil {
     log.Fatalln(err)
 }
