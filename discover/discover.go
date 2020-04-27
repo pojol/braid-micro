@@ -45,6 +45,11 @@ var (
 	ErrConfigConvert = errors.New("Convert linker config")
 )
 
+const (
+	// DiscoverTag 适用于docker发现， 在Dockerfile 中设置ENV SERVICE_TAGS=braid
+	DiscoverTag = "braid"
+)
+
 // New 构建指针
 func New() *Sync {
 	sync = &Sync{}
@@ -66,7 +71,7 @@ func (s *Sync) Init(cfg interface{}) error {
 
 func (s *Sync) tick() {
 
-	services, err := consul.GetCatalogServices(s.cfg.ConsulAddress, "box")
+	services, err := consul.GetCatalogServices(s.cfg.ConsulAddress, DiscoverTag)
 	if err != nil {
 		return
 	}

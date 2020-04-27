@@ -118,7 +118,7 @@ func (c *Caller) Close() {
 }
 
 // Call 执行一次rpc调用
-func (c *Caller) Call(parentCtx context.Context, boxName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
+func (c *Caller) Call(parentCtx context.Context, nodName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
 
 	var address string
 	var caPool *pool.GRPCPool
@@ -133,7 +133,7 @@ func (c *Caller) Call(parentCtx context.Context, boxName string, serviceName str
 	c.Lock()
 	defer c.Unlock()
 
-	address, err = c.findBox(parentCtx, boxName, serviceName, token)
+	address, err = c.findNode(parentCtx, nodName, serviceName, token)
 	if err != nil {
 		goto EXT
 	}
@@ -156,7 +156,7 @@ func (c *Caller) Call(parentCtx context.Context, boxName string, serviceName str
 
 	method = "/brpc.gateway/routing"
 	err = caConn.Invoke(caCtx, method, &brpc.RouteReq{
-		Box:     boxName,
+		Nod:     nodName,
 		Service: serviceName,
 		ReqBody: body,
 	}, res)
@@ -173,8 +173,8 @@ EXT:
 	return res, err
 }
 
-// FindBox 通过查找器获取目标box
-func (c *Caller) findBox(parentCtx context.Context, boxName string, serviceName string, key string) (string, error) {
+// Find 通过查找器获取目标
+func (c *Caller) findNode(parentCtx context.Context, nodName string, serviceName string, key string) (string, error) {
 	var address string
 	var err error
 
@@ -189,14 +189,14 @@ func (c *Caller) findBox(parentCtx context.Context, boxName string, serviceName 
 			goto EXT
 		}
 
-		address, err = c.getBoxWithCoordinate(parentCtx, boxName, serviceName)
+		address, err = c.getNodeWithCoordinate(parentCtx, nodName, serviceName)
 		if err != nil {
 			goto EXT
 		}
 
 		link.Get().Link(key, address)
 	} else {
-		address, err = c.getBoxWithCoordinate(parentCtx, boxName, serviceName)
+		address, err = c.getNodeWithCoordinate(parentCtx, nodName, serviceName)
 		if err != nil {
 			goto EXT
 		}
@@ -205,7 +205,7 @@ func (c *Caller) findBox(parentCtx context.Context, boxName string, serviceName 
 EXT:
 	if err != nil {
 		// log
-		log.SysError("caller", "findBox", err.Error())
+		log.SysError("caller", "findNode", err.Error())
 	}
 
 	return address, err
@@ -253,7 +253,7 @@ EXT:
 	return p, err
 }
 
-func (c *Caller) getBoxWithCoordinate(parentCtx context.Context, boxName string, serviceName string) (string, error) {
+func (c *Caller) getNodeWithCoordinate(parentCtx context.Context, nodName string, serviceName string) (string, error) {
 	rres := new(brpc.RouteRes)
 	var fres struct {
 		Address string
@@ -279,12 +279,12 @@ func (c *Caller) getBoxWithCoordinate(parentCtx context.Context, boxName string,
 	defer caCancel()
 
 	dat, _ = json.Marshal(struct {
-		Box     string
+		Nod     string
 		Service string
-	}{boxName, serviceName})
+	}{nodName, serviceName})
 
 	if conn.Invoke(caCtx, method, &brpc.RouteReq{
-		Box:     "coordinate",
+		Nod:     "coordinate",
 		Service: "find",
 		ReqBody: dat,
 	}, rres) != nil {
@@ -300,7 +300,7 @@ func (c *Caller) getBoxWithCoordinate(parentCtx context.Context, boxName string,
 
 EXT:
 	if err != nil {
-		log.SysError("caller", "getBoxWithCoordinate", err.Error())
+		log.SysError("caller", "getNodeWithCoordinate", err.Error())
 	}
 
 	return address, err

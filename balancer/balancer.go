@@ -77,20 +77,20 @@ func (s *Selector) Close() {
 }
 
 // GetSelector 获取负载均衡选择器
-func GetSelector(boxName string) Balancer {
-	return selector.group(boxName)
+func GetSelector(nodName string) Balancer {
+	return selector.group(nodName)
 }
 
 // Group 获取组
-func (s *Selector) group(boxName string) Balancer {
+func (s *Selector) group(nodName string) Balancer {
 
-	b, ok := s.m.Load(boxName)
+	b, ok := s.m.Load(nodName)
 	if !ok {
 		b = &LeastConnBalancer{
-			BoxName: boxName,
+			NodeName: nodName,
 		}
 
-		s.m.Store(boxName, b)
+		s.m.Store(nodName, b)
 	}
 
 	return b.(Balancer)

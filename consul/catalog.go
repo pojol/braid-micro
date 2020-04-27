@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-// BoxServiceDat 服务信息
-type BoxServiceDat struct {
+// NodServiceDat 服务信息
+type NodServiceDat struct {
 	ID             string
 	Address        string
 	ServiceAddress string
@@ -60,7 +60,7 @@ EXT:
 }
 
 // GetCatalogService 获取service系列信息
-func GetCatalogService(address string, serviceName string) (servicelist []BoxServiceDat, err error) {
+func GetCatalogService(address string, serviceName string) (servicelist []NodServiceDat, err error) {
 
 	var res *http.Response
 	client := &http.Client{}
@@ -97,9 +97,9 @@ EXT:
 }
 
 // GetCatalogServices 获取所有的service
-func GetCatalogServices(address string, serviceTag string) (map[string]BoxServiceDat, error) {
+func GetCatalogServices(address string, serviceTag string) (map[string]NodServiceDat, error) {
 
-	boxServices := make(map[string]BoxServiceDat)
+	nodServices := make(map[string]NodServiceDat)
 
 	services, err := ServicesList(address)
 	if err != nil {
@@ -115,7 +115,7 @@ func GetCatalogServices(address string, serviceTag string) (map[string]BoxServic
 				}
 
 				for _, v := range lst {
-					boxServices[v.ServiceID] = v
+					nodServices[v.ServiceID] = v
 				}
 			}
 		}
@@ -126,5 +126,5 @@ EXT:
 		fmt.Println("GetCatalogServices", err)
 	}
 
-	return boxServices, err
+	return nodServices, err
 }

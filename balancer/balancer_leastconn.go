@@ -7,8 +7,8 @@ import (
 
 // LeastConnBalancer 最少连接数均衡器
 type LeastConnBalancer struct {
-	BoxName string
-	lst     Nodes
+	NodeName string
+	lst      Nodes
 	sync.Mutex
 }
 

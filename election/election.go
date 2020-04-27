@@ -20,8 +20,8 @@ type (
 
 		// consul address
 		address string
-		// service name (box name)
-		serviceName string
+		// nod name (nod name)
+		nodName string
 	}
 
 	Config struct {
@@ -70,7 +70,7 @@ func (e *Election) Init(cfg interface{}) error {
 
 	e.sessionID = sid
 	e.locked = locked
-	e.serviceName = elCfg.Name
+	e.nodName = elCfg.Name
 	e.address = elCfg.Address
 
 	return err
@@ -101,7 +101,7 @@ func (e *Election) runImpl() {
 		}()
 
 		if !e.locked {
-			succ, _ := consul.AcquireLock(e.address, e.serviceName, e.sessionID)
+			succ, _ := consul.AcquireLock(e.address, e.nodName, e.sessionID)
 			if succ {
 				e.locked = true
 				fmt.Println("master now")
@@ -132,6 +132,6 @@ func (e *Election) Run() {
 
 // Close 释放锁，删除session
 func (e *Election) Close() {
-	consul.ReleaseLock(e.address, e.serviceName, e.sessionID)
+	consul.ReleaseLock(e.address, e.nodName, e.sessionID)
 	consul.DeleteSession(e.address, e.sessionID)
 }

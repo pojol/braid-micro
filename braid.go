@@ -109,7 +109,7 @@ type (
 		Nodes map[string]interface{}
 	}
 
-	// Node box框架中的功能节点
+	// Node braid框架中的功能节点
 	Node interface {
 		Init(interface{}) error
 		Run()
@@ -270,10 +270,10 @@ func Regist(serviceName string, fc service.ServiceFunc) {
 }
 
 // Call 远程调用
-func Call(parentCtx context.Context, boxName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
+func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
 	if _, ok := b.Nodes[Caller]; ok {
 		c := b.Nodes[Caller].(*caller.Caller)
-		return c.Call(parentCtx, boxName, serviceName, token, body)
+		return c.Call(parentCtx, nodeName, serviceName, token, body)
 	}
 
 	panic(errors.New("No subscription caller module"))
@@ -289,7 +289,7 @@ func IsMaster() (bool, error) {
 	return false, errors.New("No subscription election module")
 }
 
-// Run 运行box
+// Run 运行
 func Run() {
 
 	for _, v := range b.Nodes {
@@ -298,7 +298,7 @@ func Run() {
 
 }
 
-// Close 释放box
+// Close 释放
 func Close() {
 	for _, v := range b.Nodes {
 		v.(Node).Close()
