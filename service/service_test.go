@@ -42,13 +42,13 @@ func TestNew(t *testing.T) {
 	rres := new(brpc.RouteRes)
 
 	err = conn.Invoke(context.Background(), "/brpc.gateway/routing", &brpc.RouteReq{
-		Box:     "normal",
+		Nod:     "normal",
 		Service: "test",
 		ReqBody: nil,
 	}, rres)
 	assert.Equal(t, err, nil)
 	err = conn.Invoke(context.Background(), "/brpc.gateway/routing", &brpc.RouteReq{
-		Box:     "normal",
+		Nod:     "normal",
 		Service: "errtest",
 		ReqBody: nil,
 	}, rres)

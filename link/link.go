@@ -22,11 +22,11 @@ const (
 	// "token1" -> 127.0.0.1:8001
 	// "token2" -> 127.0.0.1:8001
 	// ...
-	redisTokenAddressHash = "box_token_address_hash"
+	redisTokenAddressHash = "braid_token_address_hash"
 
 	// RedisAddressTokenList 保存地址的token集合
 	// 127.0.0.1:8001 -> ["token1", token2, ...]
-	redisAddressTokenList = "box_address_token_list"
+	redisAddressTokenList = "braid_address_token_list"
 )
 
 var (

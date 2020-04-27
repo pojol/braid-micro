@@ -16,7 +16,7 @@ func TestServicesList(t *testing.T) {
 
 }
 
-func TestGetBoxServices(t *testing.T) {
+func TestGetNodeServices(t *testing.T) {
 
 	lst, err := GetCatalogServices(mock.ConsulAddr, "redis")
 	if err != nil {

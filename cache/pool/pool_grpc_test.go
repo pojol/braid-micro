@@ -49,7 +49,7 @@ func TestGRPCPool(t *testing.T) {
 	err = conn.Invoke(caCtx, "/brpc.gateway/routing", &brpc.RouteReq{
 		ReqBody: []byte(`{"Val1":1, "Val2":2}`),
 		Service: "test",
-		Box:     "normal",
+		Nod:     "normal",
 	}, rres)
 	assert.Equal(t, err, nil)
 

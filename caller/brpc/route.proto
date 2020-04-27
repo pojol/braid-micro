@@ -7,7 +7,7 @@ service gateway {
 }
 
 message routeReq {
-    string box = 1;
+    string nod = 1;
     string service = 2;
     bytes reqBody = 3;
 }

@@ -17,7 +17,7 @@ tracing : false
 install : 
     log :
         open : true
-        path : /var/log/coordinate
+        path : test
         suffex : .sys
 
     redis :

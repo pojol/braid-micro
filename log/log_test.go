@@ -13,7 +13,7 @@ func TestLog(t *testing.T) {
 	l := New()
 	l.Init(Config{
 		Mode:   "debug",
-		Path:   "/var/log/test",
+		Path:   "test",
 		Suffex: ".log",
 	})
 	defer l.Close()

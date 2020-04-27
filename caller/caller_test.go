@@ -30,9 +30,9 @@ func TestCaller(t *testing.T) {
 		Tracing:       false,
 	})
 
-	addr, _ := c.getBoxWithCoordinate(context.Background(), "test", "func")
+	addr, _ := c.getNodeWithCoordinate(context.Background(), "test", "func")
 	assert.Equal(t, addr, "")
 
-	addr, _ = c.findBox(context.Background(), "test", "test", "")
+	addr, _ = c.findNode(context.Background(), "test", "test", "")
 	assert.Equal(t, addr, "")
 }
