@@ -178,7 +178,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		appendNode(Redis, r)
 	}
 
-	if compose.Install.Tracer.Open {
+	if compose.Install.Tracer.Open && compose.Tracing {
 		tr := tracer.New()
 		err := tr.Init(tracer.Config{
 			Endpoint:      depend.Jaeger,
