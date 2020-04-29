@@ -143,6 +143,8 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		Nodes: make(map[string]interface{}),
 	}
 
+	var nods []string
+
 	if compose.Install.Log.Open {
 		lo := log.New()
 		err := lo.Init(log.Config{
@@ -153,6 +155,8 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+
+		nods = append(nods, Logger)
 		appendNode(Logger, lo)
 	}
 
@@ -170,6 +174,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Redis)
 		appendNode(Redis, r)
 	}
 
@@ -183,6 +188,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Tracer)
 		appendNode(Tracer, tr)
 	}
 
@@ -201,6 +207,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Balancer)
 		appendNode(Balancer, ba)
 	}
 
@@ -213,6 +220,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Discover)
 		appendNode(Discover, di)
 	}
 
@@ -225,6 +233,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Election)
 		appendNode(Election, el)
 	}
 
@@ -240,6 +249,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Caller)
 		appendNode(Caller, ca)
 	}
 
@@ -253,9 +263,11 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
+		nods = append(nods, Service)
 		appendNode(Service, se)
 	}
 
+	log.SysCompose(nods, "braid compose install ")
 	return nil
 }
 
