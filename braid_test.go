@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/mock"
 	"gopkg.in/yaml.v2"
 )
@@ -42,11 +43,21 @@ install :
         interval : 3000
     caller : 
         open : true
+    tracer : 
+        open : true
+        probabilistic : 0.01
 `
 
 func TestCompose(t *testing.T) {
 
 	mock.Init()
+
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
 
 	conf := &ComposeConf{}
 	err := yaml.Unmarshal([]byte(TestComposeFile), conf)

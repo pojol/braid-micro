@@ -39,6 +39,13 @@ func SysRoutingError(serviceName string, desc string) {
 	)
 }
 
+// SysCompose 输出启动节点
+func SysCompose(nods []string, desc string) {
+	logPtr.gSysLog.Info(desc,
+		zap.Strings("nods", nods),
+	)
+}
+
 // SysWelcome 欢迎日志
 func SysWelcome(nodeName string, mode string, ty string, info string) {
 	logPtr.gSysLog.Info(info,

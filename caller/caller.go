@@ -64,6 +64,12 @@ var (
 	ErrCantFindNode = errors.New("Can't find service node in center")
 )
 
+const (
+	// CenterTag 用于发现注册中心, 代理注册中心的节点需要在，
+	// Dockerfile中设置 ENV SERVICE_TAGS=coordinate
+	CenterTag = "coordinate"
+)
+
 // New 构建指针
 func New() *Caller {
 	c = &Caller{}
@@ -78,7 +84,7 @@ func (c *Caller) Init(cfg interface{}) error {
 	}
 
 	proxy := ""
-	services, err := consul.GetCatalogServices(callerCfg.ConsulAddress, "coordinate")
+	services, err := consul.GetCatalogServices(callerCfg.ConsulAddress, CenterTag)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,8 @@ package balancer
 import (
 	"sort"
 	"sync"
+
+	"github.com/pojol/braid/log"
 )
 
 // LeastConnBalancer 最少连接数均衡器
@@ -23,6 +25,7 @@ func (b *LeastConnBalancer) Add(node Node) {
 		}
 	}
 
+	log.Debugf("add balance nod", node.Name, node.ID, node.Address)
 	b.lst = append(b.lst, node)
 }
 
@@ -36,6 +39,7 @@ func (b *LeastConnBalancer) Rmv(id string) {
 		if v.ID == id {
 			b.lst = append(b.lst[:k], b.lst[k+1:]...)
 
+			log.Debugf("rmv balance nod", v.Name, v.ID, v.Address)
 			return
 		}
 	}
