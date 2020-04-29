@@ -22,6 +22,7 @@ var (
 // Node 权重节点
 type Node struct {
 	ID      string
+	Name    string
 	Address string
 
 	// 被选中的次数

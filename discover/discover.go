@@ -95,6 +95,7 @@ func (s *Sync) tick() {
 
 			balancer.GetSelector(sn.service).Add(balancer.Node{
 				ID:      sn.id,
+				Name:    sn.service,
 				Address: sn.address,
 				Weight:  1, // 暂时不在提供weight支持
 				Tick:    num,
