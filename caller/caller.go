@@ -186,7 +186,7 @@ func (c *Caller) findNode(parentCtx context.Context, nodName string, serviceName
 
 	if key != "" {
 
-		address, err = link.Get().Target(key)
+		address, err = link.Get().Target(parentCtx, key)
 		if err != nil {
 			goto EXT
 		}
@@ -200,7 +200,7 @@ func (c *Caller) findNode(parentCtx context.Context, nodName string, serviceName
 			goto EXT
 		}
 
-		link.Get().Link(key, address)
+		link.Get().Link(parentCtx, key, address)
 	} else {
 		address, err = c.getNodeWithCoordinate(parentCtx, nodName, serviceName)
 		if err != nil {
