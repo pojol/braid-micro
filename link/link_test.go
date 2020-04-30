@@ -1,6 +1,7 @@
 package link
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -31,10 +32,10 @@ func TestTarget(t *testing.T) {
 	err := l.Offline("address")
 	assert.Equal(t, err, nil)
 
-	err = l.Link("test_link", "address")
+	err = l.Link(context.Background(), "test_link", "address")
 	assert.Equal(t, err, nil)
 
-	addr, err := l.Target("test_link")
+	addr, err := l.Target(context.Background(), "test_link")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "address")
 

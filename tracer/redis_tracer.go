@@ -16,9 +16,13 @@ type RedisTracer struct {
 // Begin 开始监听
 func (r *RedisTracer) Begin(ctx context.Context) {
 	gt := opentracing.GlobalTracer()
-	r.span = gt.StartSpan(r.Cmd)
+	parentSpan := opentracing.SpanFromContext(ctx)
+	if parentSpan != nil {
 
-	ext.DBType.Set(r.span, "Redis")
+		r.span = gt.StartSpan(r.Cmd, opentracing.ChildOf(parentSpan.Context()))
+		ext.DBType.Set(r.span, "Redis")
+	}
+
 }
 
 // End 结束监听
