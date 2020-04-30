@@ -35,4 +35,19 @@ func TestCaller(t *testing.T) {
 
 	addr, _ = c.findNode(context.Background(), "test", "test", "")
 	assert.Equal(t, addr, "")
+
+	c.Call(context.Background(), "", "", "", []byte{})
+}
+
+func TestInitNum(t *testing.T) {
+	mock.Init()
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
+	c := New()
+	c.Init(Config{})
 }
