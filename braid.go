@@ -87,7 +87,10 @@ type ComposeConf struct {
 			Open bool `yaml:"open"`
 		}
 		Caller struct {
-			Open bool `yaml:"open"`
+			Open        bool `yaml:"open"`
+			PoolInitNum int  `yaml:"pool_init_num"`
+			PoolCap     int  `yaml:"pool_cap"`
+			PoolIdle    int  `yaml:"pool_idle"`
 		}
 		Linker struct {
 			Open bool `yaml:"open"`
@@ -245,9 +248,9 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		ca := caller.New()
 		err := ca.Init(caller.Config{
 			ConsulAddress: depend.Consul,
-			PoolInitNum:   8,
-			PoolCapacity:  32,
-			PoolIdle:      time.Second * 120,
+			PoolInitNum:   compose.Install.Caller.PoolInitNum,
+			PoolCapacity:  compose.Install.Caller.PoolCap,
+			PoolIdle:      time.Duration(compose.Install.Caller.PoolIdle) * time.Second,
 			Tracing:       compose.Tracing,
 		})
 		if err != nil {

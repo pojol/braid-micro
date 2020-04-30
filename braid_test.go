@@ -43,6 +43,9 @@ install :
         interval : 3000
     caller : 
         open : true
+        pool_init_num : 32
+        pool_cap : 128
+        pool_idle : 120
     tracer : 
         open : true
         probabilistic : 0.01
