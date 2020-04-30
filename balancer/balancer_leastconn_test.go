@@ -45,6 +45,13 @@ func TestLeastConnBalancer(t *testing.T) {
 
 func BenchmarkLeastConnBalancer(b *testing.B) {
 
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
 	wrr := LeastConnBalancer{}
 
 	for i := 0; i < 100; i++ {
