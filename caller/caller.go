@@ -103,6 +103,12 @@ func (c *Caller) Init(cfg interface{}) error {
 	address := services[proxy].ServiceAddress + ":" + strconv.Itoa(services[proxy].ServicePort)
 
 	c.coordinateAddress = address
+	if callerCfg.PoolInitNum == 0 {
+		callerCfg.PoolInitNum = defaultConfig.PoolInitNum
+		callerCfg.PoolCapacity = defaultConfig.PoolCapacity
+		callerCfg.PoolIdle = defaultConfig.PoolIdle
+	}
+
 	c.cfg = callerCfg
 
 	return nil
