@@ -79,6 +79,8 @@ type ComposeConf struct {
 		}
 		Tracer struct {
 			Open          bool    `yaml:"open"`
+			SlowRequest   int64   `yaml:"slow_req"`
+			SlowSpan      int64   `yaml:"slow_span"`
 			Probabilistic float64 `yaml:"probabilistic"`
 		}
 		Service struct {
@@ -178,12 +180,14 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		appendNode(Redis, r)
 	}
 
-	if compose.Install.Tracer.Open {
+	if compose.Install.Tracer.Open && compose.Tracing {
 		tr := tracer.New()
 		err := tr.Init(tracer.Config{
 			Endpoint:      depend.Jaeger,
 			Name:          compose.Name,
 			Probabilistic: compose.Install.Tracer.Probabilistic,
+			SlowRequest:   compose.Install.Tracer.SlowRequest,
+			SlowSpan:      time.Duration(compose.Install.Tracer.SlowSpan) * time.Millisecond,
 		})
 		if err != nil {
 			return err

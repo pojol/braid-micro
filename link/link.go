@@ -1,7 +1,10 @@
 package link
 
 import (
+	"context"
 	"errors"
+
+	"github.com/pojol/braid/tracer"
 
 	"github.com/pojol/braid/cache/redis"
 )
@@ -76,15 +79,27 @@ func (l *Linker) Close() {
 }
 
 // Target 获取目标服务器
-func (l *Linker) Target(key string) (string, error) {
+func (l *Linker) Target(ctx context.Context, key string) (string, error) {
+	rt := tracer.RedisTracer{
+		Cmd: "HGET",
+	}
+	rt.Begin(ctx)
+	defer rt.End()
+
 	return redis.Get().HGet(redisTokenAddressHash, key)
 }
 
 // Link 将用户`标示`和包含Service的`目标服务器`进行链接，
 // 在进行过链接后，下一次远程访问将会不经过coordinate，直接向目标服务器发送。
-func (l *Linker) Link(key string, address string) error {
+func (l *Linker) Link(ctx context.Context, key string, address string) error {
 	conn := redis.Get().Conn()
 	defer conn.Close()
+
+	rt := tracer.RedisTracer{
+		Cmd: "HSET|LPUSH",
+	}
+	rt.Begin(ctx)
+	defer rt.End()
 
 	mu := redis.Mutex{
 		Token: key,
@@ -113,6 +128,7 @@ func (l *Linker) UnLink(token string) {
 
 // Num 获取目标服务器的链接数
 func (l *Linker) Num(address string) (int, error) {
+
 	linkField := redisAddressTokenList + address
 	return redis.Get().LLen(linkField)
 }

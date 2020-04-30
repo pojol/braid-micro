@@ -3,6 +3,7 @@ package tracer
 import (
 	"errors"
 	"io"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
@@ -16,19 +17,20 @@ type (
 	Tracer struct {
 		closer  io.Closer
 		tracing opentracing.Tracer
+		cfg     Config
 	}
 
 	//Config 链路追踪配置
 	Config struct {
-		Endpoint      string  // jaeger 地址
-		Probabilistic float64 // 采样率
-		Name          string  // tracer name
+		Endpoint      string        // jaeger 地址
+		Probabilistic float64       // 采样率
+		Name          string        // tracer name
+		SlowRequest   int64         // 一旦request超出设置的SlowRequest（ms）时间，则一定会有一条slow日志
+		SlowSpan      time.Duration // 一旦span超出设置的SlowSpan（ms）时间，则一定会有一条slow日志
 	}
 )
 
 const (
-	slowSpanLimit     = 20 // ms
-	slowRequestLimit  = 100
 	optionHTTPRequest = "Request"
 	requestID         = "RequestID"
 	opRequestLimit    = "RequestLimit"
@@ -41,6 +43,8 @@ var (
 		Endpoint: "http://localhost:14268/api/traces",
 		// 采样率 0 ～ 1
 		Probabilistic: 1,
+		SlowRequest:   100,
+		SlowSpan:      10,
 	}
 
 	// ErrConfigConvert 配置转换失败
@@ -105,6 +109,7 @@ func (t *Tracer) Init(cfg interface{}) error {
 	opentracing.SetGlobalTracer(tracer)
 	t.tracing = tracer
 	t.closer = closer
+	t.cfg = tCfg
 	return nil
 }
 
