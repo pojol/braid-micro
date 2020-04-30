@@ -46,6 +46,8 @@ install :
     tracer : 
         open : true
         probabilistic : 0.01
+        slow_req : 100
+        slow_span : 20
 `
 
 func TestCompose(t *testing.T) {

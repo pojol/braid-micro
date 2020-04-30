@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/pojol/braid/log"
 	"github.com/uber/jaeger-client-go"
 )
 
@@ -59,8 +60,8 @@ func (t *HTTPTracer) End(ectx echo.Context) {
 	}
 
 	executionTime := time.Now().Sub(t.beginTime).Milliseconds()
-	if executionTime > slowRequestLimit {
-		//log.SysSlow(ectx.Path(), t.requestID, int(executionTime), "slow request")
+	if executionTime > tracer.cfg.SlowRequest {
+		log.SysSlow(ectx.Path(), t.requestID, int(executionTime), "slow request")
 	}
 
 	t.span.Finish()

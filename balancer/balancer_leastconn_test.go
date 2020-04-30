@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/pojol/braid/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,6 +12,13 @@ func TestLeastConnBalancer(t *testing.T) {
 
 	b := New()
 	b.Init(SelectorCfg{})
+
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
 
 	_, err := GetSelector("test").Next()
 	assert.Equal(t, err, ErrBalanceEmpty)

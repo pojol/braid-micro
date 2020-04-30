@@ -138,7 +138,7 @@ func (r *slowReporter) processQueue() {
 			case reporterQueueItemSpan:
 				span := item.span
 				sample := false
-				if span.Duration() > (time.Millisecond*slowSpanLimit) && span.OperationName() != optionHTTPRequest {
+				if span.Duration() > (time.Millisecond*tracer.cfg.SlowSpan) && span.OperationName() != optionHTTPRequest {
 					//log.SysSlow(span.OperationName(), span.SpanContext().TraceID().String(), int(span.Duration().Milliseconds()), "slow span")
 					sample = true
 				} else {
