@@ -99,11 +99,14 @@ type ComposeConf struct {
 			Open bool `yaml:"open"`
 		}
 		Election struct {
-			Open bool `yaml:"open"`
+			Open       bool `yaml:"open"`
+			LockTick   int  `yaml:"lock_tick"`   // 循环获取锁的间隔 ms (申请成为master的间隔
+			RefushTick int  `yaml:"refush_tick"` // 刷新session的间隔 ms (保活的心跳频率
 		}
 		Discover struct {
-			Open     bool `yaml:"open"`
-			Interval int  `yaml:"interval"`
+			Open bool `yaml:"open"`
+			// Interval 发现节点的刷新间隔 ms
+			Interval int `yaml:"interval"`
 		}
 	}
 }
@@ -119,12 +122,6 @@ type (
 		Init(interface{}) error
 		Run()
 		Close()
-	}
-
-	// NodeCompose 节点
-	NodeCompose struct {
-		Ty  string
-		Cfg interface{}
 	}
 )
 
@@ -234,8 +231,10 @@ func Compose(compose ComposeConf, depend DependConf) error {
 	if compose.Install.Election.Open {
 		el := election.New()
 		err := el.Init(election.Config{
-			Address: depend.Consul,
-			Name:    compose.Name,
+			Address:           depend.Consul,
+			Name:              compose.Name,
+			LockTick:          time.Duration(compose.Install.Election.LockTick) * time.Millisecond,
+			RefushSessionTick: time.Duration(compose.Install.Election.RefushTick) * time.Millisecond,
 		})
 		if err != nil {
 			return err
@@ -306,6 +305,16 @@ func IsMaster() (bool, error) {
 	}
 
 	return false, errors.New("No subscription election module")
+}
+
+// Get 获取注册到braid的模块
+func Get(mod string) interface{} {
+
+	if _, ok := b.Nodes[mod]; ok {
+		return b.Nodes[mod]
+	}
+
+	return nil
 }
 
 // Run 运行

@@ -38,6 +38,8 @@ install :
         open : true
     election :
         open : true
+        lock_tick : 2000
+        refush_tick : 5000
     discover :
         open : true
         interval : 3000
