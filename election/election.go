@@ -21,6 +21,11 @@ type (
 		cfg Config
 	}
 
+	// IElection 选举器需要提供的接口
+	IElection interface {
+		IsMaster() bool
+	}
+
 	// Config 选举器配置项
 	Config struct {
 		Address           string
@@ -76,8 +81,8 @@ func (e *Election) Init(cfg interface{}) error {
 	return err
 }
 
-// IsLocked 返回是否获取到锁
-func (e *Election) IsLocked() bool {
+// IsMaster 返回是否获取到锁
+func (e *Election) IsMaster() bool {
 	return e.locked
 }
 
