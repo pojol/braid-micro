@@ -12,21 +12,26 @@ import (
 type (
 	// Election 自动选举结构
 	Election struct {
-		lockTicker    *time.Ticker
-		sessionTicker *time.Ticker
+		lockTicker   *time.Ticker
+		refushTicker *time.Ticker
 
 		sessionID string
 		locked    bool
 
-		// consul address
-		address string
-		// nod name (nod name)
-		nodName string
+		cfg Config
 	}
 
+	// IElection 选举器需要提供的接口
+	IElection interface {
+		IsMaster() bool
+	}
+
+	// Config 选举器配置项
 	Config struct {
-		Address string
-		Name    string
+		Address           string
+		Name              string
+		LockTick          time.Duration
+		RefushSessionTick time.Duration
 	}
 )
 
@@ -37,6 +42,7 @@ var (
 	ErrConfigConvert = errors.New("Convert linker config")
 )
 
+// New 构建新的选举器指针
 func New() *Election {
 	e = &Election{}
 	return e
@@ -63,21 +69,20 @@ func (e *Election) Init(cfg interface{}) error {
 		return err
 	}
 	if locked {
-		fmt.Println("master")
+		log.SysElection("master")
 	} else {
-		fmt.Println("slave")
+		log.SysElection("slave")
 	}
 
 	e.sessionID = sid
 	e.locked = locked
-	e.nodName = elCfg.Name
-	e.address = elCfg.Address
+	e.cfg = elCfg
 
 	return err
 }
 
-// IsLocked 返回是否获取到锁
-func (e *Election) IsLocked() bool {
+// IsMaster 返回是否获取到锁
+func (e *Election) IsMaster() bool {
 	return e.locked
 }
 
@@ -90,7 +95,7 @@ func (e *Election) runImpl() {
 			}
 		}()
 
-		consul.RefushSession(e.address, e.sessionID)
+		consul.RefushSession(e.cfg.Address, e.sessionID)
 	}
 
 	watchLock := func() {
@@ -101,21 +106,22 @@ func (e *Election) runImpl() {
 		}()
 
 		if !e.locked {
-			succ, _ := consul.AcquireLock(e.address, e.nodName, e.sessionID)
+			succ, _ := consul.AcquireLock(e.cfg.Address, e.cfg.Name, e.sessionID)
 			if succ {
 				e.locked = true
-				fmt.Println("master now")
+				log.SysElection("master")
 			}
 		}
-
 	}
 
-	e.sessionTicker = time.NewTicker(time.Millisecond * 1000 * 5)
-	e.lockTicker = time.NewTicker(time.Millisecond * 2000)
+	// time.Millisecond * 1000 * 5
+	e.refushTicker = time.NewTicker(e.cfg.RefushSessionTick)
+	// time.Millisecond * 2000
+	e.lockTicker = time.NewTicker(e.cfg.LockTick)
 
 	for {
 		select {
-		case <-e.sessionTicker.C:
+		case <-e.refushTicker.C:
 			refushSession()
 		case <-e.lockTicker.C:
 			watchLock()
@@ -132,6 +138,6 @@ func (e *Election) Run() {
 
 // Close 释放锁，删除session
 func (e *Election) Close() {
-	consul.ReleaseLock(e.address, e.nodName, e.sessionID)
-	consul.DeleteSession(e.address, e.sessionID)
+	consul.ReleaseLock(e.cfg.Address, e.cfg.Name, e.sessionID)
+	consul.DeleteSession(e.cfg.Address, e.sessionID)
 }

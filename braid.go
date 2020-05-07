@@ -99,11 +99,14 @@ type ComposeConf struct {
 			Open bool `yaml:"open"`
 		}
 		Election struct {
-			Open bool `yaml:"open"`
+			Open       bool `yaml:"open"`
+			LockTick   int  `yaml:"lock_tick"`   // 循环获取锁的间隔 ms (申请成为master的间隔
+			RefushTick int  `yaml:"refush_tick"` // 刷新session的间隔 ms (保活的心跳频率
 		}
 		Discover struct {
-			Open     bool `yaml:"open"`
-			Interval int  `yaml:"interval"`
+			Open bool `yaml:"open"`
+			// Interval 发现节点的刷新间隔 ms
+			Interval int `yaml:"interval"`
 		}
 	}
 }
@@ -120,19 +123,14 @@ type (
 		Run()
 		Close()
 	}
-
-	// NodeCompose 节点
-	NodeCompose struct {
-		Ty  string
-		Cfg interface{}
-	}
 )
 
 var (
 	b *Braid
 )
 
-func appendNode(name string, nod interface{}) {
+// AppendNode 将功能节点添加到braid中
+func AppendNode(name string, nod interface{}) {
 
 	if _, ok := b.Nodes[name]; !ok {
 		b.Nodes[name] = nod
@@ -162,7 +160,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		}
 
 		nods = append(nods, Logger)
-		appendNode(Logger, lo)
+		AppendNode(Logger, lo)
 	}
 
 	if compose.Install.Redis.Open {
@@ -180,7 +178,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Redis)
-		appendNode(Redis, r)
+		AppendNode(Redis, r)
 	}
 
 	if compose.Install.Tracer.Open && compose.Tracing {
@@ -196,7 +194,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Tracer)
-		appendNode(Tracer, tr)
+		AppendNode(Tracer, tr)
 	}
 
 	if compose.Install.Linker.Open {
@@ -205,7 +203,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		if err != nil {
 			return err
 		}
-		appendNode(Linker, l)
+		AppendNode(Linker, l)
 	}
 
 	if compose.Install.Balancer.Open {
@@ -215,7 +213,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Balancer)
-		appendNode(Balancer, ba)
+		AppendNode(Balancer, ba)
 	}
 
 	if compose.Install.Discover.Open {
@@ -228,20 +226,22 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Discover)
-		appendNode(Discover, di)
+		AppendNode(Discover, di)
 	}
 
 	if compose.Install.Election.Open {
 		el := election.New()
 		err := el.Init(election.Config{
-			Address: depend.Consul,
-			Name:    compose.Name,
+			Address:           depend.Consul,
+			Name:              compose.Name,
+			LockTick:          time.Duration(compose.Install.Election.LockTick) * time.Millisecond,
+			RefushSessionTick: time.Duration(compose.Install.Election.RefushTick) * time.Millisecond,
 		})
 		if err != nil {
 			return err
 		}
 		nods = append(nods, Election)
-		appendNode(Election, el)
+		AppendNode(Election, el)
 	}
 
 	if compose.Install.Caller.Open {
@@ -257,7 +257,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Caller)
-		appendNode(Caller, ca)
+		AppendNode(Caller, ca)
 	}
 
 	if compose.Install.Service.Open {
@@ -271,7 +271,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			return err
 		}
 		nods = append(nods, Service)
-		appendNode(Service, se)
+		AppendNode(Service, se)
 	}
 
 	log.SysCompose(nods, "braid compose install ")
@@ -301,8 +301,8 @@ func Call(parentCtx context.Context, nodeName string, serviceName string, token 
 // IsMaster 当前节点是否为主节点
 func IsMaster() (bool, error) {
 	if _, ok := b.Nodes[Election]; ok {
-		e := b.Nodes[Election].(*election.Election)
-		return e.IsLocked(), nil
+		e := b.Nodes[Election].(election.IElection)
+		return e.IsMaster(), nil
 	}
 
 	return false, errors.New("No subscription election module")

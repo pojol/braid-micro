@@ -28,6 +28,8 @@ func (r *RedisTracer) Begin(ctx context.Context) {
 // End 结束监听
 func (r *RedisTracer) End() {
 
-	r.span.Finish()
+	if r.span != nil {
+		r.span.Finish()
+	}
 
 }

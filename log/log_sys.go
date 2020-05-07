@@ -46,6 +46,13 @@ func SysCompose(nods []string, desc string) {
 	)
 }
 
+// SysElection 选举日志
+func SysElection(mode string) {
+	logPtr.gSysLog.Info("current run mode",
+		zap.String("mode", mode),
+	)
+}
+
 // SysWelcome 欢迎日志
 func SysWelcome(nodeName string, mode string, ty string, info string) {
 	logPtr.gSysLog.Info(info,
