@@ -35,6 +35,35 @@ func TestRedis(t *testing.T) {
 	assert.Equal(t, c, Get())
 	defer c.Close()
 
+	conn := c.Conn()
+	defer conn.Close()
+
+	testkey := "redis_test"
+	testhfield := "redis_h_field"
+
+	c.Set(testkey, "test")
+	c.Expire(testkey, 1)
+	c.SetWithExpire(testkey, "test", 1)
+	c.SetEx(testkey, 1, "test")
+	c.Get(testkey)
+	c.Del(testkey)
+
+	c.HSet(testhfield, testkey, "test")
+	c.HGet(testhfield, testkey)
+	c.HGetAll(testhfield)
+	c.HKeys(testhfield)
+	c.HExist(testhfield, testkey)
+	c.HLen(testhfield)
+	c.HDel(testhfield, testkey)
+
+	c.LPush(testkey, "1")
+	c.RPop(testkey)
+	c.RPush(testkey, "1")
+	c.LLen(testkey)
+	c.LRange(testkey, 0, -1)
+	c.LRem(testkey, 1, "1")
+
+	c.Keys("*")
 	c.ActiveConnCount()
 	c.Run()
 	c.Ping()

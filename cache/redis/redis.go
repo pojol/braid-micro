@@ -155,12 +155,6 @@ func (rc *Client) Set(key string, val string) error {
 	return err
 }
 
-// ConnSetEx 将值 value 关联到 key ，并将 key 的生存时间设为 seconds (以秒为单位)。
-func ConnSetEx(conn redis.Conn, key string, val string, timeOutSeconds int64) error {
-	_, err := conn.Do("SETEX", key, timeOutSeconds, val)
-	return err
-}
-
 // SetEx 将值 value 关联到 key ，并将 key 的生存时间设为 seconds (以秒为单位)。
 func (rc *Client) SetEx(key string, timeOutSeconds int64, val string) error {
 	conn := rc.pool.Get()
@@ -173,16 +167,6 @@ func (rc *Client) SetEx(key string, timeOutSeconds int64, val string) error {
 func (rc *Client) Get(key string) (string, error) {
 	conn := rc.pool.Get()
 	defer conn.Close()
-	reply, errDo := conn.Do("GET", key)
-	if errDo == nil && reply == nil {
-		return "", nil
-	}
-	val, err := redis.String(reply, errDo)
-	return val, err
-}
-
-// ConnGet 返回 key 所关联的字符串值。
-func ConnGet(conn redis.Conn, key string) (string, error) {
 	reply, errDo := conn.Do("GET", key)
 	if errDo == nil && reply == nil {
 		return "", nil
@@ -244,14 +228,6 @@ func (rc *Client) HExist(hashID string, field string) (int, error) {
 	return val, err
 }
 
-// HIncrBy 为哈希表 key 中的域 field 的值加上增量 increment
-func (rc *Client) HIncrBy(hashID string, field string, increment int) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int(conn.Do("HINCRBY", hashID, field, increment))
-	return val, err
-}
-
 // HLen 返回哈希表 key 中域的数量。
 func (rc *Client) HLen(field string) (int, error) {
 	conn := rc.pool.Get()
@@ -274,130 +250,6 @@ func ConnHDel(conn redis.Conn, args ...interface{}) (int64, error) {
 	return val, err
 }
 
-// ---------------------- sorted set --------------------
-
-// ZAdd 添加到集合
-func (rc *Client) ZAdd(field string, score int64, member string) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZADD", field, score, member))
-	return val, err
-}
-
-// ZRem 从集合中删除成员
-func (rc *Client) ZRem(field string, member string) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZREM", field, member))
-	return val, err
-}
-
-// ZCount 返回有序集 key 中， score 值在 min 和 max 之间(默认包括 score 值等于 min 或 max )的成员的数量。
-func (rc *Client) ZCount(field string, min int64, max int64) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZCOUNT", field, min, max))
-	return val, err
-}
-
-// ZRangeByScore 返回有序集 key 中，所有 score 值介于 min 和 max 之间(包括等于 min 或 max )的成员。有序集成员按 score 值递增(从小到大)次序排列。
-func (rc *Client) ZRangeByScore(field string, min int64, max int64) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZRANGEBYSCORE", field, min, max))
-	return val, err
-}
-
-// ZRangeByScorelimit 返回有序集
-func (rc *Client) ZRangeByScorelimit(field string, min int64, max int64, limit int) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZRANGEBYSCORE", field, min, max, "limit", 0, limit))
-	return val, err
-}
-
-// ConnZRangeByScorelimit 返回有序集
-func ConnZRangeByScorelimit(conn redis.Conn, field string, min int64, max int64, limit int) ([]string, error) {
-	val, err := redis.Strings(conn.Do("ZRANGEBYSCORE", field, min, max, "limit", 0, limit))
-	return val, err
-}
-
-// ZRevRangeByScorelimit 返回有序集 key 中， score 值介于 max 和 min 之间(默认包括等于 max 或 min )的所有的成员
-func (rc *Client) ZRevRangeByScorelimit(field string, max int64, min int64, offset int, count int) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZREVRANGEBYSCORE", field, max, min, "limit", offset, count))
-	return val, err
-}
-
-// ZRevRangeByScoreLimitWithscores 返回有序集 key 中， score 值介于 max 和 min 之间(默认包括等于 max 或 min )的所有的成员
-func (rc *Client) ZRevRangeByScoreLimitWithscores(field string, max int64, min int64, offset int, count int) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZREVRANGEBYSCORE", field, max, min, "withscores", "limit", offset, count))
-	return val, err
-}
-
-// ZRemRangeByScore 移除有序集 key 中，所有 score 值介于 min 和 max 之间(包括等于 min 或 max )的成员
-func (rc *Client) ZRemRangeByScore(field string, min int64, max int64) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZREMRANGEBYSCORE", field, min, max))
-
-	return val, err
-}
-
-// ZIncrby 为有序集 key 的成员 member 的 score 值加上增量 increment 。
-func (rc *Client) ZIncrby(field string, incScore int, member string) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZINCRBY", field, incScore, member))
-
-	return val, err
-}
-
-// ZScore 返回有序集 key 中，成员 member 的 score 值。
-func (rc *Client) ZScore(field string, member string) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZSCORE", field, member))
-
-	return val, err
-}
-
-// ZRevRank 返回有序集 key 中成员 member 的排名。其中有序集成员按 score 值递减(从大到小)排序。
-func (rc *Client) ZRevRank(field string, member string) (int64, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int64(conn.Do("ZREVRANK", field, member))
-
-	return val, err
-}
-
-// ZRange 返回有序集 key 中，指定区间内的成员。
-func (rc *Client) ZRange(field string, start int64, stop int64) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZRANGE", field, start, stop))
-	return val, err
-}
-
-// ZRevRange 返回有序集 key 中，指定区间内的成员。
-func (rc *Client) ZRevRange(field string, start int64, stop int64) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZREVRANGE", field, start, stop))
-	return val, err
-}
-
-// ZRevRangeWithscores 返回有序集 key 中，指定区间内的成员。
-func (rc *Client) ZRevRangeWithscores(field string, start int64, stop int64) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("ZREVRANGE", field, start, stop, "withscores"))
-	return val, err
-}
-
 //----------------- list -----------------------
 
 // LPush 将一个或多个值 value 插入到列表 key 的表头
@@ -417,14 +269,6 @@ func (rc *Client) RPop(key string) (string, error) {
 	conn := rc.pool.Get()
 	defer conn.Close()
 	resp, err := redis.String(conn.Do("RPOP", key))
-	return resp, err
-}
-
-// LPushX 将值 value 插入到列表 key 的表头，当且仅当 key 存在并且是一个列表。
-func (rc *Client) LPushX(key string, value string) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	resp, err := redis.Int(conn.Do("LPUSHX", key, value))
 	return resp, err
 }
 
@@ -458,59 +302,6 @@ func (rc *Client) RPush(key string, value string) (int, error) {
 	defer conn.Close()
 	ret, err := redis.Int(conn.Do("RPush", key, value))
 	return ret, err
-}
-
-//------------------------ set -------------------------
-
-// SAdd 将一个或多个 member 元素加入到集合 key 当中，已经存在于集合的 member 元素将被忽略。
-func (rc *Client) SAdd(key string, member ...interface{}) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	args := append([]interface{}{key}, member...)
-	val, err := redis.Int(conn.Do("SADD", args...))
-	return val, err
-}
-
-// SRem 移除集合 key 中的一个或多个 member 元素，不存在的 member 元素会被忽略。
-func (rc *Client) SRem(key string, member ...interface{}) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	args := append([]interface{}{key}, member...)
-	val, err := redis.Int(conn.Do("SREM", args...))
-	return val, err
-}
-
-// SMembers 返回集合 key 中的所有成员。
-func (rc *Client) SMembers(key string) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("SMEMBERS", key))
-	return val, err
-}
-
-// SiSMembers 判断 member 元素是否集合 key 的成员。
-func (rc *Client) SiSMembers(key string, member string) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int(conn.Do("SISMEMBER", key, member))
-	return val, err
-}
-
-// SRandMember 如果命令执行时，只提供了 key 参数，那么返回集合中的一个随机元素。
-func (rc *Client) SRandMember(key string, count int) ([]string, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Strings(conn.Do("SRANDMEMBER", key, count))
-	return val, err
-}
-
-// SCard returns cardinality of the set(count of elements).
-// returns 0 when set does not exist
-func (rc *Client) SCard(key string) (int, error) {
-	conn := rc.pool.Get()
-	defer conn.Close()
-	val, err := redis.Int(conn.Do("SCARD", key))
-	return val, err
 }
 
 //----------------- server ----------------------
