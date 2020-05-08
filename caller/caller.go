@@ -33,6 +33,11 @@ type (
 		sync.Mutex
 	}
 
+	// ICaller caller的抽象接口
+	ICaller interface {
+		Call(context.Context, string, string, string, []byte) ([]byte, error)
+	}
+
 	// Config 调用器配置项
 	Config struct {
 		ConsulAddress string
@@ -130,7 +135,7 @@ func (c *Caller) Close() {
 }
 
 // Call 执行一次rpc调用
-func (c *Caller) Call(parentCtx context.Context, nodName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
+func (c *Caller) Call(parentCtx context.Context, nodName string, serviceName string, token string, body []byte) (out []byte, err error) {
 
 	var address string
 	var caPool *pool.GRPCPool
@@ -140,7 +145,7 @@ func (c *Caller) Call(parentCtx context.Context, nodName string, serviceName str
 	var connCtx context.Context
 	var connCancel context.CancelFunc
 	var method string
-	res = new(brpc.RouteRes)
+	res := new(brpc.RouteRes)
 
 	c.Lock()
 	defer c.Unlock()
@@ -182,7 +187,7 @@ EXT:
 		log.SysError("caller", "do", err.Error())
 	}
 
-	return res, err
+	return res.ResBody, err
 }
 
 // Find 通过查找器获取目标
