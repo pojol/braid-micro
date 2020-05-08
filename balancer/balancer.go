@@ -42,8 +42,8 @@ func (s Nodes) Less(i, j int) bool {
 
 func (s Nodes) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
-// Balancer 均衡器
-type Balancer interface {
+// IBalancer 均衡器
+type IBalancer interface {
 	// Add 添加一个新节点
 	Add(Node)
 	// Rmv 移除一个旧节点
@@ -69,21 +69,23 @@ func (s *Selector) Init(cfg interface{}) error {
 	return nil
 }
 
+// Run r
 func (s *Selector) Run() {
 
 }
 
+// Close c
 func (s *Selector) Close() {
 
 }
 
 // GetSelector 获取负载均衡选择器
-func GetSelector(nodName string) Balancer {
+func GetSelector(nodName string) IBalancer {
 	return selector.group(nodName)
 }
 
 // Group 获取组
-func (s *Selector) group(nodName string) Balancer {
+func (s *Selector) group(nodName string) IBalancer {
 
 	b, ok := s.m.Load(nodName)
 	if !ok {
@@ -94,5 +96,5 @@ func (s *Selector) group(nodName string) Balancer {
 		s.m.Store(nodName, b)
 	}
 
-	return b.(Balancer)
+	return b.(IBalancer)
 }
