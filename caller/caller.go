@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/pojol/braid/link"
+	"github.com/pojol/braid/utility"
 
 	"github.com/pojol/braid/consul"
 	"github.com/pojol/braid/log"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid/utility"
 
 	"github.com/pojol/braid/cache/pool"
 	"github.com/pojol/braid/caller/brpc"
@@ -23,11 +24,21 @@ import (
 )
 
 type (
+	centerNod struct {
+		id      string
+		address string
+		weight  int
+	}
+
 	// Caller 调用器
 	Caller struct {
-		coordinateAddress string
+		centerList []centerNod
 
 		cfg Config
+
+		refushTick *time.Ticker
+
+		health bool
 
 		poolMgr sync.Map
 		sync.Mutex
@@ -60,8 +71,9 @@ var (
 	}
 	c *Caller
 
-	// ErrCoordinateUnavailiable caller依赖coordinate节点
-	ErrCoordinateUnavailiable = errors.New("caller need coordinate")
+	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(cooridnate)
+	ErrServiceNotAvailable = errors.New("caller service not available")
+
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 
@@ -88,26 +100,6 @@ func (c *Caller) Init(cfg interface{}) error {
 		return ErrConfigConvert
 	}
 
-	proxy := ""
-	services, err := consul.GetCatalogServices(callerCfg.ConsulAddress, CenterTag)
-	if err != nil {
-		return err
-	}
-
-	if len(services) == 0 {
-		log.Fatalf(ErrCoordinateUnavailiable.Error())
-	} else {
-		proxys := []string{}
-		for k := range services {
-			proxys = append(proxys, k)
-		}
-		idx := utility.RandSpace(0, int64(len(proxys)-1))
-		proxy = proxys[idx]
-	}
-
-	address := services[proxy].ServiceAddress + ":" + strconv.Itoa(services[proxy].ServicePort)
-
-	c.coordinateAddress = address
 	if callerCfg.PoolInitNum == 0 {
 		callerCfg.PoolInitNum = defaultConfig.PoolInitNum
 		callerCfg.PoolCapacity = defaultConfig.PoolCapacity
@@ -124,9 +116,87 @@ func Get() *Caller {
 	return c
 }
 
+func (c *Caller) centerExist(id string) bool {
+
+	for _, v := range c.centerList {
+		if v.id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (c *Caller) getCenter() string {
+	clen := len(c.centerList)
+	if clen <= 0 {
+		log.Fatalf(ErrServiceNotAvailable.Error())
+	}
+
+	idx := utility.RandSpace(0, int64(clen-1))
+	return c.centerList[idx].address
+}
+
+// 监听中心的列表变化，保证本地列表中中心的可用性。
+func (c *Caller) runImpl() {
+
+	refush := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				log.SysError("caller", "refush center list", fmt.Errorf("%v", err).Error())
+			}
+		}()
+
+		services, err := consul.GetCatalogServices(c.cfg.ConsulAddress, CenterTag)
+		if err != nil {
+			log.SysError("caller", "catalog services err", fmt.Errorf("%v", err).Error())
+			return
+		}
+
+		c.Lock()
+		defer c.Unlock()
+
+		for _, v := range services {
+			if c.centerExist(v.ServiceID) == false {
+				c.centerList = append(c.centerList, centerNod{
+					id:      v.ServiceID,
+					address: v.ServiceAddress + ":" + strconv.Itoa(v.ServicePort),
+					weight:  0,
+				})
+			}
+		}
+
+		for i := 0; i < len(c.centerList); i++ {
+
+			if _, ok := services[c.centerList[i].id]; !ok {
+				c.centerList = append(c.centerList[:i], c.centerList[i+1:]...)
+				i--
+			}
+
+		}
+
+		if len(c.centerList) > 0 {
+			c.health = true
+		}
+
+	}
+
+	c.refushTick = time.NewTicker(time.Second * 2)
+	refush()
+
+	for {
+		select {
+		case <-c.refushTick.C:
+			refush()
+		}
+	}
+}
+
 // Run run
 func (c *Caller) Run() {
-
+	go func() {
+		c.runImpl()
+	}()
 }
 
 // Close 释放调用器
@@ -149,6 +219,10 @@ func (c *Caller) Call(parentCtx context.Context, nodName string, serviceName str
 
 	c.Lock()
 	defer c.Unlock()
+
+	if !c.health {
+		return out, ErrServiceNotAvailable
+	}
 
 	address, err = c.findNode(parentCtx, nodName, serviceName, token)
 	if err != nil {
@@ -282,7 +356,7 @@ func (c *Caller) getNodeWithCoordinate(parentCtx context.Context, nodName string
 	var conn *pool.ClientConn
 	method := "/brpc.gateway/routing"
 
-	p, err := c.pool(c.coordinateAddress)
+	p, err := c.pool(c.getCenter())
 	if err != nil {
 		goto EXT
 	}

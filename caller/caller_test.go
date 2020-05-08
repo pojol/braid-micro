@@ -30,6 +30,9 @@ func TestCaller(t *testing.T) {
 		Tracing:       false,
 	})
 
+	c.Run()
+	time.Sleep(time.Millisecond * 200)
+
 	addr, _ := c.getNodeWithCoordinate(context.Background(), "test", "func")
 	assert.Equal(t, addr, "")
 
