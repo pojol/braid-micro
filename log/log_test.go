@@ -23,6 +23,8 @@ func TestLog(t *testing.T) {
 	SysSlow("/v1/login/guest", "xxx", 100, "slow request msg")
 	SysRoutingError("login", "routing warning")
 	SysWelcome("test", "debug", "?", "welcome")
+	SysCompose([]string{"11"}, "compose")
+	SysElection("master")
 }
 
 func BenchmarkLog(b *testing.B) {
