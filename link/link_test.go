@@ -46,7 +46,7 @@ func TestTarget(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	assert.Equal(t, Get(), l)
-	l.UnLink("")
+	l.Unlink("")
 	l.Run()
 	l.Close()
 
