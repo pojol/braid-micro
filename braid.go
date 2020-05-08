@@ -8,7 +8,6 @@ import (
 	"github.com/pojol/braid/balancer"
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/caller"
-	"github.com/pojol/braid/caller/brpc"
 	"github.com/pojol/braid/discover"
 	"github.com/pojol/braid/election"
 	"github.com/pojol/braid/link"
@@ -279,7 +278,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 }
 
 // Regist 注册服务
-func Regist(serviceName string, fc service.ServiceFunc) {
+func Regist(serviceName string, fc service.RPCFunc) {
 	if _, ok := b.Nodes[Service]; ok {
 		s := b.Nodes[Service].(*service.Service)
 		s.Regist(serviceName, fc)
@@ -289,9 +288,9 @@ func Regist(serviceName string, fc service.ServiceFunc) {
 }
 
 // Call 远程调用
-func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (res *brpc.RouteRes, err error) {
+func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (res interface{}, err error) {
 	if _, ok := b.Nodes[Caller]; ok {
-		c := b.Nodes[Caller].(*caller.Caller)
+		c := b.Nodes[Caller].(caller.ICaller)
 		return c.Call(parentCtx, nodeName, serviceName, token, body)
 	}
 

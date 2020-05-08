@@ -17,6 +17,15 @@ type (
 	// Config 配置项目
 	Config struct {
 	}
+
+	// ILinker linker提供的抽象方法
+	ILinker interface {
+		Target(context.Context, string) (string, error)
+		Link(context.Context, string, string) error
+		Unlink(string) error
+		Num(string) (int, error)
+		Offline(string) error
+	}
 )
 
 const (
@@ -121,9 +130,10 @@ func (l *Linker) Link(ctx context.Context, key string, address string) error {
 	return nil
 }
 
-// UnLink 取消用户`标示`含有的相关链接
-func (l *Linker) UnLink(token string) {
+// Unlink 取消用户`标示`含有的相关链接
+func (l *Linker) Unlink(token string) error {
 
+	return nil
 }
 
 // Num 获取目标服务器的链接数

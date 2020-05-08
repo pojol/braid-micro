@@ -27,15 +27,16 @@ type (
 		ListenAddress string
 	}
 
+	// RPCFunc ...
 	// ctx 上下文
 	// in 外部发送过来的数据报文
 	// out 返回给外部的数据报文
 	// err 错误信息
-	ServiceFunc func(ctx context.Context, in []byte) (out []byte, err error)
+	RPCFunc func(ctx context.Context, in []byte) (out []byte, err error)
 )
 
 var (
-	serviceMap map[string]ServiceFunc = make(map[string]ServiceFunc)
+	serviceMap map[string]RPCFunc = make(map[string]RPCFunc)
 
 	service       *Service
 	defaultConfig = Config{
@@ -87,7 +88,6 @@ func (s *server) Routing(ctx context.Context, in *brpc.RouteReq) (*brpc.RouteRes
 
 	var err error
 	var body []byte
-	var headers []*brpc.Header
 
 	if _, ok := serviceMap[in.Service]; !ok {
 		err = ErrServiceUnavailiable
@@ -102,28 +102,13 @@ func (s *server) Routing(ctx context.Context, in *brpc.RouteReq) (*brpc.RouteRes
 EXT:
 	if err != nil {
 		log.SysError("main", "routing", err.Error())
-
-		headers = append(headers, &brpc.Header{
-			Key: "ErrCode",
-			Val: "-200",
-		})
-
-		headers = append(headers, &brpc.Header{
-			Key: "ErrMsg",
-			Val: err.Error(),
-		})
-	} else {
-		headers = append(headers, &brpc.Header{
-			Key: "ErrCode",
-			Val: "0",
-		})
 	}
 
-	return &brpc.RouteRes{ResBody: body, Headers: headers}, err
+	return &brpc.RouteRes{ResBody: body}, err
 }
 
 // Regist 注册服务
-func (s *Service) Regist(serviceName string, fc ServiceFunc) {
+func (s *Service) Regist(serviceName string, fc RPCFunc) {
 	if _, ok := serviceMap[serviceName]; ok {
 		return
 	}

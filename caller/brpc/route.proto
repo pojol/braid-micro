@@ -19,5 +19,4 @@ message Header {
 
 message routeRes {
     bytes resBody = 1;
-    repeated Header headers = 2;
 }
