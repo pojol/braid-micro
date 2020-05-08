@@ -288,7 +288,7 @@ func Regist(serviceName string, fc service.RPCFunc) {
 }
 
 // Call 远程调用
-func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (res interface{}, err error) {
+func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (out []byte, err error) {
 	if _, ok := b.Nodes[Caller]; ok {
 		c := b.Nodes[Caller].(caller.ICaller)
 		return c.Call(parentCtx, nodeName, serviceName, token, body)
