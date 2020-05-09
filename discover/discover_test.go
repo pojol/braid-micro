@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/balancer"
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/service/balancer"
 )
 
 func TestDiscover(t *testing.T) {

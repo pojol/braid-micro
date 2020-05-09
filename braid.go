@@ -5,13 +5,13 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pojol/braid/balancer"
 	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/caller"
 	"github.com/pojol/braid/discover"
 	"github.com/pojol/braid/election"
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/register"
 	"github.com/pojol/braid/tracer"
 )

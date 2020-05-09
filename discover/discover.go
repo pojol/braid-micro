@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pojol/braid/balancer"
 	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/consul"
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service/balancer"
 )
 
 type (
