@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pojol/braid/caller/brpc"
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service/caller/brpc"
 	"google.golang.org/grpc"
 )
 

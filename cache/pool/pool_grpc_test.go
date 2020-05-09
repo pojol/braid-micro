@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/caller/brpc"
+	"github.com/pojol/braid/service/caller/brpc"
 	"github.com/pojol/braid/service/register"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"

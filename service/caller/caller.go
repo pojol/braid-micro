@@ -18,7 +18,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid/cache/pool"
-	"github.com/pojol/braid/caller/brpc"
+	"github.com/pojol/braid/service/caller/brpc"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
