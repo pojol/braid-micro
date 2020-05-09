@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/pojol/braid/balancer"
+	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/consul"
-	"github.com/pojol/braid/link"
 	"github.com/pojol/braid/log"
 )
 

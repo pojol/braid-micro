@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/pojol/braid/balancer"
+	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/caller"
 	"github.com/pojol/braid/discover"
 	"github.com/pojol/braid/election"
-	"github.com/pojol/braid/link"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service"
 	"github.com/pojol/braid/tracer"

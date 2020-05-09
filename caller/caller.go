@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/link"
+	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/utility"
 
 	"github.com/pojol/braid/consul"
