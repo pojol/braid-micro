@@ -37,6 +37,45 @@ func TestWRR(t *testing.T) {
 
 }
 
+func TestWRROp(t *testing.T) {
+
+	wrr := WeightedRoundrobin{}
+
+	wrr.Add(Node{
+		ID:     "A",
+		Weight: 4,
+	})
+
+	wrr.Rmv("A")
+
+	_, ok := wrr.isExist("A")
+	assert.Equal(t, ok, false)
+
+	wrr.Add(Node{
+		ID:     "B",
+		Weight: 2,
+	})
+	wrr.SyncWeight("B", 4)
+	n, _ := wrr.Next()
+	assert.Equal(t, n.Weight, wrr.totalWeight)
+}
+
+func TestSelector(t *testing.T) {
+	s := New()
+	s.Init(SelectorCfg{})
+	s.Run()
+	defer s.Close()
+
+	ib := GetSelector("test")
+
+	ib.Add(Node{
+		ID:     "A",
+		Weight: 4,
+	})
+
+	ib.Rmv("A")
+}
+
 func BenchmarkWRR(b *testing.B) {
 	wrr := WeightedRoundrobin{}
 
