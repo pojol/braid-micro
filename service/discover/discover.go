@@ -24,6 +24,8 @@ type (
 
 	// Config Sync Config
 	Config struct {
+		Name string
+
 		// 同步节点信息间隔
 		Interval int
 
@@ -78,6 +80,10 @@ func (s *Sync) tick() {
 	}
 
 	for _, service := range services {
+		if service.ServiceName == s.cfg.Name {
+			continue
+		}
+
 		if _, ok := s.passingMap[service.ServiceID]; !ok { // new nod
 
 			sn := syncNode{
@@ -86,7 +92,7 @@ func (s *Sync) tick() {
 				address: service.ServiceAddress + ":" + strconv.Itoa(service.ServicePort),
 			}
 
-			num, err := link.Get().Num(sn.address)
+			_, err := link.Get().Num(sn.address)
 			if err != nil {
 				continue
 			}
@@ -98,8 +104,9 @@ func (s *Sync) tick() {
 				Name:    sn.service,
 				Address: sn.address,
 				Weight:  1, // 暂时不在提供weight支持
-				Tick:    num,
 			})
+		} else { // 看一下是否需要更新权重
+
 		}
 	}
 

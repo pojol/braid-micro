@@ -9,6 +9,7 @@ import (
 
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/service/balancer"
 )
 
 func TestCaller(t *testing.T) {
@@ -20,6 +21,8 @@ func TestCaller(t *testing.T) {
 		Suffex: ".log",
 		Mode:   "debug",
 	})
+
+	_ = balancer.New()
 
 	c := New()
 	c.Init(Config{
@@ -33,10 +36,7 @@ func TestCaller(t *testing.T) {
 	c.Run()
 	time.Sleep(time.Millisecond * 200)
 
-	addr, _ := c.getNodeWithCoordinate(context.Background(), "test", "func")
-	assert.Equal(t, addr, "")
-
-	addr, _ = c.findNode(context.Background(), "test", "test", "")
+	addr, _ := c.findNode(context.Background(), "test", "test", "")
 	assert.Equal(t, addr, "")
 
 	c.Call(context.Background(), "", "", "", []byte{})

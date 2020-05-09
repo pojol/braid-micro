@@ -25,29 +25,21 @@ type Node struct {
 	Name    string
 	Address string
 
-	// 被选中的次数
-	Tick int
 	// 节点的权重值
-	Weight float32
+	Weight int
 }
-
-// Nodes 权重节点队列
-type Nodes []Node
-
-func (s Nodes) Len() int { return len(s) }
-
-func (s Nodes) Less(i, j int) bool {
-	return (float32(s[i].Tick) * s[i].Weight) < (float32(s[j].Tick) * s[j].Weight)
-}
-
-func (s Nodes) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 // IBalancer 均衡器
 type IBalancer interface {
 	// Add 添加一个新节点
 	Add(Node)
+
 	// Rmv 移除一个旧节点
 	Rmv(string)
+
+	// SyncWeight 调整节点权重值
+	SyncWeight(string, int)
+
 	// Next 获取一个节点
 	Next() (*Node, error)
 }
@@ -89,8 +81,8 @@ func (s *Selector) group(nodName string) IBalancer {
 
 	b, ok := s.m.Load(nodName)
 	if !ok {
-		b = &LeastConnBalancer{
-			NodeName: nodName,
+		b = &WeightedRoundrobin{
+			Name: nodName,
 		}
 
 		s.m.Store(nodName, b)
