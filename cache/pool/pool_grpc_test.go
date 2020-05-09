@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/caller/brpc"
-	"github.com/pojol/braid/service"
+	"github.com/pojol/braid/service/caller/brpc"
+	"github.com/pojol/braid/service/register"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
 func TestGRPCPool(t *testing.T) {
 
-	s := service.New()
-	err := s.Init(service.Config{
+	s := register.New()
+	err := s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
 		ListenAddress: ":1202",
@@ -63,8 +63,8 @@ func TestGRPCPool(t *testing.T) {
 }
 
 func TestUnhealth(t *testing.T) {
-	s := service.New()
-	err := s.Init(service.Config{
+	s := register.New()
+	err := s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
 		ListenAddress: ":1205",
@@ -98,8 +98,8 @@ func TestUnhealth(t *testing.T) {
 }
 
 func TestIdle(t *testing.T) {
-	s := service.New()
-	err := s.Init(service.Config{
+	s := register.New()
+	err := s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
 		ListenAddress: ":1206",

@@ -30,7 +30,7 @@ install :
         max_idle : 16
         max_active : 128
 
-    service :
+    register :
         open : true
     linker :
         open : true

@@ -1,4 +1,4 @@
-package service
+package register
 
 import (
 	"context"
@@ -6,15 +6,15 @@ import (
 	"io"
 	"net"
 
-	"github.com/pojol/braid/caller/brpc"
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service/caller/brpc"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
 
 type (
-	// Service 服务模块
-	Service struct {
+	// Register 注册器
+	Register struct {
 		rpc          *grpc.Server
 		tracerCloser io.Closer
 		listen       string
@@ -38,7 +38,7 @@ type (
 var (
 	serviceMap map[string]RPCFunc = make(map[string]RPCFunc)
 
-	service       *Service
+	register      *Register
 	defaultConfig = Config{
 		Tracing: false,
 	}
@@ -50,13 +50,13 @@ var (
 )
 
 // New 构建service
-func New() *Service {
-	service = &Service{}
-	return service
+func New() *Register {
+	register = &Register{}
+	return register
 }
 
 // Init 构建service
-func (s *Service) Init(cfg interface{}) error {
+func (s *Register) Init(cfg interface{}) error {
 
 	sCfg, ok := cfg.(Config)
 	if !ok {
@@ -80,11 +80,11 @@ func (s *Service) Init(cfg interface{}) error {
 	return err
 }
 
-type server struct {
+type rpcServer struct {
 	brpc.UnimplementedGatewayServer
 }
 
-func (s *server) Routing(ctx context.Context, in *brpc.RouteReq) (*brpc.RouteRes, error) {
+func (s *rpcServer) Routing(ctx context.Context, in *brpc.RouteReq) (*brpc.RouteRes, error) {
 
 	var err error
 	var body []byte
@@ -108,7 +108,7 @@ EXT:
 }
 
 // Regist 注册服务
-func (s *Service) Regist(serviceName string, fc RPCFunc) {
+func (s *Register) Regist(serviceName string, fc RPCFunc) {
 	if _, ok := serviceMap[serviceName]; ok {
 		return
 	}
@@ -117,8 +117,8 @@ func (s *Service) Regist(serviceName string, fc RPCFunc) {
 }
 
 // Run 运行
-func (s *Service) Run() {
-	brpc.RegisterGatewayServer(s.rpc, &server{})
+func (s *Register) Run() {
+	brpc.RegisterGatewayServer(s.rpc, &rpcServer{})
 
 	rpcListen, err := net.Listen("tcp", s.listen)
 	if err != nil {
@@ -133,6 +133,6 @@ func (s *Service) Run() {
 }
 
 // Close 退出处理
-func (s *Service) Close() {
+func (s *Register) Close() {
 
 }

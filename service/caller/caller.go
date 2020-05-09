@@ -2,38 +2,27 @@ package caller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/link"
-	"github.com/pojol/braid/utility"
+	"github.com/pojol/braid/cache/link"
 
-	"github.com/pojol/braid/consul"
 	"github.com/pojol/braid/log"
 
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid/cache/pool"
-	"github.com/pojol/braid/caller/brpc"
+	"github.com/pojol/braid/service/balancer"
+	"github.com/pojol/braid/service/caller/brpc"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
 
 type (
-	centerNod struct {
-		id      string
-		address string
-		weight  int
-	}
 
 	// Caller 调用器
 	Caller struct {
-		centerList []centerNod
-
 		cfg Config
 
 		refushTick *time.Ticker
@@ -81,12 +70,6 @@ var (
 	ErrCantFindNode = errors.New("Can't find service node in center")
 )
 
-const (
-	// CenterTag 用于发现注册中心, 代理注册中心的节点需要在，
-	// Dockerfile中设置 ENV SERVICE_TAGS=coordinate
-	CenterTag = "coordinate"
-)
-
 // New 构建指针
 func New() *Caller {
 	c = &Caller{}
@@ -116,87 +99,9 @@ func Get() *Caller {
 	return c
 }
 
-func (c *Caller) centerExist(id string) bool {
-
-	for _, v := range c.centerList {
-		if v.id == id {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (c *Caller) getCenter() string {
-	clen := len(c.centerList)
-	if clen <= 0 {
-		log.Fatalf(ErrServiceNotAvailable.Error())
-	}
-
-	idx := utility.RandSpace(0, int64(clen-1))
-	return c.centerList[idx].address
-}
-
-// 监听中心的列表变化，保证本地列表中中心的可用性。
-func (c *Caller) runImpl() {
-
-	refush := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				log.SysError("caller", "refush center list", fmt.Errorf("%v", err).Error())
-			}
-		}()
-
-		services, err := consul.GetCatalogServices(c.cfg.ConsulAddress, CenterTag)
-		if err != nil {
-			log.SysError("caller", "catalog services err", fmt.Errorf("%v", err).Error())
-			return
-		}
-
-		c.Lock()
-		defer c.Unlock()
-
-		for _, v := range services {
-			if c.centerExist(v.ServiceID) == false {
-				c.centerList = append(c.centerList, centerNod{
-					id:      v.ServiceID,
-					address: v.ServiceAddress + ":" + strconv.Itoa(v.ServicePort),
-					weight:  0,
-				})
-			}
-		}
-
-		for i := 0; i < len(c.centerList); i++ {
-
-			if _, ok := services[c.centerList[i].id]; !ok {
-				c.centerList = append(c.centerList[:i], c.centerList[i+1:]...)
-				i--
-			}
-
-		}
-
-		if len(c.centerList) > 0 {
-			c.health = true
-		}
-
-	}
-
-	c.refushTick = time.NewTicker(time.Second * 2)
-	refush()
-
-	for {
-		select {
-		case <-c.refushTick.C:
-			refush()
-		}
-	}
-}
-
 // Run run
 func (c *Caller) Run() {
-	go func() {
-		c.runImpl()
-	}()
+
 }
 
 // Close 释放调用器
@@ -280,17 +185,20 @@ func (c *Caller) findNode(parentCtx context.Context, nodName string, serviceName
 			goto EXT
 		}
 
-		address, err = c.getNodeWithCoordinate(parentCtx, nodName, serviceName)
+		nod, err := balancer.GetSelector(nodName).Next()
 		if err != nil {
 			goto EXT
 		}
 
+		address = nod.Address
 		link.Get().Link(parentCtx, key, address)
 	} else {
-		address, err = c.getNodeWithCoordinate(parentCtx, nodName, serviceName)
+
+		nod, err := balancer.GetSelector(nodName).Next()
 		if err != nil {
 			goto EXT
 		}
+		address = nod.Address
 	}
 
 EXT:
@@ -342,57 +250,4 @@ EXT:
 	}
 
 	return p, err
-}
-
-func (c *Caller) getNodeWithCoordinate(parentCtx context.Context, nodName string, serviceName string) (string, error) {
-	rres := new(brpc.RouteRes)
-	var fres struct {
-		Address string
-	}
-	var address string
-	var caCtx context.Context
-	var caCancel context.CancelFunc
-	var dat []byte
-	var conn *pool.ClientConn
-	method := "/brpc.gateway/routing"
-
-	p, err := c.pool(c.getCenter())
-	if err != nil {
-		goto EXT
-	}
-	conn, err = p.Get(context.Background())
-	if err != nil {
-		goto EXT
-	}
-	defer conn.Put()
-
-	caCtx, caCancel = context.WithTimeout(parentCtx, time.Second)
-	defer caCancel()
-
-	dat, _ = json.Marshal(struct {
-		Nod     string
-		Service string
-	}{nodName, serviceName})
-
-	if conn.Invoke(caCtx, method, &brpc.RouteReq{
-		Nod:     "coordinate",
-		Service: "find",
-		ReqBody: dat,
-	}, rres) != nil {
-		goto EXT
-	}
-
-	json.Unmarshal(rres.ResBody, &fres)
-	if fres.Address == "" {
-		err = ErrCantFindNode
-		goto EXT
-	}
-	address = fres.Address
-
-EXT:
-	if err != nil {
-		log.SysError("caller", "getNodeWithCoordinate", err.Error())
-	}
-
-	return address, err
 }

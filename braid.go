@@ -5,14 +5,14 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pojol/braid/balancer"
+	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/cache/redis"
-	"github.com/pojol/braid/caller"
-	"github.com/pojol/braid/discover"
-	"github.com/pojol/braid/election"
-	"github.com/pojol/braid/link"
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service"
+	"github.com/pojol/braid/service/balancer"
+	"github.com/pojol/braid/service/caller"
+	"github.com/pojol/braid/service/discover"
+	"github.com/pojol/braid/service/election"
+	"github.com/pojol/braid/service/register"
 	"github.com/pojol/braid/tracer"
 )
 
@@ -82,7 +82,7 @@ type ComposeConf struct {
 			SlowSpan      int64   `yaml:"slow_span"`
 			Probabilistic float64 `yaml:"probabilistic"`
 		}
-		Service struct {
+		Register struct {
 			Open bool `yaml:"open"`
 		}
 		Caller struct {
@@ -259,9 +259,9 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		AppendNode(Caller, ca)
 	}
 
-	if compose.Install.Service.Open {
-		se := service.New()
-		err := se.Init(service.Config{
+	if compose.Install.Register.Open {
+		se := register.New()
+		err := se.Init(register.Config{
 			Tracing:       compose.Tracing,
 			Name:          compose.Name,
 			ListenAddress: DefaultListen,
@@ -278,9 +278,9 @@ func Compose(compose ComposeConf, depend DependConf) error {
 }
 
 // Regist 注册服务
-func Regist(serviceName string, fc service.RPCFunc) {
+func Regist(serviceName string, fc register.RPCFunc) {
 	if _, ok := b.Nodes[Service]; ok {
-		s := b.Nodes[Service].(*service.Service)
+		s := b.Nodes[Service].(*register.Register)
 		s.Regist(serviceName, fc)
 	} else {
 		panic(errors.New("No subscription service module"))
