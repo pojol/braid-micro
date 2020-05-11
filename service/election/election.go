@@ -38,6 +38,13 @@ type (
 var (
 	e *Election
 
+	// DefaultConfig 默认配置
+	DefaultConfig = Config{
+		Address:           "http://127.0.0.1:8500",
+		LockTick:          time.Second * 2000,
+		RefushSessionTick: time.Second * 5000,
+	}
+
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )

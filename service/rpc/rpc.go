@@ -47,7 +47,8 @@ type (
 )
 
 var (
-	defaultConfig = Config{
+	// DefaultConfig 默认配置
+	DefaultConfig = Config{
 		ConsulAddress: "http://127.0.0.1:8500",
 		PoolInitNum:   8,
 		PoolCapacity:  32,
@@ -77,12 +78,6 @@ func (r *RPC) Init(cfg interface{}) error {
 	rCfg, ok := cfg.(Config)
 	if !ok {
 		return ErrConfigConvert
-	}
-
-	if rCfg.PoolInitNum == 0 {
-		rCfg.PoolInitNum = defaultConfig.PoolInitNum
-		rCfg.PoolCapacity = defaultConfig.PoolCapacity
-		rCfg.PoolIdle = defaultConfig.PoolIdle
 	}
 
 	r.cfg = rCfg

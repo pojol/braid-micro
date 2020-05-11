@@ -43,6 +43,13 @@ var (
 	// StatusMgr 状态管理器
 	sync *Sync
 
+	// DefaultConfg 默认配置
+	DefaultConfg = Config{
+		Name:          "defaultDiscoverName",
+		Interval:      2000,
+		ConsulAddress: "http://127.0.0.1:8500",
+	}
+
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )

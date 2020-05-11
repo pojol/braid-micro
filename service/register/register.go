@@ -38,9 +38,13 @@ type (
 var (
 	serviceMap map[string]RPCFunc = make(map[string]RPCFunc)
 
-	register      *Register
-	defaultConfig = Config{
-		Tracing: false,
+	register *Register
+
+	// DefaultConfig 默认配置
+	DefaultConfig = Config{
+		Tracing:       false,
+		Name:          "defaultRegistName",
+		ListenAddress: ":14222",
 	}
 
 	// ErrServiceUnavailiable 没有可用的服务

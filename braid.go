@@ -3,10 +3,9 @@ package braid
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
-	"github.com/pojol/braid/cache/link"
-	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/discover"
@@ -27,10 +26,11 @@ const (
 	Redis = "redis"
 
 	// Linker 链接器
-	Linker = "linker"
+	// 零时弃用
+	// Linker = "linker"
 
-	// Service 服务管理器
-	Service = "service"
+	// Register rpc服务
+	Register = "register"
 
 	// RPC 远程调用RPC
 	RPC = "rpc"
@@ -61,52 +61,25 @@ type ComposeConf struct {
 	Mode    string `yaml:"mode"`
 	Tracing bool   `yaml:"tracing"`
 
-	Install struct {
-		Log struct {
-			Open   bool   `yaml:"open"`
-			Path   string `yaml:"path"`
-			Suffex string `yaml:"suffex"`
-		}
-		Redis struct {
-			Open         bool `yaml:"open"`
-			ReadTimeout  int  `yaml:"read_timeout"`
-			WriteTimeout int  `yaml:"write_timeout"`
-			ConnTimeout  int  `yaml:"conn_timeout"`
-			IdleTimeout  int  `yaml:"idle_timeout"`
-			MaxIdle      int  `yaml:"max_idle"`
-			MaxActive    int  `yaml:"max_active"`
-		}
-		Tracer struct {
-			Open          bool    `yaml:"open"`
-			SlowRequest   int64   `yaml:"slow_req"`
-			SlowSpan      int64   `yaml:"slow_span"`
-			Probabilistic float64 `yaml:"probabilistic"`
-		}
-		Register struct {
-			Open bool `yaml:"open"`
-		}
-		RPC struct {
-			Open        bool `yaml:"open"`
-			PoolInitNum int  `yaml:"pool_init_num"`
-			PoolCap     int  `yaml:"pool_cap"`
-			PoolIdle    int  `yaml:"pool_idle"`
-		} `yaml:"rpc"`
-		Linker struct {
-			Open bool `yaml:"open"`
-		}
-		Balancer struct {
-			Open bool `yaml:"open"`
-		}
-		Election struct {
-			Open       bool `yaml:"open"`
-			LockTick   int  `yaml:"lock_tick"`   // 循环获取锁的间隔 ms (申请成为master的间隔
-			RefushTick int  `yaml:"refush_tick"` // 刷新session的间隔 ms (保活的心跳频率
-		}
-		Discover struct {
-			Open bool `yaml:"open"`
-			// Interval 发现节点的刷新间隔 ms
-			Interval int `yaml:"interval"`
-		}
+	Install []string `yaml:"install"`
+
+	Config struct {
+		LogPath   string `yaml:"logger_path"`
+		LogSuffex string `yaml:"logger_suffex"`
+
+		RegisterListenPort int `yaml:"register_listen_port"`
+
+		ElectionLockTick   int `yaml:"election_lock_tick"`
+		ElectionRefushTick int `yaml:"election_refush_tick"`
+
+		RPCDiscoverInterval int `yaml:"rpc_discover_interval"`
+		RPCPoolInitNum      int `yaml:"rpc_pool_init_num"`
+		RPCPoolCap          int `yaml:"rpc_pool_cap"`
+		RPCPoolIdle         int `yaml:"rpc_pool_idle"`
+
+		TracerProbabilistic float64 `yaml:"tracer_probabilistic"`
+		TracerSlowReq       int     `yaml:"tracer_slow_req"`
+		TracerSlowSpan      int     `yaml:"tracer_slow_span"`
 	}
 }
 
@@ -147,130 +120,155 @@ func Compose(compose ComposeConf, depend DependConf) error {
 
 	var nods []string
 
-	if compose.Install.Log.Open {
-		lo := log.New()
-		err := lo.Init(log.Config{
-			Mode:   compose.Mode,
-			Path:   compose.Install.Log.Path,
-			Suffex: compose.Install.Log.Suffex,
-		})
-		if err != nil {
-			return err
+	for _, v := range compose.Install {
+
+		if v == Logger {
+			lo := log.New()
+			lc := log.Config{
+				Mode:   compose.Mode,
+				Path:   log.DefaultConfig.Path,
+				Suffex: log.DefaultConfig.Suffex,
+			}
+
+			if compose.Config.LogPath != "" {
+				lc.Path = compose.Config.LogPath
+			}
+			if compose.Config.LogSuffex != "" {
+				lc.Suffex = compose.Config.LogSuffex
+			}
+
+			err := lo.Init(lc)
+			if err != nil {
+				return err
+			}
+
+			nods = append(nods, Logger)
+			AppendNode(Logger, lo)
 		}
 
-		nods = append(nods, Logger)
-		AppendNode(Logger, lo)
-	}
+		if v == Register {
+			reg := register.New()
+			regc := register.Config{
+				Name:          compose.Name,
+				Tracing:       compose.Tracing,
+				ListenAddress: register.DefaultConfig.ListenAddress,
+			}
 
-	if compose.Install.Redis.Open {
-		r := redis.New()
-		err := r.Init(redis.Config{
-			Address:        depend.Redis,
-			ReadTimeOut:    time.Millisecond * time.Duration(compose.Install.Redis.ReadTimeout),
-			WriteTimeOut:   time.Millisecond * time.Duration(compose.Install.Redis.WriteTimeout),
-			ConnectTimeOut: time.Millisecond * time.Duration(compose.Install.Redis.ConnTimeout),
-			IdleTimeout:    time.Millisecond * time.Duration(compose.Install.Redis.IdleTimeout),
-			MaxIdle:        compose.Install.Redis.MaxIdle,
-			MaxActive:      compose.Install.Redis.MaxActive,
-		})
-		if err != nil {
-			return err
-		}
-		nods = append(nods, Redis)
-		AppendNode(Redis, r)
-	}
+			if compose.Config.RegisterListenPort != 0 {
+				regc.ListenAddress = ":" + strconv.Itoa(compose.Config.RegisterListenPort)
+			}
 
-	if compose.Install.Tracer.Open && compose.Tracing {
-		tr := tracer.New()
-		err := tr.Init(tracer.Config{
-			Endpoint:      depend.Jaeger,
-			Name:          compose.Name,
-			Probabilistic: compose.Install.Tracer.Probabilistic,
-			SlowRequest:   compose.Install.Tracer.SlowRequest,
-			SlowSpan:      time.Duration(compose.Install.Tracer.SlowSpan) * time.Millisecond,
-		})
-		if err != nil {
-			return err
+			err := reg.Init(regc)
+			if err != nil {
+				return err
+			}
+			nods = append(nods, Register)
+			AppendNode(Register, reg)
 		}
-		nods = append(nods, Tracer)
-		AppendNode(Tracer, tr)
-	}
 
-	if compose.Install.Linker.Open {
-		l := link.New()
-		err := l.Init(link.Config{})
-		if err != nil {
-			return err
-		}
-		AppendNode(Linker, l)
-	}
+		if v == RPC {
+			dis := discover.New()
+			disc := discover.Config{
+				Name:          compose.Name,
+				Interval:      discover.DefaultConfg.Interval,
+				ConsulAddress: depend.Consul,
+			}
 
-	if compose.Install.Balancer.Open {
-		ba := balancer.New()
-		err := ba.Init(balancer.Cfg{})
-		if err != nil {
-			return err
-		}
-		nods = append(nods, Balancer)
-		AppendNode(Balancer, ba)
-	}
+			if compose.Config.RPCDiscoverInterval != 0 {
+				disc.Interval = compose.Config.RPCDiscoverInterval
+			}
+			err := dis.Init(disc)
+			if err != nil {
+				return err
+			}
+			nods = append(nods, Discover)
+			AppendNode(Discover, dis)
 
-	if compose.Install.Discover.Open {
-		di := discover.New()
-		err := di.Init(discover.Config{
-			ConsulAddress: depend.Consul,
-			Interval:      compose.Install.Discover.Interval,
-		})
-		if err != nil {
-			return err
-		}
-		nods = append(nods, Discover)
-		AppendNode(Discover, di)
-	}
+			ba := balancer.New()
+			err = ba.Init(balancer.Cfg{})
+			if err != nil {
+				return err
+			}
+			nods = append(nods, Balancer)
+			AppendNode(Balancer, ba)
 
-	if compose.Install.Election.Open {
-		el := election.New()
-		err := el.Init(election.Config{
-			Address:           depend.Consul,
-			Name:              compose.Name,
-			LockTick:          time.Duration(compose.Install.Election.LockTick) * time.Millisecond,
-			RefushSessionTick: time.Duration(compose.Install.Election.RefushTick) * time.Millisecond,
-		})
-		if err != nil {
-			return err
-		}
-		nods = append(nods, Election)
-		AppendNode(Election, el)
-	}
+			r := rpc.New()
+			rc := rpc.Config{
+				ConsulAddress: depend.Consul,
+				Tracing:       compose.Tracing,
+				PoolInitNum:   rpc.DefaultConfig.PoolInitNum,
+				PoolCapacity:  rpc.DefaultConfig.PoolCapacity,
+				PoolIdle:      rpc.DefaultConfig.PoolIdle,
+			}
 
-	if compose.Install.RPC.Open {
-		ca := rpc.New()
-		err := ca.Init(rpc.Config{
-			ConsulAddress: depend.Consul,
-			PoolInitNum:   compose.Install.RPC.PoolInitNum,
-			PoolCapacity:  compose.Install.RPC.PoolCap,
-			PoolIdle:      time.Duration(compose.Install.RPC.PoolIdle) * time.Second,
-			Tracing:       compose.Tracing,
-		})
-		if err != nil {
-			return err
-		}
-		nods = append(nods, RPC)
-		AppendNode(RPC, ca)
-	}
+			if compose.Config.RPCPoolCap != 0 {
+				rc.PoolCapacity = compose.Config.RPCPoolCap
+			}
+			if compose.Config.RPCPoolInitNum != 0 {
+				rc.PoolInitNum = compose.Config.RPCPoolInitNum
+			}
+			if compose.Config.RPCPoolIdle != 0 {
+				rc.PoolIdle = time.Duration(compose.Config.RPCPoolIdle) * time.Second
+			}
 
-	if compose.Install.Register.Open {
-		se := register.New()
-		err := se.Init(register.Config{
-			Tracing:       compose.Tracing,
-			Name:          compose.Name,
-			ListenAddress: DefaultListen,
-		})
-		if err != nil {
-			return err
+			err = r.Init(rc)
+			if err != nil {
+				return err
+			}
+			nods = append(nods, RPC)
+			AppendNode(RPC, r)
 		}
-		nods = append(nods, Service)
-		AppendNode(Service, se)
+
+		if v == Election {
+			el := election.New()
+			elc := election.Config{
+				Address:           depend.Consul,
+				Name:              compose.Name,
+				LockTick:          election.DefaultConfig.LockTick,
+				RefushSessionTick: election.DefaultConfig.RefushSessionTick,
+			}
+
+			if compose.Config.ElectionLockTick != 0 {
+				elc.LockTick = time.Duration(compose.Config.ElectionLockTick) * time.Millisecond
+				elc.RefushSessionTick = time.Duration(compose.Config.ElectionRefushTick) * time.Millisecond
+			}
+
+			err := el.Init(elc)
+			if err != nil {
+				return err
+			}
+			nods = append(nods, Election)
+			AppendNode(Election, el)
+		}
+
+		if v == Tracer && compose.Tracing {
+			tr := tracer.New()
+			trc := tracer.Config{
+				Endpoint:      depend.Jaeger,
+				Name:          compose.Name,
+				Probabilistic: tracer.DefaultTracerConfig.Probabilistic,
+				SlowRequest:   tracer.DefaultTracerConfig.SlowRequest,
+				SlowSpan:      tracer.DefaultTracerConfig.SlowSpan,
+			}
+
+			if compose.Config.TracerProbabilistic != 0 {
+				trc.Probabilistic = compose.Config.TracerProbabilistic
+			}
+			if compose.Config.TracerSlowReq != 0 {
+				trc.SlowRequest = time.Duration(compose.Config.TracerSlowReq) * time.Millisecond
+			}
+			if compose.Config.TracerSlowSpan != 0 {
+				trc.SlowSpan = time.Duration(compose.Config.TracerSlowSpan) * time.Millisecond
+			}
+
+			err := tr.Init(trc)
+			if err != nil {
+				return err
+			}
+			nods = append(nods, Tracer)
+			AppendNode(Tracer, tr)
+		}
+
 	}
 
 	log.SysCompose(nods, "braid compose install ")
@@ -279,8 +277,8 @@ func Compose(compose ComposeConf, depend DependConf) error {
 
 // Regist 注册服务
 func Regist(serviceName string, fc register.RPCFunc) {
-	if _, ok := b.Nodes[Service]; ok {
-		s := b.Nodes[Service].(*register.Register)
+	if _, ok := b.Nodes[Register]; ok {
+		s := b.Nodes[Register].(*register.Register)
 		s.Regist(serviceName, fc)
 	} else {
 		panic(errors.New("No subscription service module"))

@@ -9,56 +9,47 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var TestComposeFile = `
-name : coordinate
-mode : debug
-tracing : false
+var ComposeFile = `
+    name : serviceName
+    mode : debug
+    tracing : true
 
-install : 
-    log :
-        open : true
-        path : test
-        suffex : .sys
+    # 安装模块列表
+    install :
+        - logger
+        - register
+        - election
+        - rpc
+        - tracer
 
-    redis :
-        open : true
-        read_timeout : 5000
-        write_timeout : 5000
-        conn_timeout : 2000
-        idle_timeout : 0
-        max_idle : 16
-        max_active : 128
+    # 配置安装了的模块参数，不填写使用默认配置。
+    config :
+        logger_path : test
+        logger_suffex : .sys
 
-    register :
-        open : true
-        listen : 14222
+        # rpc 服务的监听端口
+        register_listen_port : 14222
 
-    linker :
-        open : true
+        # 选举器尝试成为主节点的频率 ms
+        election_lock_tick : 2000
+        # 选举器刷新保活的频率 ms
+        election_refush_tick : 5000
 
-    balancer :
-        open : true
-        
-    election :
-        open : true
-        lock_tick : 2000
-        refush_tick : 5000
+        # 发现节点的刷新频率 ms
+        rpc_discover_interval : 2000
+        # rpc池的初始化大小
+        rpc_pool_init_num : 32
+        # rpc池的大小
+        rpc_pool_cap : 128
+        # rpc池的闲置超时时间 second
+        rpc_pool_idle : 120
 
-    discover :
-        open : true
-        interval : 3000
-
-    rpc : 
-        open : true
-        pool_init_num : 32
-        pool_cap : 128
-        pool_idle : 120
-        
-    tracer : 
-        open : true
-        probabilistic : 0.01
-        slow_req : 100
-        slow_span : 20
+        # 追踪器的采用频率
+        tracer_probabilistic : 0.01
+        # 追踪器的慢查询超时 ms
+        tracer_slow_req : 100
+        # 追踪器的慢span超时
+        tracer_slow_span : 20
 `
 
 func TestCompose(t *testing.T) {
@@ -66,7 +57,7 @@ func TestCompose(t *testing.T) {
 	mock.Init()
 
 	conf := &ComposeConf{}
-	err := yaml.Unmarshal([]byte(TestComposeFile), conf)
+	err := yaml.Unmarshal([]byte(ComposeFile), conf)
 	if err != nil {
 		t.Error(err)
 	}
