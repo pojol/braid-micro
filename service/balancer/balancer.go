@@ -5,18 +5,20 @@ import (
 	"sync"
 )
 
-// SelectorCfg 负载均衡选择器配置
-type SelectorCfg struct {
+// Cfg 负载均衡选择器配置
+type Cfg struct {
 }
 
-// Selector 负载均衡选择器
-type Selector struct {
+// Balancer 负载均衡选择器
+type Balancer struct {
 	m sync.Map
 }
 
 var (
 	// ErrBalanceEmpty 没有权重节点
 	ErrBalanceEmpty = errors.New("weighted node list is empty")
+	// ErrUninitialized 未初始化
+	ErrUninitialized = errors.New("balancer uninitalized")
 )
 
 // Node 权重节点
@@ -45,48 +47,53 @@ type IBalancer interface {
 }
 
 var (
-	selector *Selector
+	b *Balancer
 
-	defaultSelectorCfg = SelectorCfg{}
+	defaultSelectorCfg = Cfg{}
 )
 
 // New 初始化负载均衡选择器
-func New() *Selector {
-	selector = &Selector{}
-	return selector
+func New() *Balancer {
+	b = &Balancer{}
+	return b
 }
 
 // Init 初始化均衡器
-func (s *Selector) Init(cfg interface{}) error {
+func (b *Balancer) Init(cfg interface{}) error {
 	return nil
 }
 
 // Run r
-func (s *Selector) Run() {
+func (b *Balancer) Run() {
 
 }
 
 // Close c
-func (s *Selector) Close() {
+func (b *Balancer) Close() {
 
 }
 
-// GetSelector 获取负载均衡选择器
-func GetSelector(nodName string) IBalancer {
-	return selector.group(nodName)
+// GetGroup 获取负载均衡选择器
+func GetGroup(nodName string) (IBalancer, error) {
+
+	if b == nil {
+		return nil, ErrUninitialized
+	}
+
+	return b.group(nodName), nil
 }
 
 // Group 获取组
-func (s *Selector) group(nodName string) IBalancer {
+func (b *Balancer) group(nodName string) IBalancer {
 
-	b, ok := s.m.Load(nodName)
+	wb, ok := b.m.Load(nodName)
 	if !ok {
-		b = &WeightedRoundrobin{
+		wb = &WeightedRoundrobin{
 			Name: nodName,
 		}
 
-		s.m.Store(nodName, b)
+		b.m.Store(nodName, wb)
 	}
 
-	return b.(IBalancer)
+	return wb.(IBalancer)
 }

@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/cache/link"
-
 	"github.com/pojol/braid/log"
 
 	"github.com/opentracing/opentracing-go"
@@ -173,33 +171,19 @@ EXT:
 func (c *Caller) findNode(parentCtx context.Context, nodName string, serviceName string, key string) (string, error) {
 	var address string
 	var err error
+	var nod *balancer.Node
 
-	if key != "" {
-
-		address, err = link.Get().Target(parentCtx, key)
-		if err != nil {
-			goto EXT
-		}
-
-		if address != "" {
-			goto EXT
-		}
-
-		nod, err := balancer.GetSelector(nodName).Next()
-		if err != nil {
-			goto EXT
-		}
-
-		address = nod.Address
-		link.Get().Link(parentCtx, key, address)
-	} else {
-
-		nod, err := balancer.GetSelector(nodName).Next()
-		if err != nil {
-			goto EXT
-		}
-		address = nod.Address
+	wb, err := balancer.GetGroup(nodName)
+	if err != nil {
+		goto EXT
 	}
+
+	nod, err = wb.Next()
+	if err != nil {
+		goto EXT
+	}
+
+	address = nod.Address
 
 EXT:
 	if err != nil {

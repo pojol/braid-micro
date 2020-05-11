@@ -33,7 +33,7 @@ func TestDiscover(t *testing.T) {
 	})
 
 	ba := balancer.New()
-	err := ba.Init(balancer.SelectorCfg{})
+	err := ba.Init(balancer.Cfg{})
 	if err != nil {
 		t.Error(err)
 	}

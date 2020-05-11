@@ -99,11 +99,16 @@ func (s *Sync) tick() {
 
 			s.passingMap[service.ServiceID] = sn
 
-			balancer.GetSelector(sn.service).Add(balancer.Node{
+			g, err := balancer.GetGroup(sn.service)
+			if err != nil {
+				continue
+			}
+
+			g.Add(balancer.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
-				Weight:  1, // 暂时不在提供weight支持
+				Weight:  1,
 			})
 		} else { // 看一下是否需要更新权重
 
@@ -113,13 +118,19 @@ func (s *Sync) tick() {
 	for k := range s.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
 
-			// 从平衡器中删除节点
-			balancer.GetSelector(s.passingMap[k].service).Rmv(s.passingMap[k].id)
-
-			err := link.Get().Offline(s.passingMap[k].address)
+			g, err := balancer.GetGroup(s.passingMap[k].service)
 			if err != nil {
 				continue
 			}
+
+			g.Rmv(s.passingMap[k].id)
+
+			/*
+				err := link.Get().Offline(s.passingMap[k].address)
+				if err != nil {
+					continue
+				}
+			*/
 
 			delete(s.passingMap, k)
 		}

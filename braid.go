@@ -207,7 +207,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 
 	if compose.Install.Balancer.Open {
 		ba := balancer.New()
-		err := ba.Init(balancer.SelectorCfg{})
+		err := ba.Init(balancer.Cfg{})
 		if err != nil {
 			return err
 		}
