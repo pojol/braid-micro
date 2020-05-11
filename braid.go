@@ -43,9 +43,6 @@ const (
 
 	// Tracer 链路追踪
 	Tracer = "tracer"
-
-	// DefaultListen 默认的侦听端口，和dockerfile中开放的端口保持一致
-	DefaultListen = ":1201"
 )
 
 // DependConf braid 需要依赖的服务地址配置
