@@ -3,6 +3,8 @@ package balancer
 import (
 	"errors"
 	"sync"
+
+	"github.com/pojol/braid/log"
 )
 
 // Cfg 负载均衡选择器配置
@@ -93,6 +95,7 @@ func (b *Balancer) group(nodName string) IBalancer {
 		}
 
 		b.m.Store(nodName, wb)
+		log.Debugf("add balance group %v\n", nodName)
 	}
 
 	return wb.(IBalancer)
