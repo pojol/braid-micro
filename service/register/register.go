@@ -138,5 +138,5 @@ func (s *Register) Run() {
 
 // Close 退出处理
 func (s *Register) Close() {
-
+	s.rpc.Stop()
 }
