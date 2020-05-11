@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pojol/braid/cache/link"
 	"github.com/pojol/braid/consul"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service/balancer"
@@ -99,10 +98,12 @@ func (s *Sync) tick() {
 				address: service.ServiceAddress + ":" + strconv.Itoa(service.ServicePort),
 			}
 
-			_, err := link.Get().Num(sn.address)
-			if err != nil {
-				continue
-			}
+			/*
+				_, err := link.Get().Num(sn.address)
+				if err != nil {
+					continue
+				}
+			*/
 
 			s.passingMap[service.ServiceID] = sn
 
