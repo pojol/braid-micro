@@ -48,7 +48,7 @@ install :
         open : true
         interval : 3000
 
-    caller : 
+    rpc : 
         open : true
         pool_init_num : 32
         pool_cap : 128

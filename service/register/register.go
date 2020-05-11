@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service/caller/brpc"
+	"github.com/pojol/braid/service/rpc/bproto"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
@@ -81,10 +81,10 @@ func (s *Register) Init(cfg interface{}) error {
 }
 
 type rpcServer struct {
-	brpc.UnimplementedGatewayServer
+	bproto.ListenServer
 }
 
-func (s *rpcServer) Routing(ctx context.Context, in *brpc.RouteReq) (*brpc.RouteRes, error) {
+func (s *rpcServer) Routing(ctx context.Context, in *bproto.RouteReq) (*bproto.RouteRes, error) {
 
 	var err error
 	var body []byte
@@ -104,7 +104,7 @@ EXT:
 		log.SysError("main", "routing", err.Error())
 	}
 
-	return &brpc.RouteRes{ResBody: body}, err
+	return &bproto.RouteRes{ResBody: body}, err
 }
 
 // Regist 注册服务
@@ -118,7 +118,7 @@ func (s *Register) Regist(serviceName string, fc RPCFunc) {
 
 // Run 运行
 func (s *Register) Run() {
-	brpc.RegisterGatewayServer(s.rpc, &rpcServer{})
+	bproto.RegisterListenServer(s.rpc, &rpcServer{})
 
 	rpcListen, err := net.Listen("tcp", s.listen)
 	if err != nil {

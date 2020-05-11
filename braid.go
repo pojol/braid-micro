@@ -9,10 +9,10 @@ import (
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service/balancer"
-	"github.com/pojol/braid/service/caller"
 	"github.com/pojol/braid/service/discover"
 	"github.com/pojol/braid/service/election"
 	"github.com/pojol/braid/service/register"
+	"github.com/pojol/braid/service/rpc"
 	"github.com/pojol/braid/tracer"
 )
 
@@ -32,8 +32,8 @@ const (
 	// Service 服务管理器
 	Service = "service"
 
-	// Caller 远程调用RPC
-	Caller = "caller"
+	// RPC 远程调用RPC
+	RPC = "rpc"
 
 	// Discover 探索发现节点
 	Discover = "discover"
@@ -85,12 +85,12 @@ type ComposeConf struct {
 		Register struct {
 			Open bool `yaml:"open"`
 		}
-		Caller struct {
+		RPC struct {
 			Open        bool `yaml:"open"`
 			PoolInitNum int  `yaml:"pool_init_num"`
 			PoolCap     int  `yaml:"pool_cap"`
 			PoolIdle    int  `yaml:"pool_idle"`
-		}
+		} `yaml:"rpc"`
 		Linker struct {
 			Open bool `yaml:"open"`
 		}
@@ -243,20 +243,20 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		AppendNode(Election, el)
 	}
 
-	if compose.Install.Caller.Open {
-		ca := caller.New()
-		err := ca.Init(caller.Config{
+	if compose.Install.RPC.Open {
+		ca := rpc.New()
+		err := ca.Init(rpc.Config{
 			ConsulAddress: depend.Consul,
-			PoolInitNum:   compose.Install.Caller.PoolInitNum,
-			PoolCapacity:  compose.Install.Caller.PoolCap,
-			PoolIdle:      time.Duration(compose.Install.Caller.PoolIdle) * time.Second,
+			PoolInitNum:   compose.Install.RPC.PoolInitNum,
+			PoolCapacity:  compose.Install.RPC.PoolCap,
+			PoolIdle:      time.Duration(compose.Install.RPC.PoolIdle) * time.Second,
 			Tracing:       compose.Tracing,
 		})
 		if err != nil {
 			return err
 		}
-		nods = append(nods, Caller)
-		AppendNode(Caller, ca)
+		nods = append(nods, RPC)
+		AppendNode(RPC, ca)
 	}
 
 	if compose.Install.Register.Open {
@@ -289,8 +289,8 @@ func Regist(serviceName string, fc register.RPCFunc) {
 
 // Call 远程调用
 func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (out []byte, err error) {
-	if _, ok := b.Nodes[Caller]; ok {
-		c := b.Nodes[Caller].(caller.ICaller)
+	if _, ok := b.Nodes[RPC]; ok {
+		c := b.Nodes[RPC].(rpc.IRPC)
 		return c.Call(parentCtx, nodeName, serviceName, token, body)
 	}
 

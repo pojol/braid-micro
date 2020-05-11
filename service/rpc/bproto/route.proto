@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package brpc;
+package bproto;
 
-service gateway {
+service listen {
     rpc routing(routeReq) returns (routeRes) {}
 }
 
