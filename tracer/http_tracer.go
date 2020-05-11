@@ -59,7 +59,7 @@ func (t *HTTPTracer) End(ectx echo.Context) {
 		ext.Error.Set(t.span, true)
 	}
 
-	executionTime := time.Now().Sub(t.beginTime).Milliseconds()
+	executionTime := time.Now().Sub(t.beginTime)
 	if executionTime > tracer.cfg.SlowRequest {
 		log.SysSlow(ectx.Path(), t.requestID, int(executionTime), "slow request")
 	}

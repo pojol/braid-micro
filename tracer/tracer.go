@@ -14,6 +14,7 @@ import (
 )
 
 type (
+	// Tracer tracer struct
 	Tracer struct {
 		closer  io.Closer
 		tracing opentracing.Tracer
@@ -25,7 +26,7 @@ type (
 		Endpoint      string        // jaeger 地址
 		Probabilistic float64       // 采样率
 		Name          string        // tracer name
-		SlowRequest   int64         // 一旦request超出设置的SlowRequest（ms）时间，则一定会有一条slow日志
+		SlowRequest   time.Duration // 一旦request超出设置的SlowRequest（ms）时间，则一定会有一条slow日志
 		SlowSpan      time.Duration // 一旦span超出设置的SlowSpan（ms）时间，则一定会有一条slow日志
 	}
 )
@@ -37,14 +38,15 @@ const (
 )
 
 var (
-	// https://github.com/jaegertracing/jaeger-client-go/blob/master/config/config.go
+
 	// DefaultTracerConfig 默认tracer配置
-	defaultTracerConfig = Config{
+	// https://github.com/jaegertracing/jaeger-client-go/blob/master/config/config.go
+	DefaultTracerConfig = Config{
 		Endpoint: "http://localhost:14268/api/traces",
 		// 采样率 0 ～ 1
 		Probabilistic: 1,
-		SlowRequest:   100,
-		SlowSpan:      10,
+		SlowRequest:   time.Millisecond * 100,
+		SlowSpan:      time.Millisecond * 10,
 	}
 
 	// ErrConfigConvert 配置转换失败
@@ -53,6 +55,7 @@ var (
 	tracer *Tracer
 )
 
+// New n
 func New() *Tracer {
 	tracer = &Tracer{}
 	return tracer
@@ -71,6 +74,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 	}
 }
 
+// Init 初始化
 func (t *Tracer) Init(cfg interface{}) error {
 	tCfg, ok := cfg.(Config)
 	if !ok {
@@ -113,10 +117,12 @@ func (t *Tracer) Init(cfg interface{}) error {
 	return nil
 }
 
+// Run r
 func (t *Tracer) Run() {
 
 }
 
+// Close c
 func (t *Tracer) Close() {
 
 }

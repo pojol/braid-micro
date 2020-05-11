@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/service/caller/brpc"
 	"github.com/pojol/braid/service/register"
+	"github.com/pojol/braid/service/rpc/bproto"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -45,8 +45,8 @@ func TestGRPCPool(t *testing.T) {
 	caCtx, caCancel := context.WithTimeout(context.Background(), time.Second)
 	defer caCancel()
 
-	rres := new(brpc.RouteRes)
-	err = conn.Invoke(caCtx, "/brpc.gateway/routing", &brpc.RouteReq{
+	rres := new(bproto.RouteRes)
+	err = conn.Invoke(caCtx, "/bproto.listen/routing", &bproto.RouteReq{
 		ReqBody: []byte(`{"Val1":1, "Val2":2}`),
 		Service: "test",
 		Nod:     "normal",
@@ -172,8 +172,8 @@ func BenchmarkGRPCByOriginal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		conn, _ := grpc.Dial(testEndpoint, grpc.WithInsecure())
-		rres := new(brpc.RouteRes)
-		err := conn.Invoke(context.Background(), testMethod, &brpc.RouteReq{
+		rres := new(bproto.RouteRes)
+		err := conn.Invoke(context.Background(), testMethod, &bproto.RouteReq{
 			ReqBody: []byte(`{"Val1":1, "Val2":2}`),
 		}, rres)
 		if err != nil {
@@ -207,8 +207,8 @@ func BenchmarkGRPCByPool(b *testing.B) {
 			b.Error(err)
 		}
 
-		rres := new(brpc.RouteRes)
-		err = conn.Invoke(context.Background(), testMethod, &brpc.RouteReq{
+		rres := new(bproto.RouteRes)
+		err = conn.Invoke(context.Background(), testMethod, &bproto.RouteReq{
 			ReqBody: []byte(`{"Val1":1, "Val1":}`),
 		}, rres)
 		if err != nil {

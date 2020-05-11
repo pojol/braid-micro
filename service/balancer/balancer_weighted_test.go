@@ -62,11 +62,11 @@ func TestWRROp(t *testing.T) {
 
 func TestSelector(t *testing.T) {
 	s := New()
-	s.Init(SelectorCfg{})
+	s.Init(Cfg{})
 	s.Run()
 	defer s.Close()
 
-	ib := GetSelector("test")
+	ib, _ := GetGroup("test")
 
 	ib.Add(Node{
 		ID:     "A",

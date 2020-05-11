@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service/caller/brpc"
+	"github.com/pojol/braid/service/rpc/bproto"
 	"google.golang.org/grpc"
 )
 
@@ -39,15 +39,15 @@ func TestNew(t *testing.T) {
 	s.Run()
 
 	conn, err := grpc.Dial("localhost:1203", grpc.WithInsecure())
-	rres := new(brpc.RouteRes)
+	rres := new(bproto.RouteRes)
 
-	err = conn.Invoke(context.Background(), "/brpc.gateway/routing", &brpc.RouteReq{
+	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &bproto.RouteReq{
 		Nod:     "normal",
 		Service: "test",
 		ReqBody: nil,
 	}, rres)
 	assert.Equal(t, err, nil)
-	err = conn.Invoke(context.Background(), "/brpc.gateway/routing", &brpc.RouteReq{
+	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &bproto.RouteReq{
 		Nod:     "normal",
 		Service: "errtest",
 		ReqBody: nil,
