@@ -109,6 +109,7 @@ func (s *Sync) tick() {
 
 			g, err := balancer.GetGroup(sn.service)
 			if err != nil {
+				log.SysError("discover", "tick add nod", fmt.Errorf("%v", err).Error())
 				continue
 			}
 
@@ -128,6 +129,7 @@ func (s *Sync) tick() {
 
 			g, err := balancer.GetGroup(s.passingMap[k].service)
 			if err != nil {
+				log.SysError("discover", "tick rmv nod", fmt.Errorf("%v", err).Error())
 				continue
 			}
 

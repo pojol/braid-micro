@@ -2,6 +2,8 @@ package balancer
 
 import (
 	"sync"
+
+	"github.com/pojol/braid/log"
 )
 
 type weightedNod struct {
@@ -54,6 +56,7 @@ func (wr *WeightedRoundrobin) Add(nod Node) {
 	})
 
 	wr.calcTotalWeight()
+	log.Debugf("add weighted nod %v\n", nod.ID)
 }
 
 // Rmv 移除一个节点
@@ -73,6 +76,7 @@ func (wr *WeightedRoundrobin) Rmv(id string) {
 
 	wr.Nods = append(wr.Nods[:idx], wr.Nods[idx+1:]...)
 	wr.calcTotalWeight()
+	log.Debugf("rmv weighted nod %v\n", id)
 }
 
 // SyncWeight 同步节点权重值
