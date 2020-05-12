@@ -3,6 +3,7 @@ package log
 import (
 	"errors"
 	"os"
+	"runtime/debug"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -129,5 +130,7 @@ func Debugf(msg string, args ...interface{}) {
 
 // Fatalf fatal诊断日志
 func Fatalf(msg string, args ...interface{}) {
+
+	logPtr.gSugared.Debugf("stask : %v\n", string(debug.Stack()))
 	logPtr.gSugared.Fatalf(msg, args...)
 }
