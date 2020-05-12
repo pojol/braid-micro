@@ -126,12 +126,12 @@ func (s *Register) Run() {
 
 	rpcListen, err := net.Listen("tcp", s.listen)
 	if err != nil {
-		log.Fatalf("echo server start err:%v", err)
+		log.SysError("register", "run listen", err.Error())
 	}
 
 	go func() {
 		if err := s.rpc.Serve(rpcListen); err != nil {
-			log.Fatalf("failed to serve: %v", err)
+			log.SysError("register", "run serve", err.Error())
 		}
 	}()
 }
