@@ -15,14 +15,17 @@ import (
 func TestNew(t *testing.T) {
 
 	l := log.New()
-	l.Init(log.Config{
+	err := l.Init(log.Config{
 		Path:   "test",
 		Suffex: ".log",
 		Mode:   "debug",
 	})
+	if err != nil {
+		t.Error(err)
+	}
 
 	s := New()
-	err := s.Init(Config{
+	err = s.Init(Config{
 		Tracing:       false,
 		Name:          "test",
 		ListenAddress: ":1209",
