@@ -1,5 +1,5 @@
 ## braid
-轻量的微服务框架，通过compose.yml文件可以将braid提供的微服务组件轻易聚合到server上。
+轻量的微服务框架，通过compose.yml文件可以将braid提供的微服务组件轻易聚合到server上。使用braid将使我们专注在实现上，而不需要关心主从，添加删除服务，调度逻辑，负载均衡等微服务逻辑。
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/41686ce5edf844fc8b81cffd13cc0550)](https://app.codacy.com/manual/pojol/braid?utm_source=github.com&utm_medium=referral&utm_content=pojol/braid&utm_campaign=Badge_Grade_Dashboard)
 [![drone](http://47.96.147.176:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
@@ -7,6 +7,7 @@
 
 > `注:`当前v1.1.x版本为`原型`版本 
 
+<img src="https://i.postimg.cc/kX75RzrR/image.png" width="600"/>
 
 #### 组件
 * **Election** 选举组件, 提供自动选举功能
