@@ -4,10 +4,18 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/pojol/braid/log"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWRR(t *testing.T) {
+
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
 
 	wrr := WeightedRoundrobin{}
 
@@ -39,6 +47,13 @@ func TestWRR(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
 	wrr := WeightedRoundrobin{}
 
 	wrr.Add(Node{
@@ -61,6 +76,13 @@ func TestWRROp(t *testing.T) {
 }
 
 func TestSelector(t *testing.T) {
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
 	s := New()
 	s.Init(Cfg{})
 	s.Run()
@@ -77,6 +99,13 @@ func TestSelector(t *testing.T) {
 }
 
 func BenchmarkWRR(b *testing.B) {
+	l := log.New()
+	l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
 	wrr := WeightedRoundrobin{}
 
 	for i := 0; i < 100; i++ {

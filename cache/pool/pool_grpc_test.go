@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service/register"
 	"github.com/pojol/braid/service/rpc/bproto"
 	"github.com/stretchr/testify/assert"
@@ -14,11 +15,18 @@ import (
 
 func TestGRPCPool(t *testing.T) {
 
+	l := log.New()
+	err := l.Init(log.Config{
+		Path:   "test",
+		Suffex: ".log",
+		Mode:   "debug",
+	})
+
 	s := register.New()
-	err := s.Init(register.Config{
+	err = s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
-		ListenAddress: ":1202",
+		ListenAddress: ":1205",
 	})
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
@@ -28,7 +36,7 @@ func TestGRPCPool(t *testing.T) {
 	s.Run()
 
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1202", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +75,7 @@ func TestUnhealth(t *testing.T) {
 	err := s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
-		ListenAddress: ":1205",
+		ListenAddress: ":1206",
 	})
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
@@ -78,7 +86,7 @@ func TestUnhealth(t *testing.T) {
 	defer s.Close()
 
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1206", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +146,7 @@ func TestIdle(t *testing.T) {
 
 func TestErr(t *testing.T) {
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1206", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1207", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
