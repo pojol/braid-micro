@@ -1,6 +1,8 @@
 package log
 
 import (
+	"runtime/debug"
+
 	"go.uber.org/zap"
 )
 
@@ -16,7 +18,7 @@ import (
 // SysError 系统错误日志
 func SysError(module string, function string, desc string) {
 	logPtr.gSysLog.Error(desc, // err msg
-		zap.String("stack", string(debug.Stack()),
+		zap.String("stack", string(debug.Stack())),
 		zap.String("module", module), // 模块
 		zap.String("func", function), // 函数
 	)
