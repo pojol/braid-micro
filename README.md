@@ -7,7 +7,7 @@
 
 > `注:`当前v1.1.x版本为`原型`版本 
 
-<img src="https://i.postimg.cc/kX75RzrR/image.png" width="800"/>
+<img src="https://i.postimg.cc/kX75RzrR/image.png" width="600"/>
 
 #### 组件
 * **Election** 选举组件, 提供自动选举功能
