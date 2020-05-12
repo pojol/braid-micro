@@ -110,7 +110,7 @@ func TestIdle(t *testing.T) {
 	err := s.Init(register.Config{
 		Tracing:       false,
 		Name:          "test",
-		ListenAddress: ":1206",
+		ListenAddress: ":1306",
 	})
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
@@ -121,7 +121,7 @@ func TestIdle(t *testing.T) {
 	defer s.Close()
 
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1206", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1306", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
