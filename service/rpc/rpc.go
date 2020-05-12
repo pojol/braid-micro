@@ -96,7 +96,7 @@ func (r *RPC) Close() {
 }
 
 // Call 执行一次rpc调用
-func (r *RPC) Call(parentCtx context.Context, nodName string, serviceName string, token string, body []byte) (out []byte, err error) {
+func (r *RPC) Call(parentCtx context.Context, nodName string, serviceName string, meta []*bproto.Header, body []byte) (out []byte, err error) {
 
 	var address string
 	var caPool *pool.GRPCPool
@@ -111,7 +111,7 @@ func (r *RPC) Call(parentCtx context.Context, nodName string, serviceName string
 	r.Lock()
 	defer r.Unlock()
 
-	address, err = r.findNode(parentCtx, nodName, serviceName, token)
+	address, err = r.findNode(parentCtx, nodName, serviceName, "")
 	if err != nil {
 		goto EXT
 	}
@@ -136,6 +136,7 @@ func (r *RPC) Call(parentCtx context.Context, nodName string, serviceName string
 	err = caConn.Invoke(caCtx, method, &bproto.RouteReq{
 		Nod:     nodName,
 		Service: serviceName,
+		Meta:    meta,
 		ReqBody: body,
 	}, res)
 	if err != nil {
