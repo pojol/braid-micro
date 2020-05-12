@@ -55,4 +55,8 @@ config :
 #### 一些完整的样例
 [Gateway](https://github.com/pojol/braid-gateway "网关节点")
 
+#### WIKI
+[WIKI](https://github.com/pojol/braid/wiki "WIKI")
 
+#### QQ Group
+1057895060
