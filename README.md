@@ -8,6 +8,8 @@
 > `注:`当前v1.1.x版本为`原型`版本 
 
 
+[![image.png](https://i.postimg.cc/kX75RzrR/image.png)](https://postimg.cc/DmYhtCw7)
+
 #### 组件
 * **Election** 选举组件, 提供自动选举功能
     > 在运行期自动进行选举策略，保证在多个同名节点中有一个主节点和多个从节点
