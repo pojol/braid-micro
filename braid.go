@@ -69,10 +69,10 @@ type ComposeConf struct {
 		ElectionLockTick   int `yaml:"election_lock_tick"`
 		ElectionRefushTick int `yaml:"election_refush_tick"`
 
-		RPCDiscoverInterval int `yaml:"rpc_discover_interval"`
-		RPCPoolInitNum      int `yaml:"rpc_pool_init_num"`
-		RPCPoolCap          int `yaml:"rpc_pool_cap"`
-		RPCPoolIdle         int `yaml:"rpc_pool_idle"`
+		RPCDiscoverInterval int `yaml:"dispatcher_discover_interval"`
+		RPCPoolInitNum      int `yaml:"dispatcher_pool_init_num"`
+		RPCPoolCap          int `yaml:"dispatcher_pool_cap"`
+		RPCPoolIdle         int `yaml:"dispatcher_pool_idle"`
 
 		TracerProbabilistic float64 `yaml:"tracer_probabilistic"`
 		TracerSlowReq       int     `yaml:"tracer_slow_req"`
