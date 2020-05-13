@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/service/dispatcher/bproto"
 	"github.com/pojol/braid/service/register"
-	"github.com/pojol/braid/service/rpc/bproto"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )

@@ -9,9 +9,9 @@ import (
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/discover"
+	"github.com/pojol/braid/service/dispatcher"
 	"github.com/pojol/braid/service/election"
 	"github.com/pojol/braid/service/register"
-	"github.com/pojol/braid/service/rpc"
 	"github.com/pojol/braid/tracer"
 )
 
@@ -32,8 +32,8 @@ const (
 	// Register rpc服务
 	Register = "register"
 
-	// RPC 远程调用RPC
-	RPC = "rpc"
+	// Dispatcher 远程调用RPC
+	Dispatcher = "dispatcher"
 
 	// Discover 探索发现节点
 	Discover = "discover"
@@ -163,7 +163,7 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			AppendNode(Register, reg)
 		}
 
-		if v == RPC {
+		if v == Dispatcher {
 			dis := discover.New()
 			disc := discover.Config{
 				Name:          compose.Name,
@@ -189,13 +189,13 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			nods = append(nods, Balancer)
 			AppendNode(Balancer, ba)
 
-			r := rpc.New()
-			rc := rpc.Config{
+			r := dispatcher.New()
+			rc := dispatcher.Config{
 				ConsulAddress: depend.Consul,
 				Tracing:       compose.Tracing,
-				PoolInitNum:   rpc.DefaultConfig.PoolInitNum,
-				PoolCapacity:  rpc.DefaultConfig.PoolCapacity,
-				PoolIdle:      rpc.DefaultConfig.PoolIdle,
+				PoolInitNum:   dispatcher.DefaultConfig.PoolInitNum,
+				PoolCapacity:  dispatcher.DefaultConfig.PoolCapacity,
+				PoolIdle:      dispatcher.DefaultConfig.PoolIdle,
 			}
 
 			if compose.Config.RPCPoolCap != 0 {
@@ -212,8 +212,8 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			if err != nil {
 				return err
 			}
-			nods = append(nods, RPC)
-			AppendNode(RPC, r)
+			nods = append(nods, Dispatcher)
+			AppendNode(Dispatcher, r)
 		}
 
 		if v == Election {
@@ -284,8 +284,8 @@ func Regist(serviceName string, fc register.RPCFunc) {
 
 // Call 远程调用
 func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (out []byte, err error) {
-	if _, ok := b.Nodes[RPC]; ok {
-		c := b.Nodes[RPC].(rpc.IRPC)
+	if _, ok := b.Nodes[Dispatcher]; ok {
+		c := b.Nodes[Dispatcher].(dispatcher.IDispatcher)
 		return c.Call(parentCtx, nodeName, serviceName, token, body)
 	}
 
