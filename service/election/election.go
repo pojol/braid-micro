@@ -18,60 +18,58 @@ type (
 		sessionID string
 		locked    bool
 
-		cfg Config
+		cfg config
 	}
 
 	// IElection 选举器需要提供的接口
 	IElection interface {
 		IsMaster() bool
 	}
-
-	// Config 选举器配置项
-	Config struct {
-		Address           string
-		Name              string
-		LockTick          time.Duration
-		RefushSessionTick time.Duration
-	}
 )
 
 var (
 	e *Election
-
-	// DefaultConfig 默认配置
-	DefaultConfig = Config{
-		Address:           "http://127.0.0.1:8500",
-		LockTick:          time.Second * 2000,
-		RefushSessionTick: time.Second * 5000,
-	}
 
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )
 
 // New 构建新的选举器指针
-func New() *Election {
-	e = &Election{}
+func New(name string, consulAddress string, opts ...Option) *Election {
+
+	const (
+		defaultLockTick   = time.Second * 2000
+		defaultRefushTick = time.Second * 5000
+	)
+
+	e = &Election{
+		cfg: config{
+			Name:              name,
+			Address:           consulAddress,
+			LockTick:          defaultLockTick,
+			RefushSessionTick: defaultRefushTick,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
 	return e
 }
 
 // Init 初始化选举器
-func (e *Election) Init(cfg interface{}) error {
-
-	elCfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
+func (e *Election) Init() error {
 
 	var sid string
 	var locked bool
 
-	sid, err := consul.CreateSession(elCfg.Address, elCfg.Name+"_lead")
+	sid, err := consul.CreateSession(e.cfg.Address, e.cfg.Name+"_lead")
 	if err != nil {
 		return err
 	}
 
-	locked, err = consul.AcquireLock(elCfg.Address, elCfg.Name, sid)
+	locked, err = consul.AcquireLock(e.cfg.Address, e.cfg.Name, sid)
 	if err != nil {
 		return err
 	}
@@ -83,7 +81,6 @@ func (e *Election) Init(cfg interface{}) error {
 
 	e.sessionID = sid
 	e.locked = locked
-	e.cfg = elCfg
 
 	return err
 }

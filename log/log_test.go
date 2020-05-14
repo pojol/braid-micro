@@ -10,12 +10,8 @@ import (
 )
 
 func TestLog(t *testing.T) {
-	l := New()
-	l.Init(Config{
-		Mode:   "debug",
-		Path:   "test",
-		Suffex: ".log",
-	})
+	l := New("test")
+	l.Init()
 	defer l.Close()
 
 	Debugf("msg", 1)
@@ -33,12 +29,8 @@ func BenchmarkLog(b *testing.B) {
 		b.Error(err)
 	}
 
-	l := New()
-	l.Init(Config{
-		Mode:   "debug",
-		Path:   exePath,
-		Suffex: ".benchmark",
-	})
+	l := New(exePath)
+	l.Init()
 
 	defer l.Close()
 

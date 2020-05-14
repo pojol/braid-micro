@@ -16,12 +16,8 @@ func TestSession(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(1000)
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	sessionName := "test" + strconv.Itoa(r)
 

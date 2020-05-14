@@ -10,12 +10,8 @@ import (
 
 func TestServicesList(t *testing.T) {
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	_, err := ServicesList(mock.ConsulAddr)
 	if err != nil {
@@ -26,12 +22,8 @@ func TestServicesList(t *testing.T) {
 
 func TestGetNodeServices(t *testing.T) {
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	lst, err := GetCatalogServices(mock.ConsulAddr, "redis")
 	if err != nil {
@@ -44,12 +36,8 @@ func TestGetNodeServices(t *testing.T) {
 
 func TestCatalog(t *testing.T) {
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	GetCatalogService(mock.ConsulAddr, "test")
 	GetCatalogService("xxx", "test")

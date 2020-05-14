@@ -61,7 +61,7 @@ func New() *Balancer {
 }
 
 // Init 初始化均衡器
-func (b *Balancer) Init(cfg interface{}) error {
+func (b *Balancer) Init() error {
 	return nil
 }
 

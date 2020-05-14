@@ -15,19 +15,11 @@ import (
 
 func TestGRPCPool(t *testing.T) {
 
-	l := log.New()
-	err := l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	err := l.Init()
 
-	s := register.New()
-	err = s.Init(register.Config{
-		Tracing:       false,
-		Name:          "test",
-		ListenAddress: ":1205",
-	})
+	s := register.New("test", register.WithListen(":1205"))
+	err = s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil
@@ -71,12 +63,8 @@ func TestGRPCPool(t *testing.T) {
 }
 
 func TestUnhealth(t *testing.T) {
-	s := register.New()
-	err := s.Init(register.Config{
-		Tracing:       false,
-		Name:          "test",
-		ListenAddress: ":1206",
-	})
+	s := register.New("test", register.WithListen(":1206"))
+	err := s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil
@@ -106,12 +94,8 @@ func TestUnhealth(t *testing.T) {
 }
 
 func TestIdle(t *testing.T) {
-	s := register.New()
-	err := s.Init(register.Config{
-		Tracing:       false,
-		Name:          "test",
-		ListenAddress: ":1306",
-	})
+	s := register.New("test", register.WithListen(":1306"))
+	err := s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil

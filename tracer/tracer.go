@@ -18,16 +18,7 @@ type (
 	Tracer struct {
 		closer  io.Closer
 		tracing opentracing.Tracer
-		cfg     Config
-	}
-
-	//Config 链路追踪配置
-	Config struct {
-		Endpoint      string        // jaeger 地址
-		Probabilistic float64       // 采样率
-		Name          string        // tracer name
-		SlowRequest   time.Duration // 一旦request超出设置的SlowRequest（ms）时间，则一定会有一条slow日志
-		SlowSpan      time.Duration // 一旦span超出设置的SlowSpan（ms）时间，则一定会有一条slow日志
+		cfg     tconfig
 	}
 )
 
@@ -39,16 +30,6 @@ const (
 
 var (
 
-	// DefaultTracerConfig 默认tracer配置
-	// https://github.com/jaegertracing/jaeger-client-go/blob/master/config/config.go
-	DefaultTracerConfig = Config{
-		Endpoint: "http://localhost:14268/api/traces",
-		// 采样率 0 ～ 1
-		Probabilistic: 1,
-		SlowRequest:   time.Millisecond * 100,
-		SlowSpan:      time.Millisecond * 10,
-	}
-
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 
@@ -56,8 +37,28 @@ var (
 )
 
 // New n
-func New() *Tracer {
-	tracer = &Tracer{}
+func New(name string, jaegerAddress string, opts ...Option) *Tracer {
+
+	const (
+		defaultProbabilistic = 1
+		defaultSlowRequest   = time.Millisecond * 100
+		defaultSlowSpan      = time.Millisecond * 10
+	)
+
+	tracer = &Tracer{
+		cfg: tconfig{
+			Endpoint:      jaegerAddress,
+			Probabilistic: defaultProbabilistic,
+			Name:          name,
+			SlowRequest:   defaultSlowRequest,
+			SlowSpan:      defaultSlowSpan,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(tracer)
+	}
+
 	return tracer
 }
 
@@ -75,11 +76,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 }
 
 // Init 初始化
-func (t *Tracer) Init(cfg interface{}) error {
-	tCfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
+func (t *Tracer) Init() error {
 
 	var tracer opentracing.Tracer
 	var closer io.Closer
@@ -92,9 +89,9 @@ func (t *Tracer) Init(cfg interface{}) error {
 		},
 		Reporter: &jaegerCfg.ReporterConfig{
 			LogSpans:          false,
-			CollectorEndpoint: tCfg.Endpoint,
+			CollectorEndpoint: t.cfg.Endpoint,
 		},
-		ServiceName: tCfg.Name,
+		ServiceName: t.cfg.Name,
 	}
 
 	sender, err := newTransport(jcfg.Reporter)
@@ -102,7 +99,7 @@ func (t *Tracer) Init(cfg interface{}) error {
 		return err
 	}
 
-	r = jaegerCfg.Reporter(NewSlowReporter(sender, nil, tCfg.Probabilistic))
+	r = jaegerCfg.Reporter(NewSlowReporter(sender, nil, t.cfg.Probabilistic))
 	m = jaegerCfg.Metrics(metrics.NullFactory)
 
 	tracer, closer, err = jcfg.NewTracer(r, m)
@@ -113,7 +110,6 @@ func (t *Tracer) Init(cfg interface{}) error {
 	opentracing.SetGlobalTracer(tracer)
 	t.tracing = tracer
 	t.closer = closer
-	t.cfg = tCfg
 	return nil
 }
 

@@ -15,23 +15,13 @@ import (
 func TestCaller(t *testing.T) {
 
 	mock.Init()
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	_ = balancer.New()
 
-	c := New()
-	c.Init(Config{
-		ConsulAddress: mock.ConsulAddr,
-		PoolInitNum:   8,
-		PoolCapacity:  32,
-		PoolIdle:      time.Second * 120,
-		Tracing:       false,
-	})
+	c := New(mock.ConsulAddr)
+	c.Init()
 
 	c.Run()
 	time.Sleep(time.Millisecond * 200)
@@ -44,13 +34,9 @@ func TestCaller(t *testing.T) {
 
 func TestInitNum(t *testing.T) {
 	mock.Init()
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
-	c := New()
-	c.Init(Config{})
+	c := New(mock.ConsulAddr)
+	c.Init()
 }

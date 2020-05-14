@@ -21,7 +21,7 @@ type (
 
 	// Dispatcher 调用器
 	Dispatcher struct {
-		cfg Config
+		cfg config
 
 		refushTick *time.Ticker
 
@@ -33,28 +33,9 @@ type (
 	IDispatcher interface {
 		Call(context.Context, string, string, string, []byte) ([]byte, error)
 	}
-
-	// Config 调用器配置项
-	Config struct {
-		ConsulAddress string
-
-		PoolInitNum  int
-		PoolCapacity int
-		PoolIdle     time.Duration
-
-		Tracing bool
-	}
 )
 
 var (
-	// DefaultConfig 默认配置
-	DefaultConfig = Config{
-		ConsulAddress: "http://127.0.0.1:8500",
-		PoolInitNum:   8,
-		PoolCapacity:  32,
-		PoolIdle:      time.Second * 120,
-		Tracing:       false,
-	}
 	r *Dispatcher
 
 	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(cooridnate)
@@ -68,19 +49,33 @@ var (
 )
 
 // New 构建指针
-func New() *Dispatcher {
-	r = &Dispatcher{}
+func New(consulAddress string, opts ...Option) *Dispatcher {
+	const (
+		defaultPoolInitNum  = 8
+		defaultPoolCapacity = 32
+		defaultPoolIdle     = 120
+		defaultTracing      = false
+	)
+
+	r = &Dispatcher{
+		cfg: config{
+			ConsulAddress: consulAddress,
+			PoolInitNum:   defaultPoolInitNum,
+			PoolCapacity:  defaultPoolCapacity,
+			PoolIdle:      defaultPoolIdle,
+			Tracing:       defaultTracing,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
 	return r
 }
 
 // Init 通过配置构建调用器
-func (r *Dispatcher) Init(cfg interface{}) error {
-	rCfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	r.cfg = rCfg
+func (r *Dispatcher) Init() error {
 
 	return nil
 }
