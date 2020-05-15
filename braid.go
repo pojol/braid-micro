@@ -6,11 +6,11 @@ import (
 	"strconv"
 
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/rpc/dispatcher"
+	"github.com/pojol/braid/rpc/register"
 	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/discover"
-	"github.com/pojol/braid/service/dispatcher"
 	"github.com/pojol/braid/service/election"
-	"github.com/pojol/braid/service/register"
 	"github.com/pojol/braid/tracer"
 )
 

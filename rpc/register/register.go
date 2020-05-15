@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service/dispatcher/bproto"
+	"github.com/pojol/braid/rpc/dispatcher/bproto"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
