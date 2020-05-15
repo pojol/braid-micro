@@ -55,7 +55,8 @@ func New(name string, consulAddress string, opts ...Option) IDiscover {
 
 	dc = &Discover{
 		cfg: config{
-			Interval: defaultInterval,
+			Interval:      defaultInterval,
+			ConsulAddress: consulAddress,
 		},
 	}
 
