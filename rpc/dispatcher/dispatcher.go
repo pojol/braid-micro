@@ -22,8 +22,6 @@ type (
 
 	// IDispatcher caller的抽象接口
 	IDispatcher interface {
-		Call(context.Context, string, string, string, []byte) ([]byte, error)
-
 		Run()
 		Close()
 	}
@@ -85,7 +83,7 @@ func New(name string, consulAddress string, opts ...Option) *Dispatcher {
 }
 
 // Call 执行一次rpc调用
-func (r *Dispatcher) Call(parentCtx context.Context, nodName string, serviceName string, meta []*bproto.Header, body []byte) (out []byte, err error) {
+func Call(parentCtx context.Context, nodName string, serviceName string, meta []*bproto.Header, body []byte) (out []byte, err error) {
 
 	var address string
 	var caPool *pool.GRPCPool
