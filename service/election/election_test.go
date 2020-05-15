@@ -15,10 +15,12 @@ func TestElection(t *testing.T) {
 	l := log.New("test")
 	l.Init()
 
-	e := New(mock.ConsulAddr, "test")
-	e.Init()
+	elec, err := New("test", mock.ConsulAddr)
+	if err != nil {
+		t.Error(err)
+	}
 
-	e.Run()
+	elec.Run()
 	time.Sleep(time.Second)
-	e.Close()
+	elec.Close()
 }
