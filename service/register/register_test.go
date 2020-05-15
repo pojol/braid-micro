@@ -21,7 +21,7 @@ func TestNew(t *testing.T) {
 		t.Error(err)
 	}
 
-	s := New("test", WithListen(":14111"))
+	s := New("normal", WithListen(":14111"))
 	err = s.Init()
 	if err != nil {
 		t.Error(err)

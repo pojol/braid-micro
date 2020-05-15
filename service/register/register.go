@@ -35,7 +35,7 @@ var (
 	register *Register
 
 	// ErrServiceUnavailiable 没有可用的服务
-	ErrServiceUnavailiable = errors.New("service unavailable")
+	ErrServiceUnavailiable = errors.New("service not registed")
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )
