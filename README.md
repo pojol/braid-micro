@@ -1,5 +1,5 @@
 ## braid
-轻量的微服务框架，通过compose.yml文件可以将braid提供的微服务组件轻易聚合到server上。使用braid将使我们专注在实现上，而不需要关心主从，添加删除服务，调度，负载均衡等微服务逻辑。
+轻量的微服务框架，提供常用的组件，使用braid将使我们专注在实现上，而不需要关心主从，添加删除服务，调度，负载均衡等微服务逻辑。
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/41686ce5edf844fc8b81cffd13cc0550)](https://app.codacy.com/manual/pojol/braid?utm_source=github.com&utm_medium=referral&utm_content=pojol/braid&utm_campaign=Badge_Grade_Dashboard)
 [![drone](http://47.96.147.176:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
@@ -29,27 +29,6 @@
 * **Logger** 日志模块
     > 日志
 
-
-#### Quack Start
-> 编写一个简易的login服务
-> `braid_compose.yml`
-```yaml
-name : gateway
-mode : debug
-tracing : true
-
-# 安装模块列表
-install :
-  - logger
-  - election
-  - rpc
-  - tracer
-
-# 配置模块参数，不设置使用default参数.
-config :
-  logger_path : /var/log/gateway
-  logger_suffex : .sys
-```
 
 ***
 #### 一些完整的样例
