@@ -102,11 +102,6 @@ func Newlog(path string, suffex string, lv zapcore.Level) *zap.Logger {
 	return logger
 }
 
-// Run r
-func (l *Logger) Run() {
-
-}
-
 /*
 	使用非格式化日志，尽量仅用在调试时。
 */
