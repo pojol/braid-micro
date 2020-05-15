@@ -22,10 +22,6 @@ func TestNew(t *testing.T) {
 	}
 
 	s := New("normal", WithListen(":14111"))
-	err = s.Init()
-	if err != nil {
-		t.Error(err)
-	}
 
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
@@ -56,9 +52,9 @@ func TestNew(t *testing.T) {
 
 func TestOpts(t *testing.T) {
 
-	wtr := New("testopt", WithTracing())
-	assert.Equal(t, wtr.cfg.Tracing, true)
+	New("testopt", WithTracing())
+	assert.Equal(t, register.cfg.Tracing, true)
 
-	wlr := New("testopt", WithListen(":1201"))
-	assert.Equal(t, wlr.cfg.ListenAddress, ":1201")
+	New("testopt", WithListen(":1201"))
+	assert.Equal(t, register.cfg.ListenAddress, ":1201")
 }

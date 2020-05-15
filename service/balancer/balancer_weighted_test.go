@@ -71,10 +71,7 @@ func TestSelector(t *testing.T) {
 	l := log.New("test")
 	l.Init()
 
-	s := New()
-	s.Init()
-	s.Run()
-	defer s.Close()
+	New()
 
 	ib, _ := GetGroup("test")
 

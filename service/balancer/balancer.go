@@ -60,21 +60,6 @@ func New() *Balancer {
 	return b
 }
 
-// Init 初始化均衡器
-func (b *Balancer) Init() error {
-	return nil
-}
-
-// Run r
-func (b *Balancer) Run() {
-
-}
-
-// Close c
-func (b *Balancer) Close() {
-
-}
-
 // GetGroup 获取负载均衡选择器
 func GetGroup(nodName string) (IBalancer, error) {
 
