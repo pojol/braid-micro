@@ -14,12 +14,8 @@ func TestDiscover(t *testing.T) {
 
 	mock.Init()
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
 	r := redis.New()
 	r.Init(redis.Config{
@@ -33,16 +29,13 @@ func TestDiscover(t *testing.T) {
 	})
 
 	ba := balancer.New()
-	err := ba.Init(balancer.Cfg{})
+	err := ba.Init()
 	if err != nil {
 		t.Error(err)
 	}
 
-	d := New()
-	d.Init(Config{
-		Interval:      100,
-		ConsulAddress: mock.ConsulAddr,
-	})
+	d := New("test", mock.ConsulAddr, WithInterval(100))
+	d.Init()
 
 	d.Run()
 

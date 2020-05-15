@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"strconv"
-	"time"
 
 	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/rpc/dispatcher"
+	"github.com/pojol/braid/rpc/register"
 	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/discover"
 	"github.com/pojol/braid/service/election"
-	"github.com/pojol/braid/service/register"
-	"github.com/pojol/braid/service/rpc"
 	"github.com/pojol/braid/tracer"
 )
 
@@ -32,8 +31,8 @@ const (
 	// Register rpc服务
 	Register = "register"
 
-	// RPC 远程调用RPC
-	RPC = "rpc"
+	// Dispatcher 远程调用RPC
+	Dispatcher = "dispatcher"
 
 	// Discover 探索发现节点
 	Discover = "discover"
@@ -69,10 +68,10 @@ type ComposeConf struct {
 		ElectionLockTick   int `yaml:"election_lock_tick"`
 		ElectionRefushTick int `yaml:"election_refush_tick"`
 
-		RPCDiscoverInterval int `yaml:"rpc_discover_interval"`
-		RPCPoolInitNum      int `yaml:"rpc_pool_init_num"`
-		RPCPoolCap          int `yaml:"rpc_pool_cap"`
-		RPCPoolIdle         int `yaml:"rpc_pool_idle"`
+		RPCDiscoverInterval int `yaml:"dispatcher_discover_interval"`
+		RPCPoolInitNum      int `yaml:"dispatcher_pool_init_num"`
+		RPCPoolCap          int `yaml:"dispatcher_pool_cap"`
+		RPCPoolIdle         int `yaml:"dispatcher_pool_idle"`
 
 		TracerProbabilistic float64 `yaml:"tracer_probabilistic"`
 		TracerSlowReq       int     `yaml:"tracer_slow_req"`
@@ -88,7 +87,7 @@ type (
 
 	// Node braid框架中的功能节点
 	Node interface {
-		Init(interface{}) error
+		Init() error
 		Run()
 		Close()
 	}
@@ -96,6 +95,9 @@ type (
 
 var (
 	b *Braid
+
+	// ErrNotDefineName 必须要有一个节点名称
+	ErrNotDefineName = errors.New("not define name")
 )
 
 // AppendNode 将功能节点添加到braid中
@@ -117,24 +119,15 @@ func Compose(compose ComposeConf, depend DependConf) error {
 
 	var nods []string
 
+	if compose.Name == "" {
+		return ErrNotDefineName
+	}
+
 	for _, v := range compose.Install {
 
 		if v == Logger {
-			lo := log.New()
-			lc := log.Config{
-				Mode:   compose.Mode,
-				Path:   log.DefaultConfig.Path,
-				Suffex: log.DefaultConfig.Suffex,
-			}
-
-			if compose.Config.LogPath != "" {
-				lc.Path = compose.Config.LogPath
-			}
-			if compose.Config.LogSuffex != "" {
-				lc.Suffex = compose.Config.LogSuffex
-			}
-
-			err := lo.Init(lc)
+			lo := log.New(compose.Config.LogPath)
+			err := lo.Init()
 			if err != nil {
 				return err
 			}
@@ -144,18 +137,17 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		}
 
 		if v == Register {
-			reg := register.New()
-			regc := register.Config{
-				Name:          compose.Name,
-				Tracing:       compose.Tracing,
-				ListenAddress: register.DefaultConfig.ListenAddress,
-			}
 
+			opts := []register.Option{}
+			if compose.Tracing {
+				opts = append(opts, register.WithTracing())
+			}
 			if compose.Config.RegisterListenPort != 0 {
-				regc.ListenAddress = ":" + strconv.Itoa(compose.Config.RegisterListenPort)
+				opts = append(opts, register.WithListen(":"+strconv.Itoa(compose.Config.RegisterListenPort)))
 			}
 
-			err := reg.Init(regc)
+			reg := register.New(compose.Name, opts...)
+			err := reg.Init()
 			if err != nil {
 				return err
 			}
@@ -163,18 +155,14 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			AppendNode(Register, reg)
 		}
 
-		if v == RPC {
-			dis := discover.New()
-			disc := discover.Config{
-				Name:          compose.Name,
-				Interval:      discover.DefaultConfg.Interval,
-				ConsulAddress: depend.Consul,
+		if v == Dispatcher {
+			dcOpts := []discover.Option{}
+			if compose.Config.RPCDiscoverInterval != 0 {
+				dcOpts = append(dcOpts, discover.WithInterval(compose.Config.RPCDiscoverInterval))
 			}
 
-			if compose.Config.RPCDiscoverInterval != 0 {
-				disc.Interval = compose.Config.RPCDiscoverInterval
-			}
-			err := dis.Init(disc)
+			dis := discover.New(compose.Name, depend.Consul, dcOpts...)
+			err := dis.Init()
 			if err != nil {
 				return err
 			}
@@ -182,55 +170,53 @@ func Compose(compose ComposeConf, depend DependConf) error {
 			AppendNode(Discover, dis)
 
 			ba := balancer.New()
-			err = ba.Init(balancer.Cfg{})
+			err = ba.Init()
 			if err != nil {
 				return err
 			}
 			nods = append(nods, Balancer)
 			AppendNode(Balancer, ba)
 
-			r := rpc.New()
-			rc := rpc.Config{
-				ConsulAddress: depend.Consul,
-				Tracing:       compose.Tracing,
-				PoolInitNum:   rpc.DefaultConfig.PoolInitNum,
-				PoolCapacity:  rpc.DefaultConfig.PoolCapacity,
-				PoolIdle:      rpc.DefaultConfig.PoolIdle,
+			dispOpts := []dispatcher.Option{}
+			if compose.Tracing {
+				dispOpts = append(dispOpts, dispatcher.WithTracing())
 			}
-
 			if compose.Config.RPCPoolCap != 0 {
-				rc.PoolCapacity = compose.Config.RPCPoolCap
+				dispOpts = append(dispOpts, dispatcher.WithPoolCapacity(compose.Config.RPCPoolCap))
 			}
 			if compose.Config.RPCPoolInitNum != 0 {
-				rc.PoolInitNum = compose.Config.RPCPoolInitNum
+				dispOpts = append(dispOpts, dispatcher.WithPoolInitNum(compose.Config.RPCPoolInitNum))
 			}
 			if compose.Config.RPCPoolIdle != 0 {
-				rc.PoolIdle = time.Duration(compose.Config.RPCPoolIdle) * time.Second
+				dispOpts = append(dispOpts, dispatcher.WithPoolIdle(compose.Config.RPCPoolIdle))
 			}
 
-			err = r.Init(rc)
+			r := dispatcher.New(depend.Consul, dispOpts...)
+			err = r.Init()
 			if err != nil {
 				return err
 			}
-			nods = append(nods, RPC)
-			AppendNode(RPC, r)
+			nods = append(nods, Dispatcher)
+			AppendNode(Dispatcher, r)
 		}
 
 		if v == Election {
-			el := election.New()
-			elc := election.Config{
-				Address:           depend.Consul,
-				Name:              compose.Name,
-				LockTick:          election.DefaultConfig.LockTick,
-				RefushSessionTick: election.DefaultConfig.RefushSessionTick,
-			}
 
+			opts := []election.Option{}
 			if compose.Config.ElectionLockTick != 0 {
-				elc.LockTick = time.Duration(compose.Config.ElectionLockTick) * time.Millisecond
-				elc.RefushSessionTick = time.Duration(compose.Config.ElectionRefushTick) * time.Millisecond
+				opts = append(opts, election.WithLockTick(compose.Config.ElectionLockTick))
+			}
+			if compose.Config.ElectionRefushTick != 0 {
+				opts = append(opts, election.WithRefushTick(compose.Config.ElectionRefushTick))
 			}
 
-			err := el.Init(elc)
+			el := election.New(
+				compose.Name,
+				depend.Consul,
+				opts...,
+			)
+
+			err := el.Init()
 			if err != nil {
 				return err
 			}
@@ -239,26 +225,20 @@ func Compose(compose ComposeConf, depend DependConf) error {
 		}
 
 		if v == Tracer && compose.Tracing {
-			tr := tracer.New()
-			trc := tracer.Config{
-				Endpoint:      depend.Jaeger,
-				Name:          compose.Name,
-				Probabilistic: tracer.DefaultTracerConfig.Probabilistic,
-				SlowRequest:   tracer.DefaultTracerConfig.SlowRequest,
-				SlowSpan:      tracer.DefaultTracerConfig.SlowSpan,
-			}
 
+			opts := []tracer.Option{}
 			if compose.Config.TracerProbabilistic != 0 {
-				trc.Probabilistic = compose.Config.TracerProbabilistic
+				opts = append(opts, tracer.WithProbabilistic(compose.Config.TracerProbabilistic))
 			}
 			if compose.Config.TracerSlowReq != 0 {
-				trc.SlowRequest = time.Duration(compose.Config.TracerSlowReq) * time.Millisecond
+				opts = append(opts, tracer.WithSlowRequest(compose.Config.TracerSlowReq))
 			}
 			if compose.Config.TracerSlowSpan != 0 {
-				trc.SlowSpan = time.Duration(compose.Config.TracerSlowSpan) * time.Millisecond
+				opts = append(opts, tracer.WithSlowSpan(compose.Config.TracerSlowSpan))
 			}
 
-			err := tr.Init(trc)
+			tr := tracer.New(compose.Name, depend.Jaeger, opts...)
+			err := tr.Init()
 			if err != nil {
 				return err
 			}
@@ -284,8 +264,8 @@ func Regist(serviceName string, fc register.RPCFunc) {
 
 // Call 远程调用
 func Call(parentCtx context.Context, nodeName string, serviceName string, token string, body []byte) (out []byte, err error) {
-	if _, ok := b.Nodes[RPC]; ok {
-		c := b.Nodes[RPC].(rpc.IRPC)
+	if _, ok := b.Nodes[Dispatcher]; ok {
+		c := b.Nodes[Dispatcher].(dispatcher.IDispatcher)
 		return c.Call(parentCtx, nodeName, serviceName, token, body)
 	}
 

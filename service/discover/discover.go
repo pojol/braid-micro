@@ -12,23 +12,13 @@ import (
 )
 
 type (
-	// Sync 服务节点状态管理
-	Sync struct {
+	// Discover 发现管理braid相关的节点
+	Discover struct {
 		ticker *time.Ticker
-		cfg    Config
+		cfg    config
 
 		// service id : service nod
 		passingMap map[string]syncNode
-	}
-
-	// Config Sync Config
-	Config struct {
-		Name string
-
-		// 同步节点信息间隔
-		Interval int
-
-		ConsulAddress string
 	}
 
 	syncNode struct {
@@ -39,15 +29,7 @@ type (
 )
 
 var (
-	// StatusMgr 状态管理器
-	sync *Sync
-
-	// DefaultConfg 默认配置
-	DefaultConfg = Config{
-		Name:          "defaultDiscoverName",
-		Interval:      2000,
-		ConsulAddress: "http://127.0.0.1:8500",
-	}
+	dc *Discover
 
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
@@ -60,37 +42,45 @@ const (
 )
 
 // New 构建指针
-func New() *Sync {
-	sync = &Sync{}
-	return sync
+func New(name string, consulAddress string, opts ...Option) *Discover {
+	const (
+		defaultInterval = time.Millisecond * 2000
+	)
+
+	dc = &Discover{
+		cfg: config{
+			Interval: defaultInterval,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(dc)
+	}
+
+	return dc
 }
 
 // Init init
-func (s *Sync) Init(cfg interface{}) error {
-	dcfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
+func (dc *Discover) Init() error {
 
-	s.passingMap = make(map[string]syncNode)
-	s.cfg = dcfg
+	dc.passingMap = make(map[string]syncNode)
 
 	return nil
 }
 
-func (s *Sync) tick() {
+func (dc *Discover) tick() {
 
-	services, err := consul.GetCatalogServices(s.cfg.ConsulAddress, DiscoverTag)
+	services, err := consul.GetCatalogServices(dc.cfg.ConsulAddress, DiscoverTag)
 	if err != nil {
 		return
 	}
 
 	for _, service := range services {
-		if service.ServiceName == s.cfg.Name {
+		if service.ServiceName == dc.cfg.Name {
 			continue
 		}
 
-		if _, ok := s.passingMap[service.ServiceID]; !ok { // new nod
+		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
 
 			sn := syncNode{
 				service: service.ServiceName,
@@ -105,7 +95,7 @@ func (s *Sync) tick() {
 				}
 			*/
 
-			s.passingMap[service.ServiceID] = sn
+			dc.passingMap[service.ServiceID] = sn
 
 			g, err := balancer.GetGroup(sn.service)
 			if err != nil {
@@ -124,16 +114,16 @@ func (s *Sync) tick() {
 		}
 	}
 
-	for k := range s.passingMap {
+	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
 
-			g, err := balancer.GetGroup(s.passingMap[k].service)
+			g, err := balancer.GetGroup(dc.passingMap[k].service)
 			if err != nil {
 				log.SysError("discover", "tick rmv nod", fmt.Errorf("%v", err).Error())
 				continue
 			}
 
-			g.Rmv(s.passingMap[k].id)
+			g.Rmv(dc.passingMap[k].id)
 
 			/*
 				err := link.Get().Offline(s.passingMap[k].address)
@@ -142,12 +132,12 @@ func (s *Sync) tick() {
 				}
 			*/
 
-			delete(s.passingMap, k)
+			delete(dc.passingMap, k)
 		}
 	}
 }
 
-func (s *Sync) runImpl() {
+func (dc *Discover) runImpl() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -155,28 +145,28 @@ func (s *Sync) runImpl() {
 			}
 		}()
 		// todo ..
-		s.tick()
+		dc.tick()
 	}
 
-	s.ticker = time.NewTicker(time.Duration(s.cfg.Interval) * time.Millisecond)
-	s.tick()
+	dc.ticker = time.NewTicker(dc.cfg.Interval)
+	dc.tick()
 
 	for {
 		select {
-		case <-s.ticker.C:
+		case <-dc.ticker.C:
 			syncService()
 		}
 	}
 }
 
 // Run 运行管理器
-func (s *Sync) Run() {
+func (dc *Discover) Run() {
 	go func() {
-		s.runImpl()
+		dc.runImpl()
 	}()
 }
 
 // Close close
-func (s *Sync) Close() {
+func (dc *Discover) Close() {
 
 }

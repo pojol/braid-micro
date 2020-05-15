@@ -7,9 +7,14 @@ service listen {
 }
 
 message routeReq {
+    // nod 目标服务节点名
     string nod = 1;
+    // service 功能函数名
     string service = 2;
+    // body
     bytes reqBody = 3;
+    // meta 元数据用于用户定制开发
+    repeated Header meta = 4;
 }
 
 message Header {

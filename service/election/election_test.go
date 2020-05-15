@@ -12,20 +12,11 @@ func TestElection(t *testing.T) {
 
 	mock.Init()
 
-	l := log.New()
-	l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	l.Init()
 
-	e := New()
-	e.Init(Config{
-		Address:           mock.ConsulAddr,
-		Name:              "test",
-		RefushSessionTick: 500 * time.Millisecond,
-		LockTick:          200 * time.Millisecond,
-	})
+	e := New(mock.ConsulAddr, "test")
+	e.Init()
 
 	e.Run()
 	time.Sleep(time.Second)

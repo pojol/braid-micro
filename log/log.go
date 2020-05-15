@@ -20,6 +20,7 @@ type (
 
 	// Logger logger struct
 	Logger struct {
+		Path     string
 		gSysLog  *zap.Logger
 		gSugared *zap.SugaredLogger
 	}
@@ -29,37 +30,24 @@ type (
 var (
 	logPtr *Logger
 
-	DefaultConfig = Config{
-		Mode:   "debug",
-		Path:   "defaultLog",
-		Suffex: ".sys",
-	}
-
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )
 
 // New new logger
-func New() *Logger {
-	logPtr = &Logger{}
+func New(path string) *Logger {
+	logPtr = &Logger{
+		Path: path,
+	}
 	return logPtr
 }
 
 // Init init logger
-func (l *Logger) Init(cfg interface{}) error {
-	logCfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
+func (l *Logger) Init() error {
 
-	var lv zapcore.Level
-	if logCfg.Mode == "debug" {
-		lv = zap.DebugLevel
-	} else {
-		lv = zap.InfoLevel
-	}
+	lv := zap.DebugLevel
 
-	l.gSysLog = Newlog(logCfg.Path, logCfg.Suffex, lv)
+	l.gSysLog = Newlog("", ".sys", lv)
 	l.gSugared = l.gSysLog.Sugar()
 
 	return nil

@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service/rpc/bproto"
+	"github.com/pojol/braid/rpc/dispatcher/bproto"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
@@ -17,14 +17,8 @@ type (
 	Register struct {
 		rpc          *grpc.Server
 		tracerCloser io.Closer
-		listen       string
-	}
 
-	// Config Service 配置
-	Config struct {
-		Tracing       bool
-		Name          string
-		ListenAddress string
+		cfg config
 	}
 
 	// RPCFunc ...
@@ -40,38 +34,42 @@ var (
 
 	register *Register
 
-	// DefaultConfig 默认配置
-	DefaultConfig = Config{
-		Tracing:       false,
-		Name:          "defaultRegistName",
-		ListenAddress: ":14222",
-	}
-
 	// ErrServiceUnavailiable 没有可用的服务
-	ErrServiceUnavailiable = errors.New("service unavailable")
+	ErrServiceUnavailiable = errors.New("service not registed")
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("Convert linker config")
 )
 
 // New 构建service
-func New() *Register {
-	register = &Register{}
+func New(name string, opts ...Option) *Register {
+	const (
+		defaultTracing       = false
+		defaultListenAddress = ":14222"
+	)
+
+	register = &Register{
+		cfg: config{
+			Name:          name,
+			Tracing:       defaultTracing,
+			ListenAddress: defaultListenAddress,
+		},
+	}
+
+	for _, opt := range opts {
+		opt(register)
+	}
+
 	return register
 }
 
 // Init 构建service
-func (s *Register) Init(cfg interface{}) error {
-
-	sCfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
+func (s *Register) Init() error {
 
 	var rpcServer *grpc.Server
 	var err error
 	var closer io.Closer
 
-	if sCfg.Tracing {
+	if s.cfg.Tracing {
 		rpcServer = grpc.NewServer(tracer.GetGRPCServerTracer())
 	} else {
 		rpcServer = grpc.NewServer()
@@ -79,7 +77,6 @@ func (s *Register) Init(cfg interface{}) error {
 
 	s.rpc = rpcServer
 	s.tracerCloser = closer
-	s.listen = sCfg.ListenAddress
 
 	return err
 }
@@ -124,9 +121,9 @@ func (s *Register) Regist(serviceName string, fc RPCFunc) {
 func (s *Register) Run() {
 	bproto.RegisterListenServer(s.rpc, &rpcServer{})
 
-	rpcListen, err := net.Listen("tcp", s.listen)
+	rpcListen, err := net.Listen("tcp", s.cfg.ListenAddress)
 	if err != nil {
-		log.SysError("register", "run listen", err.Error())
+		log.SysError("register", "run listen "+s.cfg.ListenAddress, err.Error())
 	}
 
 	go func() {

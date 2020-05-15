@@ -4,32 +4,25 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/service/rpc/bproto"
+	"github.com/pojol/braid/rpc/dispatcher/bproto"
 	"google.golang.org/grpc"
 )
 
 func TestNew(t *testing.T) {
 
-	l := log.New()
-	err := l.Init(log.Config{
-		Path:   "test",
-		Suffex: ".log",
-		Mode:   "debug",
-	})
+	l := log.New("test")
+	err := l.Init()
 	if err != nil {
 		t.Error(err)
 	}
 
-	s := New()
-	err = s.Init(Config{
-		Tracing:       false,
-		Name:          "test",
-		ListenAddress: ":1209",
-	})
+	s := New("normal", WithListen(":14111"))
+	err = s.Init()
 	if err != nil {
 		t.Error(err)
 	}
@@ -40,8 +33,9 @@ func TestNew(t *testing.T) {
 	})
 
 	s.Run()
+	time.Sleep(time.Millisecond * 10)
 
-	conn, err := grpc.Dial("localhost:1209", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:14111", grpc.WithInsecure())
 	rres := new(bproto.RouteRes)
 
 	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &bproto.RouteReq{
@@ -58,4 +52,13 @@ func TestNew(t *testing.T) {
 	assert.NotEqual(t, err, nil)
 
 	s.Close()
+}
+
+func TestOpts(t *testing.T) {
+
+	wtr := New("testopt", WithTracing())
+	assert.Equal(t, wtr.cfg.Tracing, true)
+
+	wlr := New("testopt", WithListen(":1201"))
+	assert.Equal(t, wlr.cfg.ListenAddress, ":1201")
 }
