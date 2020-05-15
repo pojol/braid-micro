@@ -112,13 +112,3 @@ func (t *Tracer) Init() error {
 	t.closer = closer
 	return nil
 }
-
-// Run r
-func (t *Tracer) Run() {
-
-}
-
-// Close c
-func (t *Tracer) Close() {
-
-}

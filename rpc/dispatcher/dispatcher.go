@@ -19,6 +19,11 @@ import (
 
 type (
 
+	// IDispatcher caller的抽象接口
+	IDispatcher interface {
+		Call(context.Context, string, string, string, []byte) ([]byte, error)
+	}
+
 	// Dispatcher 调用器
 	Dispatcher struct {
 		cfg config
@@ -27,11 +32,6 @@ type (
 
 		poolMgr sync.Map
 		sync.Mutex
-	}
-
-	// IDispatcher caller的抽象接口
-	IDispatcher interface {
-		Call(context.Context, string, string, string, []byte) ([]byte, error)
 	}
 )
 
@@ -72,22 +72,6 @@ func New(consulAddress string, opts ...Option) *Dispatcher {
 	}
 
 	return r
-}
-
-// Init 通过配置构建调用器
-func (r *Dispatcher) Init() error {
-
-	return nil
-}
-
-// Run run
-func (r *Dispatcher) Run() {
-
-}
-
-// Close 释放调用器
-func (r *Dispatcher) Close() {
-
 }
 
 // Call 执行一次rpc调用

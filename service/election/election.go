@@ -10,6 +10,13 @@ import (
 )
 
 type (
+	// IElection 选举器需要提供的接口
+	IElection interface {
+		IsMaster() bool
+		Run()
+		Close()
+	}
+
 	// Election 自动选举结构
 	Election struct {
 		lockTicker   *time.Ticker
@@ -19,11 +26,6 @@ type (
 		locked    bool
 
 		cfg config
-	}
-
-	// IElection 选举器需要提供的接口
-	IElection interface {
-		IsMaster() bool
 	}
 )
 
@@ -35,7 +37,9 @@ var (
 )
 
 // New 构建新的选举器指针
-func New(name string, consulAddress string, opts ...Option) *Election {
+func New(name string, consulAddress string, opts ...Option) (IElection, error) {
+	var sid string
+	var locked bool
 
 	const (
 		defaultLockTick   = time.Second * 2000
@@ -55,23 +59,14 @@ func New(name string, consulAddress string, opts ...Option) *Election {
 		opt(e)
 	}
 
-	return e
-}
-
-// Init 初始化选举器
-func (e *Election) Init() error {
-
-	var sid string
-	var locked bool
-
 	sid, err := consul.CreateSession(e.cfg.Address, e.cfg.Name+"_lead")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	locked, err = consul.AcquireLock(e.cfg.Address, e.cfg.Name, sid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if locked {
 		log.SysElection("master")
@@ -82,7 +77,7 @@ func (e *Election) Init() error {
 	e.sessionID = sid
 	e.locked = locked
 
-	return err
+	return e, nil
 }
 
 // IsMaster 返回是否获取到锁

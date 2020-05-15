@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pojol/braid/cache/redis"
 	"github.com/pojol/braid/log"
 	"github.com/pojol/braid/mock"
@@ -28,17 +30,18 @@ func TestDiscover(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	ba := balancer.New()
-	err := ba.Init()
-	if err != nil {
-		t.Error(err)
-	}
-
+	balancer.New()
 	d := New("test", mock.ConsulAddr, WithInterval(100))
-	d.Init()
 
 	d.Run()
 
 	time.Sleep(time.Second)
 	d.Close()
+}
+
+func TestOpts(t *testing.T) {
+
+	mock.Init()
+	New("test", mock.ConsulAddr, WithInterval(100))
+	assert.Equal(t, dc.cfg.Interval.Milliseconds(), int64(100))
 }

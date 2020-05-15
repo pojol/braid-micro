@@ -13,6 +13,13 @@ import (
 )
 
 type (
+	// IRegister 注册 RPC 服务
+	IRegister interface {
+		Regist(string, RPCFunc)
+		Run()
+		Close()
+	}
+
 	// Register 注册器
 	Register struct {
 		rpc          *grpc.Server
@@ -41,7 +48,7 @@ var (
 )
 
 // New 构建service
-func New(name string, opts ...Option) *Register {
+func New(name string, opts ...Option) IRegister {
 	const (
 		defaultTracing       = false
 		defaultListenAddress = ":14222"
@@ -59,26 +66,13 @@ func New(name string, opts ...Option) *Register {
 		opt(register)
 	}
 
-	return register
-}
-
-// Init 构建service
-func (s *Register) Init() error {
-
-	var rpcServer *grpc.Server
-	var err error
-	var closer io.Closer
-
-	if s.cfg.Tracing {
-		rpcServer = grpc.NewServer(tracer.GetGRPCServerTracer())
+	if register.cfg.Tracing {
+		register.rpc = grpc.NewServer(tracer.GetGRPCServerTracer())
 	} else {
-		rpcServer = grpc.NewServer()
+		register.rpc = grpc.NewServer()
 	}
 
-	s.rpc = rpcServer
-	s.tracerCloser = closer
-
-	return err
+	return register
 }
 
 type rpcServer struct {
