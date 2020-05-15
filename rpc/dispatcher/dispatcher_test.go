@@ -21,6 +21,9 @@ func TestCaller(t *testing.T) {
 	_ = balancer.New()
 
 	c := New(mock.ConsulAddr)
+	c.Init()
+
+	c.Run()
 	time.Sleep(time.Millisecond * 200)
 
 	addr, _ := c.findNode(context.Background(), "test", "test", "")
@@ -34,5 +37,6 @@ func TestInitNum(t *testing.T) {
 	l := log.New("test")
 	l.Init()
 
-	New(mock.ConsulAddr)
+	c := New(mock.ConsulAddr)
+	c.Init()
 }

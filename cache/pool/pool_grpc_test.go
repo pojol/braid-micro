@@ -19,10 +19,12 @@ func TestGRPCPool(t *testing.T) {
 	err := l.Init()
 
 	s := register.New("test", register.WithListen(":1205"))
+	err = s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil
 	})
+	assert.Equal(t, err, nil)
 	s.Run()
 
 	f := func() (*grpc.ClientConn, error) {
@@ -62,10 +64,12 @@ func TestGRPCPool(t *testing.T) {
 
 func TestUnhealth(t *testing.T) {
 	s := register.New("test", register.WithListen(":1206"))
+	err := s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil
 	})
+	assert.Equal(t, err, nil)
 	s.Run()
 	defer s.Close()
 
@@ -91,10 +95,12 @@ func TestUnhealth(t *testing.T) {
 
 func TestIdle(t *testing.T) {
 	s := register.New("test", register.WithListen(":1306"))
+	err := s.Init()
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
 		fmt.Println("pong")
 		return nil, nil
 	})
+	assert.Equal(t, err, nil)
 	s.Run()
 	defer s.Close()
 

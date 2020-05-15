@@ -28,9 +28,15 @@ func TestDiscover(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	balancer.New()
+	ba := balancer.New()
+	err := ba.Init()
+	if err != nil {
+		t.Error(err)
+	}
 
 	d := New("test", mock.ConsulAddr, WithInterval(100))
+	d.Init()
+
 	d.Run()
 
 	time.Sleep(time.Second)

@@ -71,7 +71,11 @@ func TestSelector(t *testing.T) {
 	l := log.New("test")
 	l.Init()
 
-	New()
+	s := New()
+	s.Init()
+	s.Run()
+	defer s.Close()
+
 	ib, _ := GetGroup("test")
 
 	ib.Add(Node{

@@ -12,12 +12,6 @@ import (
 )
 
 type (
-	// IDiscover 发现服务
-	IDiscover interface {
-		Run()
-		Close()
-	}
-
 	// Discover 发现管理braid相关的节点
 	Discover struct {
 		ticker *time.Ticker
@@ -48,7 +42,7 @@ const (
 )
 
 // New 构建指针
-func New(name string, consulAddress string, opts ...Option) IDiscover {
+func New(name string, consulAddress string, opts ...Option) *Discover {
 	const (
 		defaultInterval = time.Millisecond * 2000
 	)
@@ -63,9 +57,15 @@ func New(name string, consulAddress string, opts ...Option) IDiscover {
 		opt(dc)
 	}
 
+	return dc
+}
+
+// Init init
+func (dc *Discover) Init() error {
+
 	dc.passingMap = make(map[string]syncNode)
 
-	return dc
+	return nil
 }
 
 func (dc *Discover) tick() {
