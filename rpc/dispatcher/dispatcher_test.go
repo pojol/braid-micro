@@ -26,7 +26,7 @@ func TestCaller(t *testing.T) {
 	addr, _ := c.findNode(context.Background(), "test", "test", "")
 	assert.Equal(t, addr, "")
 
-	c.Call(context.Background(), "", "", nil, []byte{})
+	Call(context.Background(), "", "", nil, []byte{})
 }
 
 func TestInitNum(t *testing.T) {
