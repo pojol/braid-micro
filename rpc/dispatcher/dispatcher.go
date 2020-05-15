@@ -13,6 +13,7 @@ import (
 	"github.com/pojol/braid/cache/pool"
 	"github.com/pojol/braid/rpc/dispatcher/bproto"
 	"github.com/pojol/braid/service/balancer"
+	"github.com/pojol/braid/service/discover"
 	"github.com/pojol/braid/tracer"
 	"google.golang.org/grpc"
 )
@@ -22,11 +23,16 @@ type (
 	// IDispatcher caller的抽象接口
 	IDispatcher interface {
 		Call(context.Context, string, string, string, []byte) ([]byte, error)
+
+		Run()
+		Close()
 	}
 
 	// Dispatcher 调用器
 	Dispatcher struct {
 		cfg config
+
+		discov discover.IDiscover
 
 		refushTick *time.Ticker
 
@@ -49,7 +55,7 @@ var (
 )
 
 // New 构建指针
-func New(consulAddress string, opts ...Option) *Dispatcher {
+func New(name string, consulAddress string, opts ...Option) *Dispatcher {
 	const (
 		defaultPoolInitNum  = 8
 		defaultPoolCapacity = 32
@@ -70,6 +76,10 @@ func New(consulAddress string, opts ...Option) *Dispatcher {
 	for _, opt := range opts {
 		opt(r)
 	}
+
+	// 这里后面需要做成可选项
+	balancer.New()
+	r.discov = discover.New(name, consulAddress)
 
 	return r
 }
@@ -198,4 +208,14 @@ EXT:
 	}
 
 	return p, err
+}
+
+// Run r
+func (r *Dispatcher) Run() {
+	r.discov.Run()
+}
+
+// Close c
+func (r *Dispatcher) Close() {
+	r.discov.Close()
 }
