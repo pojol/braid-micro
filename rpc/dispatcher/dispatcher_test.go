@@ -20,7 +20,7 @@ func TestCaller(t *testing.T) {
 
 	_ = balancer.New()
 
-	c := New(mock.ConsulAddr)
+	c := New("test", mock.ConsulAddr)
 	time.Sleep(time.Millisecond * 200)
 
 	addr, _ := c.findNode(context.Background(), "test", "test", "")
@@ -34,12 +34,12 @@ func TestInitNum(t *testing.T) {
 	l := log.New("test")
 	l.Init()
 
-	New(mock.ConsulAddr)
+	New("test", mock.ConsulAddr)
 }
 
 func TestOpts(t *testing.T) {
 	mock.Init()
-	New(mock.ConsulAddr, WithTracing(), WithPoolInitNum(10), WithPoolCapacity(128), WithPoolIdle(100))
+	New("test", mock.ConsulAddr, WithTracing(), WithPoolInitNum(10), WithPoolCapacity(128), WithPoolIdle(100))
 
 	assert.Equal(t, r.cfg.PoolInitNum, 10)
 	assert.Equal(t, r.cfg.PoolCapacity, 128)

@@ -7,27 +7,69 @@
 
 > `注:`当前v1.1.x版本为`原型`版本 
 
-<img src="https://i.postimg.cc/kX75RzrR/image.png" width="600"/>
-
 #### 组件
-* **Election** 选举组件, 提供自动选举功能
-    > 在运行期自动进行选举策略，保证在多个同名节点中有一个主节点和多个从节点
-    > 当节点因为任何原因不在提供服务后，会自动选举出新的主节点。
+* **选举** (election
+```go
+// 通过 "节点名" "Consul" "LockTick 选举竞争频率" 构建election
+elec := election.New("NodeName", ConsulAddress, WithLockTick(1000))
 
-* **Register** 功能注册
-    > 主要提供Regist方法，将用户定义的实现聚合到服务中心。
+elec.Run()
+defer elec.Close()
 
-* **Rpc** 远程调用
-    > 当服务函数通过接口braid.Regist进行过注册，则可以通过call进行远程调用
-    > 访问基于rpc，并且在braid中它将被自动的负载均衡到同名节点中
-    > 外部或者内部的程序只需按指定的url规则既可进行访问 braid.Call("/login/guest", in) out
+// 获取当前节点是否为Master节点（Master节点只会存在一个，且当Master节点下线后会从其他同名节点中选举出新的Master.
+elec.IsMaster()
+```
 
-* **Tracer** 分布式追踪
-    > 提供基于jaeger的分布式追踪服务，同时支持慢查询
-    > 即便采样率非常低，只要有调用超出设置时间 #SlowSpanLimit# #SlowRequestLimit#，这次调用也必然会被打印。
+* **负载均衡** (balancer
+> 这是一个内部支持模块，在使用RPC请求时，调用会通过负载均衡来选择一个合适的节点发送。
+> 默认使用的是`平滑加权轮询`算法
 
-* **Logger** 日志模块
-    > 日志
+* **服务发现** (discover
+> 内部支持模块，构建这个组件可以发现在consul中注册的Braid节点，并且它会将节点信息同步到负载均衡器中。
+
+* **RPC** (dispatcher | register
+> dispatcher
+```go
+disp := dispatcher.New(ConsulAddress)
+
+// ctx 用于传递追踪数据的上下文
+// targetNod 目标节点
+// serviceName 服务名
+// meta 用户自定义数据，不需要传nil
+// body 消息体
+disp.Call(ctx, targetNod, serviceName, meta, body)
+```
+> register
+```go
+// 通过 监听端口 构建register (rpc server)
+reg := register.New("NodeName", WithListen(":1201"))
+
+// 将功能函数注册到本节点
+reg.Regist("serviceName", func(ctx, in[]byte) (out []byte, err error) {})
+
+reg.Run()
+defer reg.Close()
+
+```
+* **分布式追踪** (tracer
+> 提供基于jaeger的分布式追踪服务，同时支持慢查询
+> 即便采样率非常低，只要有调用超出设置时间 #SlowSpanLimit# #SlowRequestLimit#，这次调用也必然会被打印。
+```go
+// 基于 1/1000 的采样率构建 Tracer
+t := tracer.New("NodeName", JaegerAddress, WithProbabilistic(0.001))
+t.Init()
+```
+
+* **容器发现** (基于registerator
+> 这里没有实现服务发现，而是采用了容器发现作为发现系统,
+> 在Dockerfile中设置env `SERVICE_NAME` 作为节点名, `SERVICE_TAG` 作为发现标签。
+```Dockerfile
+ENV SERVICE_TAGS=braid,calculate
+ENV SERVICE_14222_NAME=calculate
+EXPOSE 14222
+```
+
+* **日志** (log
 
 
 ***

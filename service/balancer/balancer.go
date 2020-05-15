@@ -33,8 +33,8 @@ type Node struct {
 	Weight int
 }
 
-// IBalancer 均衡器
-type IBalancer interface {
+// IGroup 组均衡器
+type IGroup interface {
 	// Add 添加一个新节点
 	Add(Node)
 
@@ -61,7 +61,7 @@ func New() *Balancer {
 }
 
 // GetGroup 获取负载均衡选择器
-func GetGroup(nodName string) (IBalancer, error) {
+func GetGroup(nodName string) (IGroup, error) {
 
 	if b == nil {
 		return nil, ErrUninitialized
@@ -71,7 +71,7 @@ func GetGroup(nodName string) (IBalancer, error) {
 }
 
 // Group 获取组
-func (b *Balancer) group(nodName string) IBalancer {
+func (b *Balancer) group(nodName string) IGroup {
 
 	wb, ok := b.m.Load(nodName)
 	if !ok {
@@ -83,5 +83,5 @@ func (b *Balancer) group(nodName string) IBalancer {
 		log.Debugf("add balance group %v\n", nodName)
 	}
 
-	return wb.(IBalancer)
+	return wb.(IGroup)
 }
