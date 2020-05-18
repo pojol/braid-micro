@@ -41,10 +41,10 @@ func (t *HTTPTracer) Begin(ectx echo.Context) {
 	// Set request ID for context.
 	if sc, ok := t.span.Context().(jaeger.SpanContext); ok {
 		t.requestID = sc.TraceID().String()
-		rc = context.WithValue(rc, requestID, t.requestID)
+		rc = context.WithValue(rc, RequestKey, t.requestID)
 	}
 
-	req = req.WithContext(opentracing.ContextWithSpan(req.Context(), t.span))
+	req = req.WithContext(opentracing.ContextWithSpan(rc, t.span))
 	ectx.SetRequest(req)
 }
 

@@ -24,8 +24,15 @@ type (
 
 const (
 	optionHTTPRequest = "Request"
-	requestID         = "RequestID"
 	opRequestLimit    = "RequestLimit"
+)
+
+// TraceKey 主键类型
+type TraceKey int
+
+const (
+	// RequestKey 请求的键值
+	RequestKey TraceKey = 1000 + iota
 )
 
 var (
