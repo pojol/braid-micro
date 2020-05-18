@@ -14,7 +14,7 @@ func TestServicesList(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -34,7 +34,7 @@ func TestGetNodeServices(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -56,7 +56,7 @@ func TestCatalog(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",

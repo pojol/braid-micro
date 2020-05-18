@@ -70,7 +70,20 @@ EXPOSE 14222
 ```
 
 * **日志** (log
+> 日志模块基于zap，提供默认日志构建以及多种可选的日志
+```go
+log.New(log.Config{mode, path, suffex})
 
+// 这里多添加了 系统诊断日志模块 以及 用户行为日志
+log.New(log.Config{mode, path, suffex}, 
+    WithSys(log.Config{}), 
+    WithBehavior(log.Config{}))
+
+// 普通日志使用 zap.sugared 灵活使用
+log.Debugf("%v\n", "")
+// 结构化日志需要参照 log_sys.go 进行自定义输出
+log.SysError("module", "func", desc)
+```
 
 ***
 #### 一些完整的样例

@@ -13,7 +13,7 @@ func TestHealth(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",

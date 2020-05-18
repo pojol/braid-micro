@@ -5,8 +5,8 @@ import "go.uber.org/zap"
 // Option config wraps
 type Option func(*Logger)
 
-// WithSysLog 添加系统日志
-func WithSysLog(cfg Config) Option {
+// WithSys 添加系统日志
+func WithSys(cfg Config) Option {
 
 	return func(log *Logger) {
 		lv := zap.DebugLevel

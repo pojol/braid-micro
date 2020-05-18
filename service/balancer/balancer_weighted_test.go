@@ -14,7 +14,7 @@ func TestWRR(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -55,7 +55,7 @@ func TestWRROp(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -87,7 +87,7 @@ func TestSelector(t *testing.T) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -111,7 +111,7 @@ func BenchmarkWRR(b *testing.B) {
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, log.WithSysLog(log.Config{
+	}, log.WithSys(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",

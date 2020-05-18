@@ -14,7 +14,7 @@ func TestLog(t *testing.T) {
 		Mode:   DebugMode,
 		Path:   "testNormal",
 		Suffex: ".log",
-	}, WithSysLog(Config{
+	}, WithSys(Config{
 		Mode:   DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
@@ -39,7 +39,7 @@ func BenchmarkLog(b *testing.B) {
 		Mode:   DebugMode,
 		Path:   exePath + "/testNormal",
 		Suffex: ".log",
-	}, WithSysLog(Config{
+	}, WithSys(Config{
 		Mode:   DebugMode,
 		Path:   "testSys",
 		Suffex: ".sys",
