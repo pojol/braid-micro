@@ -15,8 +15,16 @@ import (
 
 func TestGRPCPool(t *testing.T) {
 
-	l := log.New("test")
-	err := l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSysLog(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	s := register.New("test", register.WithListen(":1205"))
 	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {

@@ -15,9 +15,16 @@ import (
 func TestDiscover(t *testing.T) {
 
 	mock.Init()
-
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSysLog(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	r := redis.New()
 	r.Init(redis.Config{

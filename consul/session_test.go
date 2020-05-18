@@ -16,8 +16,16 @@ func TestSession(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(1000)
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSysLog(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	sessionName := "test" + strconv.Itoa(r)
 
