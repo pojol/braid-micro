@@ -5,3 +5,5 @@ caller/brpc/gen.sh
 test.sys
 test.log
 .sys
+testSys.sys
+testNormal.log

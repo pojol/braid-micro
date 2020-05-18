@@ -9,8 +9,16 @@ import (
 
 func TestHealth(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	GetHealthNode(mock.ConsulAddr, "test")
 	GetHealthNode("xxxx", "test")

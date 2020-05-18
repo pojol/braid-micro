@@ -15,8 +15,16 @@ import (
 func TestCaller(t *testing.T) {
 
 	mock.Init()
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	_ = balancer.New()
 
@@ -31,8 +39,16 @@ func TestCaller(t *testing.T) {
 
 func TestInitNum(t *testing.T) {
 	mock.Init()
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	New("test", mock.ConsulAddr)
 }

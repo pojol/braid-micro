@@ -10,8 +10,17 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+/*
+	/ 非格式化日志
+		/ 普通日志+调试日志
+	/ 格式化日志
+		/ 诊断日志
+		/ 行为日志
+		/ 。。。
+*/
+
 type (
-	// Config log config
+	// Config 日志配置项
 	Config struct {
 		Mode   string
 		Path   string
@@ -20,13 +29,26 @@ type (
 
 	// Logger logger struct
 	Logger struct {
-		Path     string
-		gSysLog  *zap.Logger
-		gSugared *zap.SugaredLogger
+
+		// 普通｜调试日志 (支持非结构化
+		normalLog     *zap.Logger
+		normalSugared *zap.SugaredLogger
+
+		// 系统｜诊断日志（结构化
+		SysLog *zap.Logger
+		// 用户行为日志（结构化
+		BehaviorLog *zap.Logger
 	}
 )
 
-// 诊断日志
+const (
+	// DebugMode debug级别
+	DebugMode = "debug"
+
+	// InfoMode info级别
+	InfoMode = "info"
+)
+
 var (
 	logPtr *Logger
 
@@ -35,27 +57,38 @@ var (
 )
 
 // New new logger
-func New(path string) *Logger {
-	logPtr = &Logger{
-		Path: path,
-	}
-	return logPtr
-}
-
-// Init init logger
-func (l *Logger) Init() error {
+func New(cfg Config, opts ...Option) *Logger {
+	logPtr = &Logger{}
 
 	lv := zap.DebugLevel
+	if cfg.Mode == InfoMode {
+		lv = zap.InfoLevel
+	}
 
-	l.gSysLog = Newlog("", ".sys", lv)
-	l.gSugared = l.gSysLog.Sugar()
+	logPtr.normalLog = Newlog(cfg.Path, cfg.Suffex, lv)
+	logPtr.normalSugared = logPtr.normalLog.Sugar()
 
-	return nil
+	for _, opt := range opts {
+		opt(logPtr)
+	}
+
+	return logPtr
 }
 
 // Close 清理日志，并将缓存中的日志刷新到文件
 func (l *Logger) Close() {
-	l.gSysLog.Sync()
+
+	if l.normalLog != nil {
+		l.normalLog.Sync()
+	}
+
+	if l.SysLog != nil {
+		l.SysLog.Sync()
+	}
+
+	if l.BehaviorLog != nil {
+		l.BehaviorLog.Sync()
+	}
 }
 
 // Newlog 创建一个新的日志
@@ -102,18 +135,13 @@ func Newlog(path string, suffex string, lv zapcore.Level) *zap.Logger {
 	return logger
 }
 
-/*
-	使用非格式化日志，尽量仅用在调试时。
-*/
-
 // Debugf debug级别诊断日志
 func Debugf(msg string, args ...interface{}) {
-	logPtr.gSugared.Debugf(msg, args...)
+	logPtr.normalSugared.Debugf(msg, args...)
 }
 
 // Fatalf fatal诊断日志
 func Fatalf(msg string, args ...interface{}) {
-
-	logPtr.gSugared.Debugf("stask : %v\n", string(debug.Stack()))
-	logPtr.gSugared.Fatalf(msg, args...)
+	logPtr.normalSugared.Debugf("stask : %v\n", string(debug.Stack()))
+	logPtr.normalSugared.Fatalf(msg, args...)
 }

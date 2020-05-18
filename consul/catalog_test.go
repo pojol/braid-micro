@@ -10,8 +10,16 @@ import (
 
 func TestServicesList(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	_, err := ServicesList(mock.ConsulAddr)
 	if err != nil {
@@ -22,8 +30,16 @@ func TestServicesList(t *testing.T) {
 
 func TestGetNodeServices(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	lst, err := GetCatalogServices(mock.ConsulAddr, "redis")
 	if err != nil {
@@ -36,8 +52,16 @@ func TestGetNodeServices(t *testing.T) {
 
 func TestCatalog(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	GetCatalogService(mock.ConsulAddr, "test")
 	GetCatalogService("xxx", "test")

@@ -15,11 +15,16 @@ import (
 
 func TestNew(t *testing.T) {
 
-	l := log.New("test")
-	err := l.Init()
-	if err != nil {
-		t.Error(err)
-	}
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	s := New("normal", WithListen(":14111"))
 

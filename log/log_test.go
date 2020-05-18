@@ -10,8 +10,15 @@ import (
 )
 
 func TestLog(t *testing.T) {
-	l := New("test")
-	l.Init()
+	l := New(Config{
+		Mode:   DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, WithSys(Config{
+		Mode:   DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
 	defer l.Close()
 
 	Debugf("msg", 1)
@@ -28,15 +35,20 @@ func BenchmarkLog(b *testing.B) {
 	if err != nil {
 		b.Error(err)
 	}
-
-	l := New(exePath)
-	l.Init()
-
+	l := New(Config{
+		Mode:   DebugMode,
+		Path:   exePath + "/testNormal",
+		Suffex: ".log",
+	}, WithSys(Config{
+		Mode:   DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
 	defer l.Close()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		logPtr.gSysLog.Info("benchmark",
+		logPtr.SysLog.Info("benchmark",
 			zap.String("url", "github.com/lestrrat-go/file-rotatelogs"),
 			zap.Int("attempt", 3),
 			zap.Duration("backoff", time.Second),

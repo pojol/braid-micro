@@ -10,8 +10,16 @@ import (
 
 func TestWRR(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	wrr := WeightedRoundrobin{}
 
@@ -43,9 +51,16 @@ func TestWRR(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
-	l := log.New("test")
-	l.Init()
-
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 	wrr := WeightedRoundrobin{}
 
 	wrr.Add(Node{
@@ -68,8 +83,16 @@ func TestWRROp(t *testing.T) {
 }
 
 func TestSelector(t *testing.T) {
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	New()
 
@@ -84,8 +107,16 @@ func TestSelector(t *testing.T) {
 }
 
 func BenchmarkWRR(b *testing.B) {
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	wrr := WeightedRoundrobin{}
 

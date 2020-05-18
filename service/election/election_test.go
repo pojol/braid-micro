@@ -14,8 +14,16 @@ func TestElection(t *testing.T) {
 
 	mock.Init()
 
-	l := log.New("test")
-	l.Init()
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	e, _ := New("test", mock.ConsulAddr)
 
