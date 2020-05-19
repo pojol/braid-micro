@@ -20,7 +20,7 @@ var (
 	// ErrBalanceEmpty 没有权重节点
 	ErrBalanceEmpty = errors.New("weighted node list is empty")
 	// ErrUninitialized 未初始化
-	ErrUninitialized = errors.New("balancer uninitalized")
+	ErrUninitialized = errors.New("balancer uninitialized")
 )
 
 // Node 权重节点

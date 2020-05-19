@@ -42,7 +42,7 @@ type (
 var (
 	r *Dispatcher
 
-	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(cooridnate)
+	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(coordinate)
 	ErrServiceNotAvailable = errors.New("caller service not available")
 
 	// ErrConfigConvert 配置转换失败

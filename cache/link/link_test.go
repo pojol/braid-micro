@@ -40,6 +40,9 @@ func TestTarget(t *testing.T) {
 	assert.Equal(t, addr, "address")
 
 	num, err := l.Num("address")
+	if err != nil {
+		t.Error(err)
+	}
 	assert.Equal(t, num, 1)
 
 	err = l.Offline("address")
