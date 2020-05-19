@@ -20,15 +20,9 @@ defer elec.Close()
 elec.IsMaster()
 ```
 
-* **负载均衡** (balancer
-> 这是一个内部支持模块，在使用RPC请求时，调用会通过负载均衡来选择一个合适的节点发送。
-> 默认使用的是`平滑加权轮询`算法
-
-* **服务发现** (discover
-> 内部支持模块，构建这个组件可以发现在consul中注册的Braid节点，并且它会将节点信息同步到负载均衡器中。
-
 * **RPC** (dispatcher | register
-> dispatcher
+> dispatcher 通过传入`目标节点`信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
+> dispatcher 会自动`发现`注册到braid的节点。
 ```go
 disp := dispatcher.New(ConsulAddress)
 
