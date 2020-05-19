@@ -98,7 +98,7 @@ func Call(parentCtx context.Context, nodName string, serviceName string, meta []
 	r.Lock()
 	defer r.Unlock()
 
-	address, err = r.findNode(parentCtx, nodName, serviceName, "")
+	address, err = r.findNode(parentCtx, nodName, "")
 	if err != nil {
 		goto EXT
 	}
@@ -140,7 +140,7 @@ EXT:
 }
 
 // Find 通过查找器获取目标
-func (r *Dispatcher) findNode(parentCtx context.Context, nodName string, serviceName string, key string) (string, error) {
+func (r *Dispatcher) findNode(parentCtx context.Context, nodName string, key string) (string, error) {
 	var address string
 	var err error
 	var nod *balancer.Node

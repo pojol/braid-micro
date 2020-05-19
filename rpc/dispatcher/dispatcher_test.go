@@ -31,7 +31,7 @@ func TestCaller(t *testing.T) {
 	c := New("test", mock.ConsulAddr)
 	time.Sleep(time.Millisecond * 200)
 
-	addr, _ := c.findNode(context.Background(), "test", "test", "")
+	addr, _ := c.findNode(context.Background(), "test", "")
 	assert.Equal(t, addr, "")
 
 	Call(context.Background(), "", "", nil, []byte{})
