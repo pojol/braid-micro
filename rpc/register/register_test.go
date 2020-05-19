@@ -37,6 +37,9 @@ func TestNew(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	conn, err := grpc.Dial("localhost:14111", grpc.WithInsecure())
+	if err != nil {
+		t.Error(err)
+	}
 	rres := new(bproto.RouteRes)
 
 	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &bproto.RouteReq{
