@@ -1,7 +1,8 @@
-package register
+package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -9,9 +10,27 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/rpc/dispatcher/bproto"
+	"github.com/pojol/braid/rpc/client/bproto"
 	"google.golang.org/grpc"
 )
+
+type rpcServer struct {
+	bproto.ListenServer
+}
+
+func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto.RouteRes, error) {
+	out := new(bproto.RouteRes)
+	var err error
+	fmt.Println("pong")
+
+	if req.Service == "test" {
+		err = nil
+	} else {
+		err = errors.New("err")
+	}
+
+	return out, err
+}
 
 func TestNew(t *testing.T) {
 
@@ -28,10 +47,7 @@ func TestNew(t *testing.T) {
 
 	s := New("normal", WithListen(":14111"))
 
-	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
-		fmt.Println("pong")
-		return nil, nil
-	})
+	bproto.RegisterListenServer(Get(), &rpcServer{})
 
 	s.Run()
 	time.Sleep(time.Millisecond * 10)
@@ -61,8 +77,8 @@ func TestNew(t *testing.T) {
 func TestOpts(t *testing.T) {
 
 	New("testopt", WithTracing())
-	assert.Equal(t, register.cfg.Tracing, true)
+	assert.Equal(t, server.cfg.Tracing, true)
 
 	New("testopt", WithListen(":1201"))
-	assert.Equal(t, register.cfg.ListenAddress, ":1201")
+	assert.Equal(t, server.cfg.ListenAddress, ":1201")
 }
