@@ -20,29 +20,42 @@ defer elec.Close()
 elec.IsMaster()
 ```
 
-* **RPC** (dispatcher | register
-> dispatcher 通过传入`目标节点`信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
-> dispatcher 会自动`发现`注册到braid的节点。
+* **RPC** 
+> client 通过传入`目标节点`信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
+> client 会自动`发现`注册到braid的节点。
 ```go
-disp := dispatcher.New(ConsulAddress)
+rc := client.New(NodeName, consulAddr, client.WithTracing())
+rc.Discover()
+defer rc.Close()
 
-// ctx 用于传递追踪数据的上下文
-// targetNod 目标节点
-// serviceName 服务名
-// meta 用户自定义数据，不需要传nil
-// body 消息体
-disp.Call(ctx, targetNod, serviceName, meta, body)
+conn, err := client.GetConn(boxName) //  从池中获取一个grpc连接
+if err != nil {
+    goto EXT
+}
+defer conn.Put()    // 还给池
+
+cc = pbraid.NewCalculateClient(conn.ClientConn)
+res, err = cc.Addition(ctx.Request().Context(), &pbraid.AddReq{})
+if err != nil {
+    conn.Unhealthy()    // 如果调用失败，将连接设置为不健康的，由池进行销毁。
+}
 ```
-> register
+> server
 ```go
-// 通过 监听端口 构建register (rpc server)
-reg := register.New("NodeName", WithListen(":1201"))
+type calcServer struct {
+	pbraid.CalculateServer
+}
 
-// 将功能函数注册到本节点
-reg.Regist("serviceName", func(ctx, in[]byte) (out []byte, err error) {})
+// Addition 加法计算
+func (cs *calcServer) Addition(ctx context.Context, req *AddReq) (*AddRes, error) {
+	return res, nil
+}
 
-reg.Run()
-defer reg.Close()
+s := server.New(NodeName, server.WithListen(":14222"), server.WithTracing())
+pbraid.RegisterCalculateServer(server.Get(), &calcServer{})
+
+s.Run()
+defer s.Close()
 
 ```
 * **分布式追踪** (tracer
