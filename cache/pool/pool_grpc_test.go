@@ -2,18 +2,37 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/pojol/braid/log"
-	"github.com/pojol/braid/rpc/dispatcher/bproto"
-	"github.com/pojol/braid/rpc/register"
+	"github.com/pojol/braid/rpc/client/bproto"
+	"github.com/pojol/braid/rpc/server"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
-func TestGRPCPool(t *testing.T) {
+type rpcServer struct {
+	bproto.ListenServer
+}
+
+func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto.RouteRes, error) {
+	out := new(bproto.RouteRes)
+	var err error
+	fmt.Println("pong")
+
+	if req.Service == "test" {
+		err = nil
+	} else {
+		err = errors.New("err")
+	}
+
+	return out, err
+}
+
+func TestMain(m *testing.M) {
 
 	l := log.New(log.Config{
 		Mode:   log.DebugMode,
@@ -26,12 +45,17 @@ func TestGRPCPool(t *testing.T) {
 	}))
 	defer l.Close()
 
-	s := register.New("test", register.WithListen(":1205"))
-	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
-		fmt.Println("pong")
-		return nil, nil
-	})
+	s := server.New("test", server.WithListen(":1205"))
+	bproto.RegisterListenServer(server.Get(), &rpcServer{})
 	s.Run()
+	time.Sleep(time.Millisecond * 10)
+
+	m.Run()
+
+	s.Close()
+}
+
+func TestGRPCPool(t *testing.T) {
 
 	f := func() (*grpc.ClientConn, error) {
 		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
@@ -65,20 +89,12 @@ func TestGRPCPool(t *testing.T) {
 	p.Capacity()
 
 	p.Close()
-	s.Close()
 }
 
 func TestUnhealth(t *testing.T) {
-	s := register.New("test", register.WithListen(":1206"))
-	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
-		fmt.Println("pong")
-		return nil, nil
-	})
-	s.Run()
-	defer s.Close()
 
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1206", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
@@ -98,16 +114,9 @@ func TestUnhealth(t *testing.T) {
 }
 
 func TestIdle(t *testing.T) {
-	s := register.New("test", register.WithListen(":1306"))
-	s.Regist("test", func(ctx context.Context, in []byte) (out []byte, err error) {
-		fmt.Println("pong")
-		return nil, nil
-	})
-	s.Run()
-	defer s.Close()
 
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1306", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +141,7 @@ func TestIdle(t *testing.T) {
 
 func TestErr(t *testing.T) {
 	f := func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial("localhost:1207", grpc.WithInsecure())
+		conn, err := grpc.Dial("localhost:1205", grpc.WithInsecure())
 		if err != nil {
 			return nil, err
 		}

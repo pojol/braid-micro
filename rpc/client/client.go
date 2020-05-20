@@ -11,7 +11,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid/cache/pool"
-	"github.com/pojol/braid/rpc/dispatcher/bproto"
 	"github.com/pojol/braid/service/balancer"
 	"github.com/pojol/braid/service/discover"
 	"github.com/pojol/braid/tracer"
@@ -20,14 +19,15 @@ import (
 
 type (
 
-	// IDispatcher caller的抽象接口
-	IDispatcher interface {
+	// IClient client的抽象接口
+	IClient interface {
 		Run()
+		GetConn(target string) (*pool.ClientConn, error)
 		Close()
 	}
 
-	// Dispatcher 调用器
-	Dispatcher struct {
+	// Client 调用器
+	Client struct {
 		cfg config
 
 		discov discover.IDiscover
@@ -40,7 +40,7 @@ type (
 )
 
 var (
-	r *Dispatcher
+	c *Client
 
 	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(coordinate)
 	ErrServiceNotAvailable = errors.New("caller service not available")
@@ -53,7 +53,7 @@ var (
 )
 
 // New 构建指针
-func New(name string, consulAddress string, opts ...Option) *Dispatcher {
+func New(name string, consulAddress string, opts ...Option) IClient {
 	const (
 		defaultPoolInitNum  = 8
 		defaultPoolCapacity = 32
@@ -61,7 +61,7 @@ func New(name string, consulAddress string, opts ...Option) *Dispatcher {
 		defaultTracing      = false
 	)
 
-	r = &Dispatcher{
+	c = &Client{
 		cfg: config{
 			ConsulAddress: consulAddress,
 			PoolInitNum:   defaultPoolInitNum,
@@ -72,80 +72,48 @@ func New(name string, consulAddress string, opts ...Option) *Dispatcher {
 	}
 
 	for _, opt := range opts {
-		opt(r)
+		opt(c)
 	}
 
 	// 这里后面需要做成可选项
 	balancer.New()
-	r.discov = discover.New(name, consulAddress)
+	c.discov = discover.New(name, consulAddress)
 
-	return r
+	return c
 }
 
-// Call 执行一次rpc调用
-func Call(parentCtx context.Context, nodName string, serviceName string, meta []*bproto.Header, body []byte) (out []byte, err error) {
-
-	var address string
-	var caPool *pool.GRPCPool
+// GetConn 获取rpc client连接
+func (c *Client) GetConn(target string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
-	var caCtx context.Context
-	var caCancel context.CancelFunc
-	var connCtx context.Context
-	var connCancel context.CancelFunc
-	var method string
-	res := new(bproto.RouteRes)
+	var caPool *pool.GRPCPool
 
-	r.Lock()
-	defer r.Unlock()
-
-	address, err = r.findNode(parentCtx, nodName, serviceName, "")
+	address, err := c.findNode(target, "")
 	if err != nil {
-		goto EXT
+		return nil, err
 	}
 
-	caPool, err = r.pool(address)
+	caPool, err = c.pool(address)
 	if err != nil {
-		goto EXT
+		return nil, err
 	}
 
-	connCtx, connCancel = context.WithTimeout(parentCtx, time.Second)
+	connCtx, connCancel := context.WithTimeout(context.Background(), time.Second)
 	defer connCancel()
 	caConn, err = caPool.Get(connCtx)
 	if err != nil {
-		goto EXT
-	}
-	defer caConn.Put()
-
-	caCtx, caCancel = context.WithTimeout(parentCtx, time.Second)
-	defer caCancel()
-
-	method = "/bproto.listen/routing"
-	err = caConn.Invoke(caCtx, method, &bproto.RouteReq{
-		Nod:     nodName,
-		Service: serviceName,
-		Meta:    meta,
-		ReqBody: body,
-	}, res)
-	if err != nil {
-		caConn.Unhealthy()
-		goto EXT
+		return nil, err
 	}
 
-EXT:
-	if err != nil {
-		log.SysError("caller", "do", err.Error())
-	}
-
-	return res.ResBody, err
+	return caConn, nil
 }
 
 // Find 通过查找器获取目标
-func (r *Dispatcher) findNode(parentCtx context.Context, nodName string, serviceName string, key string) (string, error) {
+func (c *Client) findNode(target string, key string) (string, error) {
 	var address string
 	var err error
 	var nod *balancer.Node
 
-	wb, err := balancer.GetGroup(nodName)
+	wb, err := balancer.GetGroup(target)
 	if err != nil {
 		goto EXT
 	}
@@ -160,20 +128,20 @@ func (r *Dispatcher) findNode(parentCtx context.Context, nodName string, service
 EXT:
 	if err != nil {
 		// log
-		log.SysError("caller", "findNode", err.Error())
+		log.SysError("rpcClient", "findNode", err.Error())
 	}
 
 	return address, err
 }
 
 // Pool 获取grpc连接池
-func (r *Dispatcher) pool(address string) (p *pool.GRPCPool, err error) {
+func (c *Client) pool(address string) (p *pool.GRPCPool, err error) {
 
 	factory := func() (*grpc.ClientConn, error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if r.cfg.Tracing {
+		if c.cfg.Tracing {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {
@@ -187,14 +155,14 @@ func (r *Dispatcher) pool(address string) (p *pool.GRPCPool, err error) {
 		return conn, nil
 	}
 
-	pi, ok := r.poolMgr.Load(address)
+	pi, ok := c.poolMgr.Load(address)
 	if !ok {
-		p, err = pool.NewGRPCPool(factory, r.cfg.PoolInitNum, r.cfg.PoolCapacity, r.cfg.PoolIdle)
+		p, err = pool.NewGRPCPool(factory, c.cfg.PoolInitNum, c.cfg.PoolCapacity, c.cfg.PoolIdle)
 		if err != nil {
 			goto EXT
 		}
 
-		r.poolMgr.Store(address, p)
+		c.poolMgr.Store(address, p)
 		pi = p
 	}
 
@@ -202,18 +170,18 @@ func (r *Dispatcher) pool(address string) (p *pool.GRPCPool, err error) {
 
 EXT:
 	if err != nil {
-		log.SysError("caller", "pool", err.Error())
+		log.SysError("rpcClient", "pool", err.Error())
 	}
 
 	return p, err
 }
 
-// Run r
-func (r *Dispatcher) Run() {
-	r.discov.Run()
+// Run 执行服务发现逻辑
+func (c *Client) Run() {
+	c.discov.Run()
 }
 
-// Close c
-func (r *Dispatcher) Close() {
-	r.discov.Close()
+// Close 关闭服务发现逻辑
+func (c *Client) Close() {
+	c.discov.Close()
 }
