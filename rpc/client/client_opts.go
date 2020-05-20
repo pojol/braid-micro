@@ -1,4 +1,4 @@
-package dispatcher
+package client
 
 import "time"
 
