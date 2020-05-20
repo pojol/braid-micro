@@ -28,7 +28,7 @@ rc := client.New(NodeName, consulAddr, client.WithTracing())
 rc.Discover()
 defer rc.Close()
 
-conn, err := client.GetConn(boxName) //  从池中获取一个grpc连接
+conn, err := client.GetConn(target) //  从池中获取一个grpc连接
 if err != nil {
     goto EXT
 }
