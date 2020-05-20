@@ -7,7 +7,7 @@
 
 > `注:`当前v1.1.x版本为`原型`版本 
 
-[![image.png](https://i.postimg.cc/0jKWGwjS/image.png)](https://postimg.cc/N2YkBL1G)
+[![image.png](https://i.postimg.cc/wvXc9Q10/image.png)](https://postimg.cc/9RfqpTt7)
 
 #### 组件
 * **选举** (election
