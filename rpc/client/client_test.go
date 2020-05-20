@@ -28,10 +28,10 @@ func TestMain(m *testing.M) {
 
 func TestCaller(t *testing.T) {
 
-	c := New("test", mock.ConsulAddr)
+	New("test", mock.ConsulAddr)
 	time.Sleep(time.Millisecond * 200)
 
-	conn, err := c.GetConn("test")
+	conn, err := GetConn("test")
 	if err != nil {
 		t.Error(err)
 		return

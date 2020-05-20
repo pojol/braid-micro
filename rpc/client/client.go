@@ -21,8 +21,7 @@ type (
 
 	// IClient client的抽象接口
 	IClient interface {
-		Run()
-		GetConn(target string) (*pool.ClientConn, error)
+		Discover()
 		Close()
 	}
 
@@ -83,7 +82,7 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 }
 
 // GetConn 获取rpc client连接
-func (c *Client) GetConn(target string) (*pool.ClientConn, error) {
+func GetConn(target string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
@@ -176,8 +175,8 @@ EXT:
 	return p, err
 }
 
-// Run 执行服务发现逻辑
-func (c *Client) Run() {
+// Discover 执行服务发现逻辑
+func (c *Client) Discover() {
 	c.discov.Run()
 }
 
