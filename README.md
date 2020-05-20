@@ -7,6 +7,8 @@
 
 > `注:`当前v1.1.x版本为`原型`版本 
 
+[![image.png](https://i.postimg.cc/wvXc9Q10/image.png)](https://postimg.cc/9RfqpTt7)
+
 #### 组件
 * **选举** (election
 ```go
@@ -28,7 +30,7 @@ rc := client.New(NodeName, consulAddr, client.WithTracing())
 rc.Discover()
 defer rc.Close()
 
-conn, err := client.GetConn(boxName) //  从池中获取一个grpc连接
+conn, err := client.GetConn(target) //  从池中获取一个grpc连接
 if err != nil {
     goto EXT
 }
