@@ -21,6 +21,6 @@ func TestHealth(t *testing.T) {
 	defer l.Close()
 
 	GetHealthNode(mock.ConsulAddr, "test")
-	GetHealthNode("xxxx", "test")
+	GetHealthNode("http://127.0.0.1:8901", "test")
 
 }
