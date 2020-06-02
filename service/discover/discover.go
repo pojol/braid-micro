@@ -22,6 +22,7 @@ type (
 	Discover struct {
 		ticker *time.Ticker
 		cfg    config
+		bg     *balancer.Group
 
 		// service id : service nod
 		passingMap map[string]syncNode
@@ -48,7 +49,7 @@ const (
 )
 
 // New 构建指针
-func New(name string, consulAddress string, opts ...Option) IDiscover {
+func New(name string, consulAddress string, bg *balancer.Group, opts ...Option) IDiscover {
 	const (
 		defaultInterval = time.Millisecond * 2000
 	)
@@ -58,6 +59,7 @@ func New(name string, consulAddress string, opts ...Option) IDiscover {
 			Interval:      defaultInterval,
 			ConsulAddress: consulAddress,
 		},
+		bg: bg,
 	}
 
 	for _, opt := range opts {
@@ -97,19 +99,14 @@ func (dc *Discover) tick() {
 			*/
 
 			dc.passingMap[service.ServiceID] = sn
-
-			g, err := balancer.GetGroup(sn.service)
-			if err != nil {
-				log.SysError("discover", "tick add nod", fmt.Errorf("%v", err).Error())
-				continue
-			}
-
-			g.Add(balancer.Node{
+			dc.bg.Get(sn.service).Update(balancer.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
 				Weight:  1,
+				OpTag:   balancer.OpAdd,
 			})
+
 		} else { // 看一下是否需要更新权重
 
 		}
@@ -118,13 +115,11 @@ func (dc *Discover) tick() {
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
 
-			g, err := balancer.GetGroup(dc.passingMap[k].service)
-			if err != nil {
-				log.SysError("discover", "tick rmv nod", fmt.Errorf("%v", err).Error())
-				continue
-			}
-
-			g.Rmv(dc.passingMap[k].id)
+			dc.bg.Get(dc.passingMap[k].service).Update(balancer.Node{
+				ID:    dc.passingMap[k].id,
+				Name:  dc.passingMap[k].service,
+				OpTag: balancer.OpRmv,
+			})
 
 			/*
 				err := link.Get().Offline(s.passingMap[k].address)
