@@ -37,8 +37,8 @@ func TestDiscover(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	balancer.New()
-	d := New("test", mock.ConsulAddr, WithInterval(100))
+	bg := balancer.NewGroup()
+	d := New("test", mock.ConsulAddr, bg, WithInterval(100))
 
 	d.Run()
 
@@ -49,6 +49,6 @@ func TestDiscover(t *testing.T) {
 func TestOpts(t *testing.T) {
 
 	mock.Init()
-	New("test", mock.ConsulAddr, WithInterval(100))
+	New("test", mock.ConsulAddr, nil, WithInterval(100))
 	assert.Equal(t, dc.cfg.Interval.Milliseconds(), int64(100))
 }

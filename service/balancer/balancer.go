@@ -2,18 +2,50 @@ package balancer
 
 import (
 	"errors"
+	"strings"
 	"sync"
 
-	"github.com/pojol/braid/log"
+	"github.com/pojol/braid/braidsync"
 )
 
-// Cfg 负载均衡选择器配置
-type Cfg struct {
+var (
+	m = make(map[string]Builder)
+)
+
+// Register 注册balancer
+func Register(b Builder) {
+	m[strings.ToLower(b.Name())] = b
 }
 
-// Balancer 负载均衡选择器
-type Balancer struct {
-	m sync.Map
+// GetBuilder 获取balancer构建器
+func GetBuilder(name string) Builder {
+	if b, ok := m[strings.ToLower(name)]; ok {
+		return b
+	}
+	return nil
+}
+
+// Builder 构建器接口
+type Builder interface {
+	Build() Balancer
+	Name() string
+}
+
+// Balancer 均衡器接口
+type Balancer interface {
+	// 更新均衡器内容
+	Update(nod Node)
+
+	// 选取
+	Pick() (addr string, err error)
+}
+
+// Wrapper 负载均衡包装器
+type Wrapper struct {
+	b   Balancer
+	bmu sync.Mutex
+	q   *braidsync.Unbounded
+	s   *braidsync.Switch
 }
 
 var (
@@ -23,65 +55,80 @@ var (
 	ErrUninitialized = errors.New("balancer uninitialized")
 )
 
+const (
+	// OpAdd 添加
+	OpAdd = "add"
+
+	// OpRmv 移除
+	OpRmv = "rmv"
+
+	// OpUp 更新
+	OpUp = "update"
+)
+
 // Node 权重节点
 type Node struct {
-	ID      string
+	ID string
+	// 负载均衡节点的名称，这个名称主要用于均衡节点分组。
 	Name    string
 	Address string
 
 	// 节点的权重值
 	Weight int
+
+	// 更新操作符
+	OpTag string
 }
 
-// IGroup 组均衡器
-type IGroup interface {
-	// Add 添加一个新节点
-	Add(Node)
-
-	// Rmv 移除一个旧节点
-	Rmv(string)
-
-	// SyncWeight 调整节点权重值
-	SyncWeight(string, int)
-
-	// Next 获取一个节点
-	Next() (*Node, error)
-}
-
-var (
-	b *Balancer
-
-	defaultSelectorCfg = Cfg{}
-)
-
-// New 初始化负载均衡选择器
-func New() *Balancer {
-	b = &Balancer{}
-	return b
-}
-
-// GetGroup 获取负载均衡选择器
-func GetGroup(nodName string) (IGroup, error) {
-
-	if b == nil {
-		return nil, ErrUninitialized
+// newBalancerWrapper 构建一个新的负载均衡包装器
+func newBalancerWrapper(builder Builder) *Wrapper {
+	w := &Wrapper{
+		b: builder.Build(),
+		q: braidsync.NewUnbounded(),
+		s: braidsync.NewSwitch(),
 	}
 
-	return b.group(nodName), nil
+	go w.watcher()
+
+	return w
 }
 
-// Group 获取组
-func (b *Balancer) group(nodName string) IGroup {
+func (w *Wrapper) watcher() {
+	for {
 
-	wb, ok := b.m.Load(nodName)
-	if !ok {
-		wb = &WeightedRoundrobin{
-			Name: nodName,
+		select {
+		case nod := <-w.q.Get():
+			w.q.Load()
+
+			if w.s.HasOpend() {
+				break
+			}
+
+			w.bmu.Lock()
+			w.b.Update(nod.(Node))
+			w.bmu.Unlock()
+		case <-w.s.Done():
 		}
 
-		b.m.Store(nodName, wb)
-		log.Debugf("add balance group %v\n", nodName)
 	}
+}
 
-	return wb.(IGroup)
+// Update 将新的节点信息更新到balancer
+func (w *Wrapper) Update(nod Node) {
+
+	w.q.Put(nod)
+
+}
+
+// Pick 选取一个节点
+func (w *Wrapper) Pick() (string, error) {
+	w.bmu.Lock()
+	defer w.bmu.Unlock()
+
+	return w.b.Pick()
+}
+
+// Close 关闭负载均衡器
+func (w *Wrapper) Close() {
+	w.s.Open()
 }

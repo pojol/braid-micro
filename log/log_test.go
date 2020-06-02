@@ -30,6 +30,34 @@ func TestLog(t *testing.T) {
 	SysElection("master")
 }
 
+func TestOpts(t *testing.T) {
+
+	var tests = []struct {
+		Mod string
+	}{
+		{DebugMode},
+		{InfoMode},
+	}
+
+	for _, v := range tests {
+		dl := New(Config{
+			Mode:   v.Mod,
+			Path:   "testNormal",
+			Suffex: ".log",
+		}, WithSys(Config{
+			Mode:   v.Mod,
+			Path:   "testSys",
+			Suffex: ".sys",
+		}), WithBehavior(Config{
+			Mode:   v.Mod,
+			Path:   "testBehavior",
+			Suffex: ".Behavior",
+		}))
+		defer dl.Close()
+	}
+
+}
+
 func BenchmarkLog(b *testing.B) {
 	exePath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {

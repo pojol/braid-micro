@@ -3,6 +3,7 @@ package balancer
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/pojol/braid/log"
 	"github.com/stretchr/testify/assert"
@@ -21,19 +22,28 @@ func TestWRR(t *testing.T) {
 	}))
 	defer l.Close()
 
-	wrr := WeightedRoundrobin{}
+	bw := newBalancerWrapper(GetBuilder(balancerName))
 
-	wrr.Add(Node{
-		ID:     "A",
-		Weight: 4,
+	bw.Update(Node{
+		ID:      "A",
+		Address: "A",
+		Weight:  4,
+		Name:    "test",
+		OpTag:   OpAdd,
 	})
-	wrr.Add(Node{
-		ID:     "B",
-		Weight: 2,
+	bw.Update(Node{
+		ID:      "B",
+		Address: "B",
+		Weight:  2,
+		Name:    "test",
+		OpTag:   OpAdd,
 	})
-	wrr.Add(Node{
-		ID:     "C",
-		Weight: 1,
+	bw.Update(Node{
+		ID:      "C",
+		Address: "C",
+		Weight:  1,
+		Name:    "test",
+		OpTag:   OpAdd,
 	})
 
 	var tests = []struct {
@@ -42,9 +52,10 @@ func TestWRR(t *testing.T) {
 		{"A"}, {"B"}, {"A"}, {"C"}, {"A"}, {"B"}, {"A"},
 	}
 
+	time.Sleep(time.Millisecond * 100)
 	for _, v := range tests {
-		n, _ := wrr.Next()
-		assert.Equal(t, n.ID, v.ID)
+		addr, _ := bw.Pick()
+		assert.Equal(t, addr, v.ID)
 	}
 
 }
@@ -61,51 +72,37 @@ func TestWRROp(t *testing.T) {
 		Suffex: ".sys",
 	}))
 	defer l.Close()
-	wrr := WeightedRoundrobin{}
+	bw := newBalancerWrapper(GetBuilder(balancerName))
 
-	wrr.Add(Node{
+	bw.Update(Node{
 		ID:     "A",
+		Name:   "test",
 		Weight: 4,
+		OpTag:  OpAdd,
 	})
 
-	wrr.Rmv("A")
+	bw.Update(Node{
+		ID:    "A",
+		Name:  "test",
+		OpTag: OpRmv,
+	})
 
-	_, ok := wrr.isExist("A")
-	assert.Equal(t, ok, false)
-
-	wrr.Add(Node{
+	bw.Update(Node{
 		ID:     "B",
+		Name:   "test",
 		Weight: 2,
+		OpTag:  OpAdd,
 	})
-	wrr.SyncWeight("B", 4)
-	n, _ := wrr.Next()
-	assert.Equal(t, n.Weight, wrr.totalWeight)
-}
-
-func TestSelector(t *testing.T) {
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
-
-	New()
-
-	ib, _ := GetGroup("test")
-
-	ib.Add(Node{
-		ID:     "A",
-		Weight: 4,
+	bw.Update(Node{
+		ID:    "B",
+		Name:  "test",
+		OpTag: OpUp,
 	})
 
-	ib.Rmv("A")
+	bw.Pick()
 }
 
+//  2637153	       442 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
 	l := log.New(log.Config{
 		Mode:   log.DebugMode,
@@ -118,17 +115,20 @@ func BenchmarkWRR(b *testing.B) {
 	}))
 	defer l.Close()
 
-	wrr := WeightedRoundrobin{}
+	bw := newBalancerWrapper(GetBuilder(balancerName))
 
 	for i := 0; i < 100; i++ {
-		wrr.Add(Node{
+		bw.Update(Node{
 			ID:     strconv.Itoa(i),
+			Name:   "test",
 			Weight: i,
+			OpTag:  OpAdd,
 		})
 	}
 
+	//time.Sleep(time.Millisecond * 100)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		wrr.Next()
+		bw.Pick()
 	}
 }

@@ -48,14 +48,6 @@ func TestCaller(t *testing.T) {
 	//assert.Equal(t, err, nil)
 }
 
-func TestFindNode(t *testing.T) {
-	New("test", mock.ConsulAddr)
-	time.Sleep(time.Millisecond * 100)
-
-	addr, _ := c.findNode("test", "")
-	assert.Equal(t, addr, "")
-}
-
 func TestOpts(t *testing.T) {
 	New("test", mock.ConsulAddr, WithTracing(), WithPoolInitNum(10), WithPoolCapacity(128), WithPoolIdle(100))
 

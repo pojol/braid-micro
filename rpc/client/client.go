@@ -30,6 +30,7 @@ type (
 		cfg config
 
 		discov discover.IDiscover
+		bg     *balancer.Group
 
 		refushTick *time.Ticker
 
@@ -75,8 +76,8 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 	}
 
 	// 这里后面需要做成可选项
-	balancer.New()
-	c.discov = discover.New(name, consulAddress)
+	c.bg = balancer.NewGroup()
+	c.discov = discover.New(name, consulAddress, c.bg)
 
 	return c
 }
@@ -86,7 +87,10 @@ func GetConn(target string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
-	address, err := c.findNode(target, "")
+	c.Lock()
+	defer c.Unlock()
+
+	address, err := c.bg.Get(target).Pick()
 	if err != nil {
 		return nil, err
 	}
@@ -104,33 +108,6 @@ func GetConn(target string) (*pool.ClientConn, error) {
 	}
 
 	return caConn, nil
-}
-
-// Find 通过查找器获取目标
-func (c *Client) findNode(target string, key string) (string, error) {
-	var address string
-	var err error
-	var nod *balancer.Node
-
-	wb, err := balancer.GetGroup(target)
-	if err != nil {
-		goto EXT
-	}
-
-	nod, err = wb.Next()
-	if err != nil {
-		goto EXT
-	}
-
-	address = nod.Address
-
-EXT:
-	if err != nil {
-		// log
-		log.SysError("rpcClient", "findNode", err.Error())
-	}
-
-	return address, err
 }
 
 // Pool 获取grpc连接池

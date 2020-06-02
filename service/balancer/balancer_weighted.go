@@ -1,10 +1,26 @@
 package balancer
 
 import (
-	"sync"
-
 	"github.com/pojol/braid/log"
 )
+
+const (
+	balancerName = "WeightedRoundrobin"
+)
+
+type weightRoundrobinBuilder struct{}
+
+func newWightRoundrobinBalancer() Builder {
+	return &weightRoundrobinBuilder{}
+}
+
+func (*weightRoundrobinBuilder) Build() Balancer {
+	return &wightedRoundrobin{}
+}
+
+func (*weightRoundrobinBuilder) Name() string {
+	return balancerName
+}
 
 type weightedNod struct {
 	orgNod    Node
@@ -12,25 +28,21 @@ type weightedNod struct {
 }
 
 // WeightedRoundrobin 平滑加权轮询
-type WeightedRoundrobin struct {
-	Name string
-
+type wightedRoundrobin struct {
 	totalWeight int
-	Nods        []weightedNod
-
-	sync.Mutex
+	nods        []weightedNod
 }
 
-func (wr *WeightedRoundrobin) calcTotalWeight() {
+func (wr *wightedRoundrobin) calcTotalWeight() {
 	wr.totalWeight = 0
 
-	for _, v := range wr.Nods {
+	for _, v := range wr.nods {
 		wr.totalWeight += v.orgNod.Weight
 	}
 }
 
-func (wr *WeightedRoundrobin) isExist(id string) (int, bool) {
-	for k, v := range wr.Nods {
+func (wr *wightedRoundrobin) isExist(id string) (int, bool) {
+	for k, v := range wr.nods {
 		if v.orgNod.ID == id {
 			return k, true
 		}
@@ -39,85 +51,91 @@ func (wr *WeightedRoundrobin) isExist(id string) (int, bool) {
 	return -1, false
 }
 
-// Add 新增一个节点
-func (wr *WeightedRoundrobin) Add(nod Node) {
+// Update 更新负载均衡节点
+func (wr *wightedRoundrobin) Update(nod Node) {
 
-	wr.Lock()
-	defer wr.Unlock()
-
-	if _, ok := wr.isExist(nod.ID); ok {
-		// log
-		return
+	if nod.OpTag == OpAdd {
+		wr.add(nod)
+	} else if nod.OpTag == OpRmv {
+		wr.rmv(nod)
+	} else if nod.OpTag == OpUp {
+		wr.syncWeight(nod)
 	}
 
-	wr.Nods = append(wr.Nods, weightedNod{
-		orgNod:    nod,
-		curWeight: int(nod.Weight),
-	})
-
-	wr.calcTotalWeight()
-	log.Debugf("add weighted nod %v\n", nod.ID)
 }
 
-// Rmv 移除一个节点
-func (wr *WeightedRoundrobin) Rmv(id string) {
-
-	wr.Lock()
-	defer wr.Unlock()
-
-	var ok bool
-	var idx int
-
-	idx, ok = wr.isExist(id)
-	if !ok {
-		// log
-		return
-	}
-
-	wr.Nods = append(wr.Nods[:idx], wr.Nods[idx+1:]...)
-	wr.calcTotalWeight()
-	log.Debugf("rmv weighted nod %v\n", id)
-}
-
-// SyncWeight 同步节点权重值
-func (wr *WeightedRoundrobin) SyncWeight(id string, weight int) {
-	wr.Lock()
-	defer wr.Unlock()
-
-	var ok bool
-	var idx int
-
-	idx, ok = wr.isExist(id)
-	if ok {
-		wr.Nods[idx].orgNod.Weight = weight
-		wr.calcTotalWeight()
-	}
-}
-
-// Next 获取下一个节点
-func (wr *WeightedRoundrobin) Next() (*Node, error) {
-
+// Pick 执行算法，选取节点
+func (wr *wightedRoundrobin) Pick() (string, error) {
 	var tmpWeight int
 	var idx int
 
-	if len(wr.Nods) <= 0 {
-		return nil, ErrBalanceEmpty
+	if len(wr.nods) <= 0 {
+		return "", ErrBalanceEmpty
 	}
 
-	for k, v := range wr.Nods {
+	for k, v := range wr.nods {
 		if tmpWeight < v.curWeight+wr.totalWeight {
 			tmpWeight = v.curWeight + wr.totalWeight
 			idx = k
 		}
 	}
 
-	for k := range wr.Nods {
+	for k := range wr.nods {
 		if k == idx {
-			wr.Nods[idx].curWeight = wr.Nods[idx].curWeight - wr.totalWeight + wr.Nods[idx].orgNod.Weight
+			wr.nods[idx].curWeight = wr.nods[idx].curWeight - wr.totalWeight + wr.nods[idx].orgNod.Weight
 		} else {
-			wr.Nods[k].curWeight += wr.Nods[k].orgNod.Weight
+			wr.nods[k].curWeight += wr.nods[k].orgNod.Weight
 		}
 	}
 
-	return &wr.Nods[idx].orgNod, nil
+	return wr.nods[idx].orgNod.Address, nil
+}
+
+func (wr *wightedRoundrobin) add(nod Node) {
+
+	if _, ok := wr.isExist(nod.ID); ok {
+		// log
+		return
+	}
+
+	wr.nods = append(wr.nods, weightedNod{
+		orgNod:    nod,
+		curWeight: int(nod.Weight),
+	})
+
+	wr.calcTotalWeight()
+	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
+}
+
+func (wr *wightedRoundrobin) rmv(nod Node) {
+
+	var ok bool
+	var idx int
+
+	idx, ok = wr.isExist(nod.ID)
+	if !ok {
+		// log
+		return
+	}
+
+	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
+
+	wr.calcTotalWeight()
+	log.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
+}
+
+func (wr *wightedRoundrobin) syncWeight(nod Node) {
+
+	var ok bool
+	var idx int
+
+	idx, ok = wr.isExist(nod.ID)
+	if ok {
+		wr.nods[idx].orgNod.Weight = nod.Weight
+		wr.calcTotalWeight()
+	}
+}
+
+func init() {
+	Register(newWightRoundrobinBalancer())
 }
