@@ -100,10 +100,6 @@ func (w *Wrapper) watcher() {
 		case nod := <-w.q.Get():
 			w.q.Load()
 
-			if w.s.HasOpend() {
-				break
-			}
-
 			w.bmu.Lock()
 			w.b.Update(nod.(Node))
 			w.bmu.Unlock()
