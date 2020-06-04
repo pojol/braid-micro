@@ -108,6 +108,7 @@ func (w *Wrapper) watcher() {
 			w.b.Update(nod.(Node))
 			w.bmu.Unlock()
 		case <-w.s.Done():
+			return
 		}
 
 	}
