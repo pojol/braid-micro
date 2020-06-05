@@ -96,7 +96,7 @@ log.SysError("module", "func", desc)
 
 ***
 #### 样例
-[Game](https://github.com/pojol/braid-game "使用braid模拟一个游戏架构")
+[使用braid模拟一个游戏架构](https://github.com/pojol/braid-game "使用braid模拟一个游戏架构")
 
 #### WIKI
 [WIKI](https://github.com/pojol/braid/wiki "WIKI")
