@@ -95,11 +95,8 @@ log.SysError("module", "func", desc)
 ```
 
 ***
-#### 一些完整的样例
-[Gateway](https://github.com/pojol/braid-gateway "网关节点")
+#### 样例
+[Game](https://github.com/pojol/braid-game "使用braid模拟一个游戏架构")
 
 #### WIKI
 [WIKI](https://github.com/pojol/braid/wiki "WIKI")
-
-#### QQ Group
-1057895060
