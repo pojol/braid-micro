@@ -2,7 +2,7 @@
 轻量的微服务框架，提供常用的组件，使用braid将使我们专注在实现上，而不需要关心主从，添加删除服务，调度，负载均衡等微服务逻辑。
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid)](https://goreportcard.com/report/github.com/pojol/braid)
-[![drone](http://47.96.147.176:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
+[![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
 > `注:`当前v1.1.x版本为`原型`版本 
@@ -12,8 +12,8 @@
 #### 组件
 * **选举** (election
 ```go
-// 通过 "节点名" "Consul" "LockTick 选举竞争频率" 构建election
-elec := election.New("NodeName", ConsulAddress, WithLockTick(1000))
+// 通过 "邮件服务节点名" "Consul" "LockTick 选举竞争频率" 构建election
+elec := election.New("mail", ConsulAddress, WithLockTick(1000))
 
 elec.Run()
 defer elec.Close()
@@ -23,14 +23,14 @@ elec.IsMaster()
 ```
 
 * **RPC** 
-> client 通过传入`目标节点`信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
+> client 通过传入`目标节点`（节点名）信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
 > client 会自动`发现`注册到braid的节点。
 ```go
-rc := client.New(NodeName, consulAddr, client.WithTracing())
+rc := client.New("base", consulAddr, client.WithTracing())
 rc.Discover()
 defer rc.Close()
 
-conn, err := client.GetConn(target) //  从池中获取一个grpc连接
+conn, err := client.GetConn("mail") // 获取一个邮件节点的连接
 if err != nil {
     goto EXT
 }
@@ -44,17 +44,17 @@ if err != nil {
 ```
 > server
 ```go
-type calcServer struct {
-	pbraid.CalculateServer
+type mailServer struct {
+	pbraid.MailServer
 }
 
-// Addition 加法计算
-func (cs *calcServer) Addition(ctx context.Context, req *AddReq) (*AddRes, error) {
+// SendMail 发送邮件服务
+func (cs *mailServer) SendMail(ctx context.Context, req *SendMailReq) (*SendMailRes, error) {
 	return res, nil
 }
 
-s := server.New(NodeName, server.WithListen(":14222"), server.WithTracing())
-pbraid.RegisterCalculateServer(server.Get(), &calcServer{})
+s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
+pbraid.RegisterMailServer(server.Get(), &mailServer{})
 
 s.Run()
 defer s.Close()
@@ -65,7 +65,7 @@ defer s.Close()
 > 即便采样率非常低，只要有调用超出设置时间 #SlowSpanLimit# #SlowRequestLimit#，这次调用也必然会被打印。
 ```go
 // 基于 1/1000 的采样率构建 Tracer
-t := tracer.New("NodeName", JaegerAddress, WithProbabilistic(0.001))
+t := tracer.New("mail", JaegerAddress, WithProbabilistic(0.001))
 t.Init()
 ```
 
@@ -95,11 +95,8 @@ log.SysError("module", "func", desc)
 ```
 
 ***
-#### 一些完整的样例
-[Gateway](https://github.com/pojol/braid-gateway "网关节点")
+#### 样例
+[使用braid模拟一个游戏架构](https://github.com/pojol/braid-game "使用braid模拟一个游戏架构")
 
 #### WIKI
 [WIKI](https://github.com/pojol/braid/wiki "WIKI")
-
-#### QQ Group
-1057895060
