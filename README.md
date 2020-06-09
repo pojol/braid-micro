@@ -5,9 +5,16 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-> `注:`当前v1.1.x版本为`原型`版本 
 
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
+
+> `注:`当前v1.1.x版本为`原型`版本 
+
+> 获取braid
+
+```bash
+go get github.com/pojol/braid@latest
+```
 
 #### 组件
 * **选举** (election
