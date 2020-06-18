@@ -54,6 +54,9 @@ go get github.com/pojol/braid@latest
 t := tracer.New("mail", JaegerAddress, WithProbabilistic(0.001))
 t.Init()
 ```
+
+[![image.png](https://i.postimg.cc/MT8Y2X7B/image.png)](https://postimg.cc/DWBG1vYf)
+
 * **election** 选举组件
 > 获取当前节点是否为Master节点（Master节点只会存在一个，且当Master节点下线后会从其他同名节点中选举出新的Master
 
