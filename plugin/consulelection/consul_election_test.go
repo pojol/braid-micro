@@ -33,5 +33,6 @@ func TestElection(t *testing.T) {
 
 	e.Run()
 	time.Sleep(time.Second)
+	e.IsMaster()
 	e.Close()
 }
