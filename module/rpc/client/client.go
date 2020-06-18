@@ -10,9 +10,9 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 
+	"github.com/pojol/braid/internal/balancer"
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/discover"
 	"google.golang.org/grpc"
 )

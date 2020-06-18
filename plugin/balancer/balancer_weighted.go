@@ -2,6 +2,7 @@ package balancer
 
 import (
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/internal/balancer"
 )
 
 const (
@@ -10,11 +11,11 @@ const (
 
 type weightRoundrobinBuilder struct{}
 
-func newWightRoundrobinBalancer() Builder {
+func newWightRoundrobinBalancer() balancer.Builder {
 	return &weightRoundrobinBuilder{}
 }
 
-func (*weightRoundrobinBuilder) Build() Balancer {
+func (*weightRoundrobinBuilder) Build() balancer.Balancer {
 	return &wightedRoundrobin{}
 }
 
@@ -23,7 +24,7 @@ func (*weightRoundrobinBuilder) Name() string {
 }
 
 type weightedNod struct {
-	orgNod    Node
+	orgNod    balancer.Node
 	curWeight int
 }
 
@@ -52,13 +53,13 @@ func (wr *wightedRoundrobin) isExist(id string) (int, bool) {
 }
 
 // Update 更新负载均衡节点
-func (wr *wightedRoundrobin) Update(nod Node) {
+func (wr *wightedRoundrobin) Update(nod balancer.Node) {
 
-	if nod.OpTag == OpAdd {
+	if nod.OpTag == balancer.OpAdd {
 		wr.add(nod)
-	} else if nod.OpTag == OpRmv {
+	} else if nod.OpTag == balancer.OpRmv {
 		wr.rmv(nod)
-	} else if nod.OpTag == OpUp {
+	} else if nod.OpTag == balancer.OpUp {
 		wr.syncWeight(nod)
 	}
 
@@ -70,7 +71,7 @@ func (wr *wightedRoundrobin) Pick() (string, error) {
 	var idx int
 
 	if len(wr.nods) <= 0 {
-		return "", ErrBalanceEmpty
+		return "", balancer.ErrBalanceEmpty
 	}
 
 	for k, v := range wr.nods {
@@ -91,7 +92,7 @@ func (wr *wightedRoundrobin) Pick() (string, error) {
 	return wr.nods[idx].orgNod.Address, nil
 }
 
-func (wr *wightedRoundrobin) add(nod Node) {
+func (wr *wightedRoundrobin) add(nod balancer.Node) {
 
 	if _, ok := wr.isExist(nod.ID); ok {
 		// log
@@ -107,7 +108,7 @@ func (wr *wightedRoundrobin) add(nod Node) {
 	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *wightedRoundrobin) rmv(nod Node) {
+func (wr *wightedRoundrobin) rmv(nod balancer.Node) {
 
 	var ok bool
 	var idx int
@@ -124,7 +125,7 @@ func (wr *wightedRoundrobin) rmv(nod Node) {
 	log.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *wightedRoundrobin) syncWeight(nod Node) {
+func (wr *wightedRoundrobin) syncWeight(nod balancer.Node) {
 
 	var ok bool
 	var idx int
@@ -137,5 +138,5 @@ func (wr *wightedRoundrobin) syncWeight(nod Node) {
 }
 
 func init() {
-	Register(newWightRoundrobinBalancer())
+	balancer.Register(newWightRoundrobinBalancer())
 }

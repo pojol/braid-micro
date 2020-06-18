@@ -8,7 +8,7 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/internal/balancer"
 )
 
 type (

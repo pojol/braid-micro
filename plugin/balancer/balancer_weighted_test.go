@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/internal/balancer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,28 +23,29 @@ func TestWRR(t *testing.T) {
 	}))
 	defer l.Close()
 
-	bw := newBalancerWrapper(GetBuilder(balancerName))
+	g := balancer.NewGroup()
+	bw := g.Get("test")
 
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    "test",
-		OpTag:   OpAdd,
+		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    "test",
-		OpTag:   OpAdd,
+		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
 		Name:    "test",
-		OpTag:   OpAdd,
+		OpTag:   balancer.OpAdd,
 	})
 
 	var tests = []struct {
@@ -72,31 +74,32 @@ func TestWRROp(t *testing.T) {
 		Suffex: ".sys",
 	}))
 	defer l.Close()
-	bw := newBalancerWrapper(GetBuilder(balancerName))
+	g := balancer.NewGroup()
+	bw := g.Get("test")
 
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:     "A",
 		Name:   "test",
 		Weight: 4,
-		OpTag:  OpAdd,
+		OpTag:  balancer.OpAdd,
 	})
 
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:    "A",
 		Name:  "test",
-		OpTag: OpRmv,
+		OpTag: balancer.OpRmv,
 	})
 
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:     "B",
 		Name:   "test",
 		Weight: 2,
-		OpTag:  OpAdd,
+		OpTag:  balancer.OpAdd,
 	})
-	bw.Update(Node{
+	bw.Update(balancer.Node{
 		ID:    "B",
 		Name:  "test",
-		OpTag: OpUp,
+		OpTag: balancer.OpUp,
 	})
 
 	bw.Pick()
@@ -115,14 +118,15 @@ func BenchmarkWRR(b *testing.B) {
 	}))
 	defer l.Close()
 
-	bw := newBalancerWrapper(GetBuilder(balancerName))
+	g := balancer.NewGroup()
+	bw := g.Get("test")
 
 	for i := 0; i < 100; i++ {
-		bw.Update(Node{
+		bw.Update(balancer.Node{
 			ID:     strconv.Itoa(i),
 			Name:   "test",
 			Weight: i,
-			OpTag:  OpAdd,
+			OpTag:  balancer.OpAdd,
 		})
 	}
 

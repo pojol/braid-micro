@@ -8,8 +8,8 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
+	"github.com/pojol/braid/internal/balancer"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/plugin/balancer"
 )
 
 func TestDiscover(t *testing.T) {
