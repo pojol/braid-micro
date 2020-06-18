@@ -85,15 +85,15 @@ e.Close()
 
 #### 其他
 
-* **容器发现** (基于registerator
-> 这里没有实现服务发现，而是采用了容器发现作为发现系统,
-> 在Dockerfile中设置env `SERVICE_NAME` 作为节点名, `SERVICE_TAG` 作为发现标签。
+* **容器注册** (基于registerator
+> 这里没有实现服务注册，而是采用了容器注册作为注册系统,
+> 在Dockerfile中设置env `SERVICE_NAME` 作为节点名, `SERVICE_TAG` 作为注册标签。
 ```Dockerfile
 ENV SERVICE_TAGS=braid,calculate
 ENV SERVICE_14222_NAME=calculate
 EXPOSE 14222
 ```
-
+> 启动容器后，容器中的服务会自动注册到braid.
 
 ***
 
