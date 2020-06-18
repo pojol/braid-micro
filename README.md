@@ -5,69 +5,85 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-> `注:`当前v1.1.x版本为`原型`版本 
 
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
-#### 组件
-* **选举** (election
-```go
-// 通过 "邮件服务节点名" "Consul" "LockTick 选举竞争频率" 构建election
-elec := election.New("mail", ConsulAddress, WithLockTick(1000))
+> `注:`当前v1.1.x版本为`原型`版本 
 
-elec.Run()
-defer elec.Close()
+> 获取braid
 
-// 获取当前节点是否为Master节点（Master节点只会存在一个，且当Master节点下线后会从其他同名节点中选举出新的Master.
-elec.IsMaster()
+```bash
+go get github.com/pojol/braid@latest
 ```
 
-* **RPC** 
-> client 通过传入`目标节点`（节点名）信息，调用负载均衡器选择一个权重较轻的节点进行发送（默认采用`平滑加权轮询`
-> client 会自动`发现`注册到braid的节点。
-```go
-rc := client.New("base", consulAddr, client.WithTracing())
-rc.Discover()
-defer rc.Close()
+#### 组件 (module
+> braid对外提供的组件目录
 
-conn, err := client.GetConn("mail") // 获取一个邮件节点的连接
-if err != nil {
-    goto EXT
-}
-defer conn.Put()    // 还给池
+* **rpc** 远程调用
+    * client 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
+    
+    ```go
+    conn, err := client.GetConn("mail") // 获取一个邮件节点的连接
+    if err != nil {
+        goto EXT
+    }
+    defer conn.Put()    // 还给池
 
-cc = pbraid.NewCalculateClient(conn.ClientConn)
-res, err = cc.Addition(ctx.Request().Context(), &pbraid.AddReq{})
-if err != nil {
-    conn.Unhealthy()    // 如果调用失败，将连接设置为不健康的，由池进行销毁。
-}
-```
-> server
-```go
-type mailServer struct {
-	pbraid.MailServer
-}
+    cc = pbraid.NewCalculateClient(conn.ClientConn)
+    res, err = cc.Addition(ctx.Request().Context(), &pbraid.AddReq{})
+    if err != nil {
+        conn.Unhealthy()    // 如果调用失败，将连接设置为不健康的，由池进行销毁。
+    }
+    ```
 
-// SendMail 发送邮件服务
-func (cs *mailServer) SendMail(ctx context.Context, req *SendMailReq) (*SendMailRes, error) {
-	return res, nil
-}
+    * server grpc server的包装
+    
+    ```go
+    s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
+    pbraid.RegisterMailServer(server.Get(), &mailServer{})
 
-s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
-pbraid.RegisterMailServer(server.Get(), &mailServer{})
-
-s.Run()
-defer s.Close()
-
-```
-* **分布式追踪** (tracer
+    s.Run()
+    defer s.Close()
+    ```
+* **tracer** 分布式链路追踪组件
 > 提供基于jaeger的分布式追踪服务，同时支持慢查询
 > 即便采样率非常低，只要有调用超出设置时间 #SlowSpanLimit# #SlowRequestLimit#，这次调用也必然会被打印。
+
 ```go
 // 基于 1/1000 的采样率构建 Tracer
 t := tracer.New("mail", JaegerAddress, WithProbabilistic(0.001))
 t.Init()
 ```
+
+[![image.png](https://i.postimg.cc/MT8Y2X7B/image.png)](https://postimg.cc/DWBG1vYf)
+
+* **election** 选举组件
+> 获取当前节点是否为Master节点（Master节点只会存在一个，且当Master节点下线后会从其他同名节点中选举出新的Master
+
+```go
+// 构建，选择一个选举器
+e := election.GetBuilder(ElectionName).Build(Cfg{
+    Address:           mock.ConsulAddr,
+    Name:              "test",
+    LockTick:          time.Second,
+    RefushSessionTick: time.Second,
+})
+
+
+e.Run()
+e.IsMaster()    // 获取当前节点是否为主节点。
+e.Close()
+```
+
+#### 插件 (plugin
+> 提供组件的不同实现的目录，另外也支持用户在外部自己实现plugin注册到braid.
+
+* consul_discover 基于consul实现的服务发现&注册
+* consul_election 基于consul实现的election
+* balancer_swrr 平滑加权轮询
+
+
+#### 其他
 
 * **容器发现** (基于registerator
 > 这里没有实现服务发现，而是采用了容器发现作为发现系统,
@@ -78,25 +94,8 @@ ENV SERVICE_14222_NAME=calculate
 EXPOSE 14222
 ```
 
-* **日志** (log
-> 日志模块基于zap，提供默认日志构建以及多种可选的日志
-```go
-log.New(log.Config{mode, path, suffex})
-
-// 这里多添加了 系统诊断日志模块 以及 用户行为日志
-log.New(log.Config{mode, path, suffex}, 
-    WithSys(log.Config{}), 
-    WithBehavior(log.Config{}))
-
-// 普通日志使用 zap.sugared 灵活使用
-log.Debugf("%v\n", "")
-// 结构化日志需要参照 log_sys.go 进行自定义输出
-log.SysError("module", "func", desc)
-```
 
 ***
-#### 样例
-[使用braid模拟一个游戏架构](https://github.com/pojol/braid-game "使用braid模拟一个游戏架构")
 
 #### WIKI
 [WIKI](https://github.com/pojol/braid/wiki "WIKI")
