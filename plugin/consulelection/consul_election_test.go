@@ -1,13 +1,12 @@
-package election
+package consulelection
 
 import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/election"
 )
 
 func TestElection(t *testing.T) {
@@ -25,17 +24,14 @@ func TestElection(t *testing.T) {
 	}))
 	defer l.Close()
 
-	e, _ := New("test", mock.ConsulAddr)
+	e := election.GetBuilder(ElectionName).Build(Cfg{
+		Address:           mock.ConsulAddr,
+		Name:              "test",
+		LockTick:          time.Second,
+		RefushSessionTick: time.Second,
+	})
 
 	e.Run()
 	time.Sleep(time.Second)
 	e.Close()
-}
-
-func TestOpts(t *testing.T) {
-	mock.Init()
-
-	New("test", mock.ConsulAddr, WithLockTick(1000), WithRefushTick(1000))
-	assert.Equal(t, e.cfg.LockTick.Milliseconds(), int64(1000))
-	assert.Equal(t, e.cfg.RefushSessionTick.Milliseconds(), int64(1000))
 }
