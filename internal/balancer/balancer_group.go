@@ -17,7 +17,7 @@ type Group struct {
 func NewGroup(opts ...Option) *Group {
 
 	g := &Group{
-		builderName: "WeightedRoundrobin",
+		builderName: "SmoothWeightedRoundrobin",
 	}
 
 	for _, opt := range opts {

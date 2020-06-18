@@ -1,4 +1,4 @@
-package balancer
+package swrrbalancer
 
 import (
 	"github.com/pojol/braid/3rd/log"
@@ -6,20 +6,20 @@ import (
 )
 
 const (
-	balancerName = "WeightedRoundrobin"
+	balancerName = "SmoothWeightedRoundrobin"
 )
 
-type weightRoundrobinBuilder struct{}
+type smoothWeightRoundrobinBuilder struct{}
 
-func newWightRoundrobinBalancer() balancer.Builder {
-	return &weightRoundrobinBuilder{}
+func newSmoothWightRoundrobinBalancer() balancer.Builder {
+	return &smoothWeightRoundrobinBuilder{}
 }
 
-func (*weightRoundrobinBuilder) Build() balancer.Balancer {
-	return &wightedRoundrobin{}
+func (*smoothWeightRoundrobinBuilder) Build() balancer.Balancer {
+	return &swrrBalancer{}
 }
 
-func (*weightRoundrobinBuilder) Name() string {
+func (*smoothWeightRoundrobinBuilder) Name() string {
 	return balancerName
 }
 
@@ -28,13 +28,13 @@ type weightedNod struct {
 	curWeight int
 }
 
-// WeightedRoundrobin 平滑加权轮询
-type wightedRoundrobin struct {
+// swrrBalancer 平滑加权轮询
+type swrrBalancer struct {
 	totalWeight int
 	nods        []weightedNod
 }
 
-func (wr *wightedRoundrobin) calcTotalWeight() {
+func (wr *swrrBalancer) calcTotalWeight() {
 	wr.totalWeight = 0
 
 	for _, v := range wr.nods {
@@ -42,7 +42,7 @@ func (wr *wightedRoundrobin) calcTotalWeight() {
 	}
 }
 
-func (wr *wightedRoundrobin) isExist(id string) (int, bool) {
+func (wr *swrrBalancer) isExist(id string) (int, bool) {
 	for k, v := range wr.nods {
 		if v.orgNod.ID == id {
 			return k, true
@@ -53,7 +53,7 @@ func (wr *wightedRoundrobin) isExist(id string) (int, bool) {
 }
 
 // Update 更新负载均衡节点
-func (wr *wightedRoundrobin) Update(nod balancer.Node) {
+func (wr *swrrBalancer) Update(nod balancer.Node) {
 
 	if nod.OpTag == balancer.OpAdd {
 		wr.add(nod)
@@ -66,7 +66,7 @@ func (wr *wightedRoundrobin) Update(nod balancer.Node) {
 }
 
 // Pick 执行算法，选取节点
-func (wr *wightedRoundrobin) Pick() (string, error) {
+func (wr *swrrBalancer) Pick() (string, error) {
 	var tmpWeight int
 	var idx int
 
@@ -92,7 +92,7 @@ func (wr *wightedRoundrobin) Pick() (string, error) {
 	return wr.nods[idx].orgNod.Address, nil
 }
 
-func (wr *wightedRoundrobin) add(nod balancer.Node) {
+func (wr *swrrBalancer) add(nod balancer.Node) {
 
 	if _, ok := wr.isExist(nod.ID); ok {
 		// log
@@ -108,7 +108,7 @@ func (wr *wightedRoundrobin) add(nod balancer.Node) {
 	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *wightedRoundrobin) rmv(nod balancer.Node) {
+func (wr *swrrBalancer) rmv(nod balancer.Node) {
 
 	var ok bool
 	var idx int
@@ -125,7 +125,7 @@ func (wr *wightedRoundrobin) rmv(nod balancer.Node) {
 	log.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *wightedRoundrobin) syncWeight(nod balancer.Node) {
+func (wr *swrrBalancer) syncWeight(nod balancer.Node) {
 
 	var ok bool
 	var idx int
@@ -138,5 +138,5 @@ func (wr *wightedRoundrobin) syncWeight(nod balancer.Node) {
 }
 
 func init() {
-	balancer.Register(newWightRoundrobinBalancer())
+	balancer.Register(newSmoothWightRoundrobinBalancer())
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
 
-	_ "github.com/pojol/braid/plugin/balancer"
+	_ "github.com/pojol/braid/plugin/swrrbalancer"
 )
 
 func TestMain(m *testing.M) {
