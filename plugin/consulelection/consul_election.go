@@ -17,7 +17,7 @@ const (
 
 var (
 	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
+	ErrConfigConvert = errors.New("convert config error")
 )
 
 type consulElectionBuilder struct{}

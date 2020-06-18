@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/internal/discover"
+	"github.com/pojol/braid/plugin/consuldiscover"
 
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid/internal/balancer"
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/discover"
 	"google.golang.org/grpc"
 )
 
@@ -77,7 +78,11 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 
 	// 这里后面需要做成可选项
 	c.bg = balancer.NewGroup()
-	c.discov = discover.New(name, consulAddress, c.bg)
+	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, consuldiscover.Cfg{
+		Name:          name,
+		Interval:      time.Second * 2,
+		ConsulAddress: consulAddress,
+	})
 
 	return c
 }
@@ -154,7 +159,7 @@ EXT:
 
 // Discover 执行服务发现逻辑
 func (c *Client) Discover() {
-	c.discov.Run()
+	c.discov.Discover()
 }
 
 // Close 关闭服务发现逻辑

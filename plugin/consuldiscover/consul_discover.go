@@ -1,4 +1,4 @@
-package discover
+package consuldiscover
 
 import (
 	"errors"
@@ -9,69 +9,75 @@ import (
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/internal/balancer"
-)
-
-type (
-	// IDiscover 服务发现
-	IDiscover interface {
-		Run()
-		Close()
-	}
-
-	// Discover 发现管理braid相关的节点
-	Discover struct {
-		ticker *time.Ticker
-		cfg    config
-		bg     *balancer.Group
-
-		// service id : service nod
-		passingMap map[string]syncNode
-	}
-
-	syncNode struct {
-		service string
-		id      string
-		address string
-	}
-)
-
-var (
-	dc *Discover
-
-	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
+	"github.com/pojol/braid/internal/discover"
 )
 
 const (
+	// DiscoverName 发现器名称
+	DiscoverName = "ConsulDiscover"
+
 	// DiscoverTag 用于docker发现的tag， 所有希望被discover服务发现的节点，
 	// 都应该在Dockerfile中设置 ENV SERVICE_TAGS=braid
 	DiscoverTag = "braid"
 )
 
-// New 构建指针
-func New(name string, consulAddress string, bg *balancer.Group, opts ...Option) IDiscover {
-	const (
-		defaultInterval = time.Millisecond * 2000
-	)
+var (
+	// ErrConfigConvert 配置转换失败
+	ErrConfigConvert = errors.New("convert config error")
+)
 
-	dc = &Discover{
-		cfg: config{
-			Interval:      defaultInterval,
-			ConsulAddress: consulAddress,
-		},
-		bg: bg,
-	}
+type consulDiscoverBuilder struct{}
 
-	for _, opt := range opts {
-		opt(dc)
-	}
-
-	dc.passingMap = make(map[string]syncNode)
-
-	return dc
+func newConsulDiscover() discover.Builder {
+	return &consulDiscoverBuilder{}
 }
 
-func (dc *Discover) tick() {
+func (*consulDiscoverBuilder) Name() string {
+	return DiscoverName
+}
+
+func (*consulDiscoverBuilder) Build(bg *balancer.Group, cfg interface{}) discover.IDiscover {
+	cecfg, ok := cfg.(Cfg)
+	if !ok {
+		return nil
+	}
+
+	e := &consulDiscover{
+		cfg:        cecfg,
+		bg:         bg,
+		passingMap: make(map[string]syncNode),
+	}
+
+	return e
+}
+
+// Cfg discover config
+type Cfg struct {
+	Name string
+
+	// 同步节点信息间隔
+	Interval time.Duration
+
+	ConsulAddress string
+}
+
+// Discover 发现管理braid相关的节点
+type consulDiscover struct {
+	ticker *time.Ticker
+	cfg    Cfg
+	bg     *balancer.Group
+
+	// service id : service nod
+	passingMap map[string]syncNode
+}
+
+type syncNode struct {
+	service string
+	id      string
+	address string
+}
+
+func (dc *consulDiscover) tick() {
 
 	services, err := consul.GetCatalogServices(dc.cfg.ConsulAddress, DiscoverTag)
 	if err != nil {
@@ -133,7 +139,7 @@ func (dc *Discover) tick() {
 	}
 }
 
-func (dc *Discover) runImpl() {
+func (dc *consulDiscover) runImpl() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -155,14 +161,18 @@ func (dc *Discover) runImpl() {
 	}
 }
 
-// Run 运行管理器
-func (dc *Discover) Run() {
+// Discover 运行管理器
+func (dc *consulDiscover) Discover() {
 	go func() {
 		dc.runImpl()
 	}()
 }
 
 // Close close
-func (dc *Discover) Close() {
+func (dc *consulDiscover) Close() {
 
+}
+
+func init() {
+	discover.Register(newConsulDiscover())
 }
