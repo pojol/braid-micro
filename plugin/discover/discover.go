@@ -3,7 +3,7 @@ package discover
 import (
 	"strings"
 
-	"github.com/pojol/braid/internal/balancer"
+	"github.com/pojol/braid/plugin/balancer"
 )
 
 // Builder 构建器接口

@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/internal/discover"
-	"github.com/pojol/braid/plugin/consuldiscover"
+	"github.com/pojol/braid/plugin/balancer"
+	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/plugin/discover"
+	"github.com/pojol/braid/plugin/discover/consuldiscover"
 
 	"github.com/opentracing/opentracing-go"
-
-	"github.com/pojol/braid/internal/balancer"
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"

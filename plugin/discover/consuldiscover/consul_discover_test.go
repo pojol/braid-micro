@@ -6,9 +6,10 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/internal/balancer"
-	"github.com/pojol/braid/internal/discover"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/plugin/balancer"
+	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/plugin/discover"
 )
 
 func TestDiscover(t *testing.T) {
