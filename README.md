@@ -20,23 +20,17 @@ go get github.com/pojol/braid@latest
 > braid对外提供的组件目录
 
 * **rpc** 远程调用
-    * client 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
+    * `client` 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
     
     ```go
-    conn, err := client.GetConn("mail") // 获取一个邮件节点的连接
-    if err != nil {
-        goto EXT
-    }
-    defer conn.Put()    // 还给池
-
-    cc = pbraid.NewCalculateClient(conn.ClientConn)
-    res, err = cc.Addition(ctx.Request().Context(), &pbraid.AddReq{})
-    if err != nil {
-        conn.Unhealthy()    // 如果调用失败，将连接设置为不健康的，由池进行销毁。
-    }
+    Invoke(context.TODO(), "mail", "/bproto.listen/routing", &bproto.RouteReq{
+		Nod:     nodeName,
+		Service: serviceName,
+		ReqBody: []byte{},
+	}, res)
     ```
 
-    * server grpc server的包装
+    * `server` grpc server的包装
     
     ```go
     s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
