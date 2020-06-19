@@ -10,8 +10,6 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/rpc/client/bproto"
-
-	_ "github.com/pojol/braid/plugin/swrrbalancer"
 )
 
 func TestMain(m *testing.M) {
