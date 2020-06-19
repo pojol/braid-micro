@@ -34,7 +34,7 @@ func TestCaller(t *testing.T) {
 	time.Sleep(time.Millisecond * 200)
 	res := &bproto.RouteRes{}
 
-	nodeName := "test"
+	nodeName := "gateway"
 	serviceName := "service"
 
 	Invoke(context.TODO(), nodeName, "/bproto.listen/routing", &bproto.RouteReq{
