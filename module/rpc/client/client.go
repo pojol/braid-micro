@@ -87,8 +87,7 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 	return c
 }
 
-// GetConn 获取rpc client连接
-func GetConn(target string) (*pool.ClientConn, error) {
+func getConn(target string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
@@ -113,6 +112,22 @@ func GetConn(target string) (*pool.ClientConn, error) {
 	}
 
 	return caConn, nil
+}
+
+// Invoke 执行远程调用
+func Invoke(ctx context.Context, nodName, methon string, args, reply interface{}, opts ...grpc.CallOption) {
+	conn, err := getConn(nodName)
+	if err != nil {
+		//log
+		return
+	}
+
+	err = conn.ClientConn.Invoke(ctx, methon, args, reply, opts...)
+	if err != nil {
+		conn.Unhealthy()
+	}
+
+	conn.Put()
 }
 
 // Pool 获取grpc连接池

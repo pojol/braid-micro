@@ -20,23 +20,17 @@ go get github.com/pojol/braid@latest
 > braid对外提供的组件目录
 
 * **rpc** 远程调用
-    * client 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
+    * `client` 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
     
     ```go
-    conn, err := client.GetConn("mail") // 获取一个邮件节点的连接
-    if err != nil {
-        goto EXT
-    }
-    defer conn.Put()    // 还给池
-
-    cc = pbraid.NewCalculateClient(conn.ClientConn)
-    res, err = cc.Addition(ctx.Request().Context(), &pbraid.AddReq{})
-    if err != nil {
-        conn.Unhealthy()    // 如果调用失败，将连接设置为不健康的，由池进行销毁。
-    }
+    Invoke(context.TODO(), "mail", "/bproto.listen/routing", &bproto.RouteReq{
+		Nod:     nodeName,
+		Service: serviceName,
+		ReqBody: []byte{},
+	}, res)
     ```
 
-    * server grpc server的包装
+    * `server` grpc server的包装
     
     ```go
     s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
@@ -85,15 +79,15 @@ e.Close()
 
 #### 其他
 
-* **容器发现** (基于registerator
-> 这里没有实现服务发现，而是采用了容器发现作为发现系统,
-> 在Dockerfile中设置env `SERVICE_NAME` 作为节点名, `SERVICE_TAG` 作为发现标签。
+* **容器注册** (基于registerator
+> 这里没有实现服务注册，而是采用了容器注册作为注册系统,
+> 在Dockerfile中设置env `SERVICE_NAME` 作为节点名, `SERVICE_TAG` 作为注册标签。
 ```Dockerfile
 ENV SERVICE_TAGS=braid,calculate
 ENV SERVICE_14222_NAME=calculate
 EXPOSE 14222
 ```
-
+> 启动容器后，容器中的服务会自动注册到braid.
 
 ***
 

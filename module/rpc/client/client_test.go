@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/rpc/client/bproto"
 
 	_ "github.com/pojol/braid/plugin/swrrbalancer"
 )
@@ -32,13 +34,16 @@ func TestCaller(t *testing.T) {
 
 	New("test", mock.ConsulAddr)
 	time.Sleep(time.Millisecond * 200)
+	res := &bproto.RouteRes{}
 
-	conn, err := GetConn("test")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer conn.Put()
+	nodeName := "test"
+	serviceName := "service"
+
+	Invoke(context.TODO(), nodeName, "/bproto.listen/routing", &bproto.RouteReq{
+		Nod:     nodeName,
+		Service: serviceName,
+		ReqBody: []byte{},
+	}, res)
 
 	/*
 		client := bproto.NewListenClient(conn.ClientConn)
