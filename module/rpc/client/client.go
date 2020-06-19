@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -95,6 +96,7 @@ func getConn(target string) (*pool.ClientConn, error) {
 	defer c.Unlock()
 
 	address, err := c.bg.Get(target).Pick()
+	fmt.Println(target, address, err)
 	if err != nil {
 		return nil, err
 	}
