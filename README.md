@@ -17,7 +17,7 @@ go get github.com/pojol/braid@latest
 ```
 
 #### 组件 (module
-> 
+> braid对外提供的接口
 
 ``` go
 /module
@@ -38,7 +38,7 @@ go get github.com/pojol/braid@latest
 
 
 #### 插件（plug-in
-> 
+> braid中各种组件实现采用的策略，也支持用户引入自定义的插件。
 
 ```go
 /plugin
