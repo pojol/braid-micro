@@ -5,7 +5,6 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
 > `注:`当前v1.1.x版本为`原型`版本 
@@ -24,12 +23,8 @@ go get github.com/pojol/braid@latest
     /* 选举，提供接口 IsMaster 给用户判断当前节点是否为主节点。 在任意时候都会只存在一个主节点，当原有的主节点下线后，会选举出新的主节点*/
     /elector
 
-    /* 远程调用，提供client 和 server 端的支持 */
+    /* 基于grpc的远程调用，提供client 和 server 端的支持 */
     /rpc
-        /* 通过调用 Invoke 内部会自动从池中挑选一个目标节点的连接，进行消息发送。 */
-        client.Invoke(nodName, methon, req, res)
-        /* 对grpc server进行一层包装，使braid的内容结合到grpc中 */
-        server.New(nodeName, server.WithListen(":14222"), server.WithTracing())
 
     /* 分布式追踪，支持各种行为追踪，grpc，redis，http，慢查询，等 */
     /tracer
