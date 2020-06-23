@@ -29,7 +29,6 @@ go get github.com/pojol/braid@latest
     /* 分布式追踪，支持各种行为追踪，grpc，redis，http，慢查询，等 */
     /tracer
 ```
-![image.png](https://i.loli.net/2020/06/19/CwbvuhyjKkXLf6d.png)
 
 
 #### 插件（plug-in
