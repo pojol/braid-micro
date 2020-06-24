@@ -30,27 +30,24 @@ func TestMain(m *testing.M) {
 
 func TestCaller(t *testing.T) {
 
-	New("test", mock.ConsulAddr)
+	c := New("test", mock.ConsulAddr)
+	c.Discover()
+	defer c.Close()
+
 	time.Sleep(time.Millisecond * 200)
 	res := &bproto.RouteRes{}
 
-	nodeName := "test"
+	nodeName := "gateway"
 	serviceName := "service"
 
-	Invoke(context.TODO(), nodeName, "/bproto.listen/routing", &bproto.RouteReq{
+	tc, cancel := context.WithTimeout(context.TODO(), time.Millisecond*200)
+	Invoke(tc, nodeName, "/bproto.listen/routing", &bproto.RouteReq{
 		Nod:     nodeName,
 		Service: serviceName,
 		ReqBody: []byte{},
 	}, res)
 
-	/*
-		client := bproto.NewListenClient(conn.ClientConn)
-		_, err = client.Routing(context.Background(), &bproto.RouteReq{})
-		if err != nil {
-			conn.Unhealthy()
-		}
-	*/
-	//assert.Equal(t, err, nil)
+	cancel()
 }
 
 func TestOpts(t *testing.T) {

@@ -5,7 +5,6 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
 > `注:`当前v1.1.x版本为`原型`版本 
@@ -17,65 +16,48 @@ go get github.com/pojol/braid@latest
 ```
 
 #### 组件 (module
-> braid对外提供的组件目录
+> braid对外提供的接口
 
-* **rpc** 远程调用
-    * `client` 提供 **GetConn** 方法，通过`节点名`自动挑选一个连接。
-    
-    ```go
-    Invoke(context.TODO(), "mail", "/bproto.listen/routing", &bproto.RouteReq{
-		Nod:     nodeName,
-		Service: serviceName,
-		ReqBody: []byte{},
-	}, res)
-    ```
+``` go
+/module
+    /* 选举，提供接口 IsMaster 给用户判断当前节点是否为主节点。 在任意时候都会只存在一个主节点，当原有的主节点下线后，会选举出新的主节点*/
+    /elector
 
-    * `server` grpc server的包装
-    
-    ```go
-    s := server.New("mail", server.WithListen(":14222"), server.WithTracing())
-    pbraid.RegisterMailServer(server.Get(), &mailServer{})
+    /* 基于grpc的远程调用，提供client 和 server 端的支持 */
+    /rpc
 
-    s.Run()
-    defer s.Close()
-    ```
-* **tracer** 分布式链路追踪组件
-> 提供基于jaeger的分布式追踪服务，同时支持慢查询
-> 即便采样率非常低，只要有调用超出设置时间 #SlowSpanLimit# #SlowRequestLimit#，这次调用也必然会被打印。
-
-```go
-// 基于 1/1000 的采样率构建 Tracer
-t := tracer.New("mail", JaegerAddress, WithProbabilistic(0.001))
-t.Init()
+    /* 分布式追踪，支持各种行为追踪，grpc，redis，http，慢查询，等 */
+    /tracer
 ```
 
-[![image.png](https://i.postimg.cc/MT8Y2X7B/image.png)](https://postimg.cc/DWBG1vYf)
 
-* **election** 选举组件
-> 获取当前节点是否为Master节点（Master节点只会存在一个，且当Master节点下线后会从其他同名节点中选举出新的Master
+#### 插件（plug-in
+> braid中各种组件实现采用的策略，也支持用户引入自定义的插件。
 
 ```go
-// 构建，选择一个选举器
-e := election.GetBuilder(ElectionName).Build(Cfg{
-    Address:           mock.ConsulAddr,
-    Name:              "test",
-    LockTick:          time.Second,
-    RefushSessionTick: time.Second,
-})
+/plugin
 
+    /* 负载均衡器插件接口文件 */
+    /balancer
+        /* SmoothWeightRoundrobin 平滑加权轮询实现 */
+        /swrrbalancer
 
-e.Run()
-e.IsMaster()    // 获取当前节点是否为主节点。
-e.Close()
+    /* 发现器接口文件 */
+    /discover
+        /* 基于consul的服务发现实现 */
+        /consuldiscover
+
+    /* 选举器接口文件 */
+    /elector
+        /* 基于consul的选举实现 */
+        /consulelector
+
+    /* 链接器接口文件 */
+    / linker
+        /* 基于redis的连接器实现 */
+        /redislinker
+
 ```
-
-#### 插件 (plugin
-> 提供组件的不同实现的目录，另外也支持用户在外部自己实现plugin注册到braid.
-
-* consul_discover 基于consul实现的服务发现&注册
-* consul_election 基于consul实现的election
-* balancer_swrr 平滑加权轮询
-
 
 #### 其他
 

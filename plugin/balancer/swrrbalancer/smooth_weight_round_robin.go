@@ -1,6 +1,8 @@
 package swrrbalancer
 
 import (
+	"fmt"
+
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/plugin/balancer"
 )
@@ -70,6 +72,8 @@ func (wr *swrrBalancer) Pick() (string, error) {
 	var tmpWeight int
 	var idx int
 
+	fmt.Println("pick", wr.nods)
+
 	if len(wr.nods) <= 0 {
 		return "", balancer.ErrBalanceEmpty
 	}
@@ -103,6 +107,8 @@ func (wr *swrrBalancer) add(nod balancer.Node) {
 		orgNod:    nod,
 		curWeight: int(nod.Weight),
 	})
+
+	fmt.Println("add", wr.nods)
 
 	wr.calcTotalWeight()
 	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
