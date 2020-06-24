@@ -6,7 +6,7 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(cfg interface{}) IElection
+	Build(cfg interface{}) (IElection, error)
 	Name() string
 }
 

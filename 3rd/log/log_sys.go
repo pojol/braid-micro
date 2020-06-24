@@ -15,6 +15,11 @@ import (
 	4. request慢日志
 */
 
+// 日志类型
+const (
+	LogElector = "LogElector"
+)
+
 // SysError 系统错误日志
 func SysError(module string, function string, desc string) {
 
@@ -51,9 +56,10 @@ func SysCompose(nods []string, desc string) {
 }
 
 // SysElection 选举日志
-func SysElection(mode string) {
-	logPtr.SysLog.Info("current run mode",
-		zap.String("mode", mode),
+func SysElection(nod string) {
+	logPtr.SysLog.Info("current master nod",
+		zap.String("logt", LogElector),
+		zap.String("node", nod),
 	)
 }
 

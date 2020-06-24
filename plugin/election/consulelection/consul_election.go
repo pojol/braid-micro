@@ -26,10 +26,10 @@ func newConsulElection() election.Builder {
 	return &consulElectionBuilder{}
 }
 
-func (*consulElectionBuilder) Build(cfg interface{}) election.IElection {
+func (*consulElectionBuilder) Build(cfg interface{}) (election.IElection, error) {
 	cecfg, ok := cfg.(Cfg)
 	if !ok {
-		return nil
+		return nil, ErrConfigConvert
 	}
 
 	e := &consulElection{
@@ -40,12 +40,12 @@ func (*consulElectionBuilder) Build(cfg interface{}) election.IElection {
 
 	sid, err := consul.CreateSession(e.cfg.Address, e.cfg.Name+"_lead")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	locked, err := consul.AcquireLock(e.cfg.Address, e.cfg.Name, sid)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	if locked {
 		log.SysElection("master")
@@ -56,7 +56,7 @@ func (*consulElectionBuilder) Build(cfg interface{}) election.IElection {
 	e.sessionID = sid
 	e.locked = locked
 
-	return e
+	return e, nil
 }
 
 func (*consulElectionBuilder) Name() string {
@@ -67,6 +67,7 @@ func (*consulElectionBuilder) Name() string {
 type Cfg struct {
 	Address           string
 	Name              string
+	NodeID            string
 	LockTick          time.Duration
 	RefushSessionTick time.Duration
 }
@@ -109,7 +110,7 @@ func (e *consulElection) runImpl() {
 			succ, _ := consul.AcquireLock(e.cfg.Address, e.cfg.Name, e.sessionID)
 			if succ {
 				e.locked = true
-				log.SysElection("master")
+				log.SysElection(e.cfg.NodeID)
 			}
 		}
 	}
