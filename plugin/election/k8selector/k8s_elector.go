@@ -87,6 +87,8 @@ func (*k8sElectorBuilder) Build(cfg interface{}) (election.IElection, error) {
 		RenewDeadline:   10 * time.Second,  // 更新租约时间
 		RetryPeriod:     kecfg.RetryPeriod, // 非master节点的重试时间
 		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {},
+			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == kecfg.NodID {
 					log.SysElection(identity)
