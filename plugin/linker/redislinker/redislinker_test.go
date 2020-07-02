@@ -1,14 +1,13 @@
-package link
+package redislinker
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/plugin/linker"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTarget(t *testing.T) {
@@ -26,31 +25,24 @@ func TestTarget(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	l := New()
-	l.Init(Config{})
+	b := linker.GetBuilder(LinkerName)
+	lk := b.Build(Cfg{
+		Tracing: false,
+	})
 
-	err := l.Offline("address")
+	num, err := lk.Num(nil, "testnodid")
+	assert.Equal(t, num, 0)
 	assert.Equal(t, err, nil)
 
-	err = l.Link(context.Background(), "test_link", "address")
+	err = lk.Link(nil, "testtoken1", "testnodid", "192.168.0.1:8000")
 	assert.Equal(t, err, nil)
 
-	addr, err := l.Target(context.Background(), "test_link")
-	assert.Equal(t, err, nil)
-	assert.Equal(t, addr, "address")
-
-	num, err := l.Num("address")
-	if err != nil {
-		t.Error(err)
-	}
-	assert.Equal(t, num, 1)
-
-	err = l.Offline("address")
+	target, err := lk.Target(nil, "testtoken1")
+	assert.Equal(t, target, "192.168.0.1:8000")
 	assert.Equal(t, err, nil)
 
-	assert.Equal(t, Get(), l)
-	l.Unlink("")
-	l.Run()
-	l.Close()
-
+	lk.Offline(nil, "testnodid")
+	num, err = lk.Num(nil, "testnodid")
+	assert.Equal(t, num, 0)
+	assert.Equal(t, err, nil)
 }
