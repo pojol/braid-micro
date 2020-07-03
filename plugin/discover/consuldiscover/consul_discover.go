@@ -10,6 +10,8 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/discover"
+	"github.com/pojol/braid/plugin/linker"
+	"github.com/pojol/braid/plugin/linker/redislinker"
 )
 
 const (
@@ -48,6 +50,10 @@ func (*consulDiscoverBuilder) Build(bg *balancer.Group, cfg interface{}) discove
 		passingMap: make(map[string]syncNode),
 	}
 
+	if cecfg.Link {
+		e.linker = linker.GetBuilder(redislinker.LinkerName).Build(nil)
+	}
+
 	return e
 }
 
@@ -58,14 +64,22 @@ type Cfg struct {
 	// 同步节点信息间隔
 	Interval time.Duration
 
+	// 是否引用链接器
+	Link bool
+
+	// 注册中心
 	ConsulAddress string
 }
 
 // Discover 发现管理braid相关的节点
 type consulDiscover struct {
-	ticker *time.Ticker
-	cfg    Cfg
-	bg     *balancer.Group
+	discoverTicker   *time.Ticker
+	syncWeightTicker *time.Ticker
+
+	cfg Cfg
+	bg  *balancer.Group
+
+	linker linker.ILinker
 
 	// service id : service nod
 	passingMap map[string]syncNode
@@ -77,7 +91,7 @@ type syncNode struct {
 	address string
 }
 
-func (dc *consulDiscover) tick() {
+func (dc *consulDiscover) discoverImpl() {
 
 	services, err := consul.GetCatalogServices(dc.cfg.ConsulAddress, DiscoverTag)
 	if err != nil {
@@ -97,13 +111,6 @@ func (dc *consulDiscover) tick() {
 				address: service.ServiceAddress + ":" + strconv.Itoa(service.ServicePort),
 			}
 
-			/*
-				_, err := link.Get().Num(sn.address)
-				if err != nil {
-					continue
-				}
-			*/
-
 			dc.passingMap[service.ServiceID] = sn
 			dc.bg.Get(sn.service).Update(balancer.Node{
 				ID:      sn.id,
@@ -112,8 +119,6 @@ func (dc *consulDiscover) tick() {
 				Weight:  1,
 				OpTag:   balancer.OpAdd,
 			})
-
-		} else { // 看一下是否需要更新权重
 
 		}
 	}
@@ -127,16 +132,35 @@ func (dc *consulDiscover) tick() {
 				OpTag: balancer.OpRmv,
 			})
 
-			/*
-				err := link.Get().Offline(s.passingMap[k].address)
-				if err != nil {
-					continue
-				}
-			*/
+			if dc.linker != nil {
+				dc.linker.Offline(dc.passingMap[k].id)
+			}
 
 			delete(dc.passingMap, k)
 		}
 	}
+}
+
+func (dc *consulDiscover) SyncWeight() {
+	if dc.linker == nil {
+		return
+	}
+
+	for k := range dc.passingMap {
+		num, err := dc.linker.Num(dc.passingMap[k].id)
+		if err != nil {
+			continue
+		}
+
+		dc.bg.Get(dc.passingMap[k].service).Update(balancer.Node{
+			ID:      dc.passingMap[k].id,
+			Name:    dc.passingMap[k].service,
+			Address: dc.passingMap[k].address,
+			Weight:  num,
+			OpTag:   balancer.OpUp,
+		})
+	}
+
 }
 
 func (dc *consulDiscover) runImpl() {
@@ -147,16 +171,19 @@ func (dc *consulDiscover) runImpl() {
 			}
 		}()
 		// todo ..
-		dc.tick()
+		dc.discoverImpl()
 	}
 
-	dc.ticker = time.NewTicker(dc.cfg.Interval)
-	dc.tick()
+	dc.discoverTicker = time.NewTicker(dc.cfg.Interval)
+	dc.syncWeightTicker = time.NewTicker(time.Second * 10)
+	dc.discoverImpl()
 
 	for {
 		select {
-		case <-dc.ticker.C:
+		case <-dc.discoverTicker.C:
 			syncService()
+		case <-dc.syncWeightTicker.C:
+			dc.SyncWeight()
 		}
 	}
 }

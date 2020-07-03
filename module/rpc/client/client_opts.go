@@ -11,6 +11,7 @@ type config struct {
 	PoolIdle     time.Duration
 
 	Tracing bool
+	Link    bool
 }
 
 // Option config wraps
@@ -20,6 +21,13 @@ type Option func(*Client)
 func WithTracing() Option {
 	return func(r *Client) {
 		r.cfg.Tracing = true
+	}
+}
+
+// WithLink 开启链接器
+func WithLink() Option {
+	return func(r *Client) {
+		r.cfg.Link = true
 	}
 }
 

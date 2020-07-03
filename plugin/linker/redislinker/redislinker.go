@@ -1,11 +1,9 @@
 package redislinker
 
 import (
-	"context"
 	"errors"
 
 	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/linker"
 )
 
@@ -36,53 +34,24 @@ func (*redisLinkerBuilder) Name() string {
 }
 
 func (*redisLinkerBuilder) Build(cfg interface{}) linker.ILinker {
-	cecfg, ok := cfg.(Cfg)
-	if !ok {
-		return nil
-	}
 
-	e := &redisLinker{
-		cfg: cecfg,
-	}
+	e := &redisLinker{}
 
 	return e
 }
 
-// Cfg linker config
-type Cfg struct {
-	Tracing bool
-}
-
 // redisLinker 基于redis实现的链接器
 type redisLinker struct {
-	cfg Cfg
 }
 
-func (l *redisLinker) Target(ctx context.Context, token string) (target string, err error) {
-
-	if l.cfg.Tracing {
-		tr := tracer.RedisTracer{
-			Cmd: "HGET",
-		}
-		tr.Begin(ctx)
-		defer tr.End()
-	}
-
+func (l *redisLinker) Target(token string) (target string, err error) {
 	return redis.Get().HGet(TokenAddressHash, token)
 }
 
-func (l *redisLinker) Link(ctx context.Context, token string, nodid string, target string) error {
+func (l *redisLinker) Link(token string, nodid string, target string) error {
 
 	conn := redis.Get().Conn()
 	defer conn.Close()
-
-	if l.cfg.Tracing {
-		rt := tracer.RedisTracer{
-			Cmd: "HSET|LPUSH",
-		}
-		rt.Begin(ctx)
-		defer rt.End()
-	}
 
 	mu := redis.Mutex{
 		Token: token,
@@ -109,31 +78,14 @@ func (l *redisLinker) Unlink(token string) error {
 	return nil
 }
 
-func (l *redisLinker) Num(ctx context.Context, nodid string) (int, error) {
+func (l *redisLinker) Num(nodid string) (int, error) {
 	linkField := TokenList + "_" + nodid
-
-	if l.cfg.Tracing {
-		rt := tracer.RedisTracer{
-			Cmd: "LLEN",
-		}
-		rt.Begin(ctx)
-		defer rt.End()
-	}
-
 	return redis.Get().LLen(linkField)
 }
 
-func (l *redisLinker) Offline(ctx context.Context, nodid string) error {
+func (l *redisLinker) Offline(nodid string) error {
 	client := redis.Get()
 	linkField := TokenList + "_" + nodid
-
-	if l.cfg.Tracing {
-		rt := tracer.RedisTracer{
-			Cmd: "LLEN | RPOP",
-		}
-		rt.Begin(ctx)
-		defer rt.End()
-	}
 
 	linkLen, err := client.LLen(linkField)
 	if err != nil {

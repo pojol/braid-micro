@@ -1,7 +1,6 @@
 package linker
 
 import (
-	"context"
 	"strings"
 )
 
@@ -17,18 +16,18 @@ type Builder interface {
 // target 节点的真实地址
 type ILinker interface {
 	// 提供正向查找功能，通过token检索到token原本指向的nod address
-	Target(ctx context.Context, token string) (target string, err error)
+	Target(token string) (target string, err error)
 
 	// 将token绑定到nod
-	Link(ctx context.Context, token string, nodid string, target string) error
+	Link(token string, nodid string, target string) error
 	// 解除token在nod的绑定
 	Unlink(token string) error
 
 	// 提供nod中token的数量
-	Num(ctx context.Context, nodid string) (int, error)
+	Num(nodid string) (int, error)
 
 	// 清空nod中的token
-	Offline(ctx context.Context, nodid string) error
+	Offline(nodid string) error
 }
 
 var (

@@ -79,11 +79,13 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 
 	// 这里后面需要做成可选项
 	c.bg = balancer.NewGroup()
-	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, consuldiscover.Cfg{
+	discoverCfg := consuldiscover.Cfg{
 		Name:          name,
 		Interval:      time.Second * 2,
 		ConsulAddress: consulAddress,
-	})
+		Link:          c.cfg.Link,
+	}
+	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, discoverCfg)
 
 	return c
 }

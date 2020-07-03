@@ -26,23 +26,21 @@ func TestTarget(t *testing.T) {
 	})
 
 	b := linker.GetBuilder(LinkerName)
-	lk := b.Build(Cfg{
-		Tracing: false,
-	})
+	lk := b.Build(nil)
 
-	num, err := lk.Num(nil, "testnodid")
+	num, err := lk.Num("testnodid")
 	assert.Equal(t, num, 0)
 	assert.Equal(t, err, nil)
 
-	err = lk.Link(nil, "testtoken1", "testnodid", "192.168.0.1:8000")
+	err = lk.Link("testtoken1", "testnodid", "192.168.0.1:8000")
 	assert.Equal(t, err, nil)
 
-	target, err := lk.Target(nil, "testtoken1")
+	target, err := lk.Target("testtoken1")
 	assert.Equal(t, target, "192.168.0.1:8000")
 	assert.Equal(t, err, nil)
 
-	lk.Offline(nil, "testnodid")
-	num, err = lk.Num(nil, "testnodid")
+	lk.Offline("testnodid")
+	num, err = lk.Num("testnodid")
 	assert.Equal(t, num, 0)
 	assert.Equal(t, err, nil)
 }
