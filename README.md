@@ -37,24 +37,32 @@ go get github.com/pojol/braid@latest
 ```go
 /plugin
 
-    /* 负载均衡器插件接口文件 */
+    // 负载均衡插件
     /balancer
         /* SmoothWeightRoundrobin 平滑加权轮询实现 */
         /swrrbalancer
 
-    /* 发现器接口文件 */
+    // 发现服务插件
+    // 通过tag发现服务网络中的其他节点（新增 ｜ 离开
+    // 提供将节点信息同步到负载均衡组件的功能
     /discover
-        /* 基于consul的服务发现实现 */
+        // 基于consul的服务发现实现 
         /consuldiscover
 
-    /* 选举器接口文件 */
+    // 选举器插件
+    // 提供 ismaster 接口，用户可以凭借此接口在节点中进行一些不能并行的操作
     /elector
-        /* 基于consul的选举实现 */
+        // 基于consul season的选举实现
         /consulelector
 
-    /* 链接器接口文件 */
+        // 基于kubernetes go-client 接口实现的elector
+        /k8selector
+
+    // 链接器插件
+    // 实现链接缓存，可以固定用户的调用链路，辅助用户在逻辑节点上实现一些安全的缓存操作。
+    // 辅助实现动态的负载均衡，提供逻辑节点的当前链接数，可以自动的作为参考权重值。
     / linker
-        /* 基于redis的连接器实现 */
+        // 基于redis的连接器实现
         /redislinker
 
 ```
