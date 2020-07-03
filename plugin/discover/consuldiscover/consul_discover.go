@@ -25,6 +25,8 @@ const (
 var (
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("convert config error")
+
+	defaultWeight = 1000
 )
 
 type consulDiscoverBuilder struct{}
@@ -46,7 +48,7 @@ func (*consulDiscoverBuilder) Build(bg *balancer.Group, linker linker.ILinker, c
 	e := &consulDiscover{
 		cfg:        cecfg,
 		bg:         bg,
-		passingMap: make(map[string]syncNode),
+		passingMap: make(map[string]*syncNode),
 		linker:     linker,
 	}
 
@@ -75,13 +77,16 @@ type consulDiscover struct {
 	linker linker.ILinker
 
 	// service id : service nod
-	passingMap map[string]syncNode
+	passingMap map[string]*syncNode
 }
 
 type syncNode struct {
 	service string
 	id      string
 	address string
+
+	dyncWeight int
+	physWeight int
 }
 
 func (dc *consulDiscover) discoverImpl() {
@@ -99,17 +104,19 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
 
 			sn := syncNode{
-				service: service.ServiceName,
-				id:      service.ServiceID,
-				address: service.ServiceAddress + ":" + strconv.Itoa(service.ServicePort),
+				service:    service.ServiceName,
+				id:         service.ServiceID,
+				address:    service.ServiceAddress + ":" + strconv.Itoa(service.ServicePort),
+				dyncWeight: 0,
+				physWeight: defaultWeight,
 			}
 
-			dc.passingMap[service.ServiceID] = sn
+			dc.passingMap[service.ServiceID] = &sn
 			dc.bg.Get(sn.service).Update(balancer.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
-				Weight:  1,
+				Weight:  sn.physWeight,
 				OpTag:   balancer.OpAdd,
 			})
 
@@ -141,15 +148,27 @@ func (dc *consulDiscover) SyncWeight() {
 
 	for k := range dc.passingMap {
 		num, err := dc.linker.Num(dc.passingMap[k].id)
-		if err != nil {
+		if err != nil || num == 0 {
 			continue
+		}
+
+		if num == dc.passingMap[k].dyncWeight {
+			continue
+		}
+
+		dc.passingMap[k].dyncWeight = num
+		nweight := 0
+		if dc.passingMap[k].physWeight-num > 0 {
+			nweight = dc.passingMap[k].physWeight - num
+		} else {
+			nweight = 1
 		}
 
 		dc.bg.Get(dc.passingMap[k].service).Update(balancer.Node{
 			ID:      dc.passingMap[k].id,
 			Name:    dc.passingMap[k].service,
 			Address: dc.passingMap[k].address,
-			Weight:  num,
+			Weight:  nweight,
 			OpTag:   balancer.OpUp,
 		})
 	}
