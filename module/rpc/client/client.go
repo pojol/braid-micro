@@ -141,7 +141,7 @@ func Invoke(ctx context.Context, nodName, methon string, token string, args, rep
 	var err error
 	var nod balancer.Node
 
-	if c.cfg.Link {
+	if c.cfg.Link && token != "" {
 		address, err = c.linker.Target(token)
 		if err != nil {
 			// err log
