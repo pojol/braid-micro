@@ -178,6 +178,10 @@ func Invoke(ctx context.Context, nodName, methon string, token string, args, rep
 
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply, opts...)
 	if err != nil {
+		if c.cfg.Link && token != "" {
+			c.linker.Unlink(token)
+		}
+
 		conn.Unhealthy()
 	}
 
