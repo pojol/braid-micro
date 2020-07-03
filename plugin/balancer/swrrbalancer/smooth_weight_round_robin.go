@@ -68,14 +68,14 @@ func (wr *swrrBalancer) Update(nod balancer.Node) {
 }
 
 // Pick 执行算法，选取节点
-func (wr *swrrBalancer) Pick() (string, error) {
+func (wr *swrrBalancer) Pick() (balancer.Node, error) {
 	var tmpWeight int
 	var idx int
 
 	fmt.Println("pick", wr.nods)
 
 	if len(wr.nods) <= 0 {
-		return "", balancer.ErrBalanceEmpty
+		return balancer.Node{}, balancer.ErrBalanceEmpty
 	}
 
 	for k, v := range wr.nods {
@@ -93,7 +93,7 @@ func (wr *swrrBalancer) Pick() (string, error) {
 		}
 	}
 
-	return wr.nods[idx].orgNod.Address, nil
+	return wr.nods[idx].orgNod, nil
 }
 
 func (wr *swrrBalancer) add(nod balancer.Node) {

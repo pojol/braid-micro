@@ -11,7 +11,6 @@ import (
 	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/discover"
 	"github.com/pojol/braid/plugin/linker"
-	"github.com/pojol/braid/plugin/linker/redislinker"
 )
 
 const (
@@ -38,7 +37,7 @@ func (*consulDiscoverBuilder) Name() string {
 	return DiscoverName
 }
 
-func (*consulDiscoverBuilder) Build(bg *balancer.Group, cfg interface{}) discover.IDiscover {
+func (*consulDiscoverBuilder) Build(bg *balancer.Group, linker linker.ILinker, cfg interface{}) discover.IDiscover {
 	cecfg, ok := cfg.(Cfg)
 	if !ok {
 		return nil
@@ -48,10 +47,7 @@ func (*consulDiscoverBuilder) Build(bg *balancer.Group, cfg interface{}) discove
 		cfg:        cecfg,
 		bg:         bg,
 		passingMap: make(map[string]syncNode),
-	}
-
-	if cecfg.Link {
-		e.linker = linker.GetBuilder(redislinker.LinkerName).Build(nil)
+		linker:     linker,
 	}
 
 	return e
@@ -63,9 +59,6 @@ type Cfg struct {
 
 	// 同步节点信息间隔
 	Interval time.Duration
-
-	// 是否引用链接器
-	Link bool
 
 	// 注册中心
 	ConsulAddress string

@@ -56,8 +56,8 @@ func TestWRR(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 	for _, v := range tests {
-		addr, _ := bw.Pick()
-		assert.Equal(t, addr, v.ID)
+		nod, _ := bw.Pick()
+		assert.Equal(t, nod.Address, v.ID)
 	}
 
 }

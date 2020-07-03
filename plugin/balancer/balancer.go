@@ -37,7 +37,7 @@ type Balancer interface {
 	Update(nod Node)
 
 	// 选取
-	Pick() (addr string, err error)
+	Pick() (nod Node, err error)
 }
 
 // Wrapper 负载均衡包装器
@@ -118,7 +118,7 @@ func (w *Wrapper) Update(nod Node) {
 }
 
 // Pick 选取一个节点
-func (w *Wrapper) Pick() (string, error) {
+func (w *Wrapper) Pick() (Node, error) {
 	w.bmu.Lock()
 	defer w.bmu.Unlock()
 

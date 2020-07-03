@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -12,6 +11,8 @@ import (
 	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
 	"github.com/pojol/braid/plugin/discover"
 	"github.com/pojol/braid/plugin/discover/consuldiscover"
+	"github.com/pojol/braid/plugin/linker"
+	"github.com/pojol/braid/plugin/linker/redislinker"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
@@ -33,6 +34,7 @@ type (
 
 		discov discover.IDiscover
 		bg     *balancer.Group
+		linker linker.ILinker
 
 		refushTick *time.Ticker
 
@@ -77,33 +79,26 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 		opt(c)
 	}
 
+	if c.cfg.Link {
+		c.linker = linker.GetBuilder(redislinker.LinkerName).Build(nil)
+	}
+
 	// 这里后面需要做成可选项
 	c.bg = balancer.NewGroup()
-	discoverCfg := consuldiscover.Cfg{
+	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, c.linker, consuldiscover.Cfg{
 		Name:          name,
 		Interval:      time.Second * 2,
 		ConsulAddress: consulAddress,
-		Link:          c.cfg.Link,
-	}
-	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, discoverCfg)
+	})
 
 	return c
 }
 
-func getConn(target string) (*pool.ClientConn, error) {
+func getConn(address string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
-	c.Lock()
-	defer c.Unlock()
-
-	address, err := c.bg.Get(target).Pick()
-	fmt.Println(target, address, err)
-	if err != nil {
-		return nil, err
-	}
-
-	caPool, err = c.pool(address)
+	caPool, err := c.pool(address)
 	if err != nil {
 		return nil, err
 	}
@@ -118,9 +113,64 @@ func getConn(target string) (*pool.ClientConn, error) {
 	return caConn, nil
 }
 
+func pick(nodName string) (balancer.Node, error) {
+	nod, err := c.bg.Get(nodName).Pick()
+	if err != nil {
+		// err log
+		return nod, err
+	}
+
+	if nod.Address == "" {
+		// err log
+		return nod, errors.New("address is not available")
+	}
+
+	return nod, nil
+}
+
 // Invoke 执行远程调用
-func Invoke(ctx context.Context, nodName, methon string, args, reply interface{}, opts ...grpc.CallOption) {
-	conn, err := getConn(nodName)
+// ctx 链路的上下文，主要用于tracing
+// nodName 逻辑节点名称, 用于查找目标节点地址
+// methon 方法名，用于定位到具体的rpc 执行函数
+// token 用户身份id
+// args request
+// reply result
+func Invoke(ctx context.Context, nodName, methon string, token string, args, reply interface{}, opts ...grpc.CallOption) {
+
+	var address string
+	var err error
+	var nod balancer.Node
+
+	if c.cfg.Link {
+		address, err = c.linker.Target(token)
+		if err != nil {
+			// err log
+			return
+		}
+
+		if address == "" {
+			nod, err = pick(nodName)
+			if err != nil {
+				return
+			}
+
+			err = c.linker.Link(token, nod.ID, nod.Address)
+			if err != nil {
+				// err log
+				return
+			}
+			address = nod.Address
+		}
+	} else {
+		nod, err = pick(nodName)
+		if err != nil {
+			return
+		}
+
+		address = nod.Address
+	}
+
+	conn, err := getConn(address)
 	if err != nil {
 		//log
 		return

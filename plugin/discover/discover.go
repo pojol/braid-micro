@@ -4,11 +4,12 @@ import (
 	"strings"
 
 	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/plugin/linker"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(bg *balancer.Group, cfg interface{}) IDiscover
+	Build(bg *balancer.Group, link linker.ILinker, cfg interface{}) IDiscover
 	Name() string
 }
 
