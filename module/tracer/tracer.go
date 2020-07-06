@@ -7,7 +7,6 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
 	jaegerCfg "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/jaeger-client-go/transport"
 	"github.com/uber/jaeger-lib/metrics"
@@ -43,8 +42,21 @@ var (
 	tracer *Tracer
 )
 
-// New n
-func New(name string, jaegerAddress string, opts ...Option) *Tracer {
+func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
+	switch {
+	case rc.CollectorEndpoint != "":
+		httpOptions := []transport.HTTPOption{transport.HTTPBatchSize(1), transport.HTTPHeaders(rc.HTTPHeaders)}
+		if rc.User != "" && rc.Password != "" {
+			httpOptions = append(httpOptions, transport.HTTPBasicAuth(rc.User, rc.Password))
+		}
+		return transport.NewHTTPTransport(rc.CollectorEndpoint, httpOptions...), nil
+	default:
+		return jaeger.NewUDPTransport(rc.LocalAgentHostPort, 0)
+	}
+}
+
+// New 创建 jaeger traing
+func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 
 	const (
 		defaultProbabilistic = 1
@@ -66,29 +78,6 @@ func New(name string, jaegerAddress string, opts ...Option) *Tracer {
 		opt(tracer)
 	}
 
-	return tracer
-}
-
-func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
-	switch {
-	case rc.CollectorEndpoint != "":
-		httpOptions := []transport.HTTPOption{transport.HTTPBatchSize(1), transport.HTTPHeaders(rc.HTTPHeaders)}
-		if rc.User != "" && rc.Password != "" {
-			httpOptions = append(httpOptions, transport.HTTPBasicAuth(rc.User, rc.Password))
-		}
-		return transport.NewHTTPTransport(rc.CollectorEndpoint, httpOptions...), nil
-	default:
-		return jaeger.NewUDPTransport(rc.LocalAgentHostPort, 0)
-	}
-}
-
-// Init 初始化
-func (t *Tracer) Init() error {
-
-	var tracer opentracing.Tracer
-	var closer io.Closer
-	var r, m config.Option
-
 	jcfg := jaegerCfg.Configuration{
 		Sampler: &jaegerCfg.SamplerConfig{
 			Type:  jaeger.SamplerTypeConst,
@@ -96,26 +85,31 @@ func (t *Tracer) Init() error {
 		},
 		Reporter: &jaegerCfg.ReporterConfig{
 			LogSpans:          false,
-			CollectorEndpoint: t.cfg.Endpoint,
+			CollectorEndpoint: tracer.cfg.Endpoint,
 		},
-		ServiceName: t.cfg.Name,
+		ServiceName: tracer.cfg.Name,
 	}
 
 	sender, err := newTransport(jcfg.Reporter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	r = jaegerCfg.Reporter(NewSlowReporter(sender, nil, t.cfg.Probabilistic))
-	m = jaegerCfg.Metrics(metrics.NullFactory)
+	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, tracer.cfg.Probabilistic))
+	m := jaegerCfg.Metrics(metrics.NullFactory)
 
-	tracer, closer, err = jcfg.NewTracer(r, m)
+	jtracing, closer, err := jcfg.NewTracer(r, m)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	opentracing.SetGlobalTracer(tracer)
-	t.tracing = tracer
-	t.closer = closer
-	return nil
+	tracer.tracing = jtracing
+	tracer.closer = closer
+
+	return tracer, nil
+}
+
+// Close 关闭tracing
+func (t *Tracer) Close() {
+	t.closer.Close()
 }
