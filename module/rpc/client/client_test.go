@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 func TestCaller(t *testing.T) {
 
-	c := New("test", mock.ConsulAddr)
+	c := New("test", WithConsul(mock.ConsulAddr))
 	c.Discover()
 	defer c.Close()
 
@@ -51,7 +51,7 @@ func TestCaller(t *testing.T) {
 }
 
 func TestOpts(t *testing.T) {
-	New("test", mock.ConsulAddr, WithTracing(), WithPoolInitNum(10), WithPoolCapacity(128), WithPoolIdle(100))
+	New("test", WithConsul(mock.ConsulAddr), WithTracing(), WithPoolInitNum(10), WithPoolCapacity(128), WithPoolIdle(100))
 
 	assert.Equal(t, c.cfg.PoolInitNum, 10)
 	assert.Equal(t, c.cfg.PoolCapacity, 128)

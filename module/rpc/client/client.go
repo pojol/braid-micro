@@ -10,7 +10,6 @@ import (
 	"github.com/pojol/braid/plugin/balancer"
 	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
 	"github.com/pojol/braid/plugin/discover"
-	"github.com/pojol/braid/plugin/discover/consuldiscover"
 	"github.com/pojol/braid/plugin/linker"
 	"github.com/pojol/braid/plugin/linker/redislinker"
 
@@ -32,7 +31,9 @@ type (
 	Client struct {
 		cfg config
 
-		discov discover.IDiscover
+		discov        discover.IDiscover
+		discovBuilder discover.Builder
+
 		bg     *balancer.Group
 		linker linker.ILinker
 
@@ -56,8 +57,11 @@ var (
 	ErrCantFindNode = errors.New("Can't find service node in center")
 )
 
-// New 构建指针
-func New(name string, consulAddress string, opts ...Option) IClient {
+// New 构建 grpc client
+// name 节点名
+// discoverOpt 发现选项
+// opts 可选选项
+func New(name string, discoverOpt Option, opts ...Option) IClient {
 	const (
 		defaultPoolInitNum  = 8
 		defaultPoolCapacity = 32
@@ -67,13 +71,15 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 
 	c = &Client{
 		cfg: config{
-			ConsulAddress: consulAddress,
-			PoolInitNum:   defaultPoolInitNum,
-			PoolCapacity:  defaultPoolCapacity,
-			PoolIdle:      defaultPoolIdle,
-			Tracing:       defaultTracing,
+			Name:         name,
+			PoolInitNum:  defaultPoolInitNum,
+			PoolCapacity: defaultPoolCapacity,
+			PoolIdle:     defaultPoolIdle,
+			Tracing:      defaultTracing,
 		},
 	}
+
+	discoverOpt(c)
 
 	for _, opt := range opts {
 		opt(c)
@@ -85,11 +91,7 @@ func New(name string, consulAddress string, opts ...Option) IClient {
 
 	// 这里后面需要做成可选项
 	c.bg = balancer.NewGroup()
-	c.discov = discover.GetBuilder(consuldiscover.DiscoverName).Build(c.bg, c.linker, consuldiscover.Cfg{
-		Name:          name,
-		Interval:      time.Second * 2,
-		ConsulAddress: consulAddress,
-	})
+	c.discov = c.discovBuilder.Build(c.bg, c.linker)
 
 	return c
 }

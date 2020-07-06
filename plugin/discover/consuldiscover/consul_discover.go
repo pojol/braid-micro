@@ -27,28 +27,37 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 
 	// 权重预设值，可以约等于节点支持的最大连接数
-	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1 权重
+	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1权重
 	defaultWeight = 1000
 )
 
-type consulDiscoverBuilder struct{}
+type consulDiscoverBuilder struct {
+	cfg Cfg
+}
 
 func newConsulDiscover() discover.Builder {
 	return &consulDiscoverBuilder{}
 }
 
-func (*consulDiscoverBuilder) Name() string {
+func (b *consulDiscoverBuilder) Name() string {
 	return DiscoverName
 }
 
-func (*consulDiscoverBuilder) Build(bg *balancer.Group, linker linker.ILinker, cfg interface{}) discover.IDiscover {
+func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 	cecfg, ok := cfg.(Cfg)
 	if !ok {
-		return nil
+		return ErrConfigConvert
 	}
 
+	b.cfg = cecfg
+
+	return nil
+}
+
+func (b *consulDiscoverBuilder) Build(bg *balancer.Group, linker linker.ILinker) discover.IDiscover {
+
 	e := &consulDiscover{
-		cfg:        cecfg,
+		cfg:        b.cfg,
 		bg:         bg,
 		passingMap: make(map[string]*syncNode),
 		linker:     linker,

@@ -9,8 +9,9 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(bg *balancer.Group, link linker.ILinker, cfg interface{}) IDiscover
+	Build(bg *balancer.Group, link linker.ILinker) IDiscover
 	Name() string
+	SetCfg(cfg interface{}) error
 }
 
 // IDiscover 发现服务 & 注册节点

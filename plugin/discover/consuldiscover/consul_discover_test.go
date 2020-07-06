@@ -38,11 +38,13 @@ func TestDiscover(t *testing.T) {
 	})
 
 	bg := balancer.NewGroup()
-	d := discover.GetBuilder(DiscoverName).Build(bg, nil, Cfg{
+	b := discover.GetBuilder(DiscoverName)
+	b.SetCfg(Cfg{
 		Name:          "test",
 		Interval:      time.Second * 2,
 		ConsulAddress: mock.ConsulAddr,
 	})
+	d := b.Build(bg, nil)
 
 	d.Discover()
 
