@@ -26,6 +26,8 @@ var (
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("convert config error")
 
+	// 权重预设值，可以约等于节点支持的最大连接数
+	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1 权重
 	defaultWeight = 1000
 )
 

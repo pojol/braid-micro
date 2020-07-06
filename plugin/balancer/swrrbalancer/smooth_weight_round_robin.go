@@ -135,6 +135,8 @@ func (wr *swrrBalancer) syncWeight(nod balancer.Node) {
 		wr.nods[idx].orgNod.Weight = nod.Weight
 		wr.calcTotalWeight()
 	}
+
+	log.Debugf("update weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func init() {

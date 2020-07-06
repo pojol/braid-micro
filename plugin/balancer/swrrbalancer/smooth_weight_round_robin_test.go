@@ -1,6 +1,7 @@
 package swrrbalancer
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -10,8 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWRR(t *testing.T) {
-
+func TestMain(t *testing.M) {
 	l := log.New(log.Config{
 		Mode:   log.DebugMode,
 		Path:   "testNormal",
@@ -22,6 +22,11 @@ func TestWRR(t *testing.T) {
 		Suffex: ".sys",
 	}))
 	defer l.Close()
+
+	t.Run()
+}
+
+func TestWRR(t *testing.T) {
 
 	g := balancer.NewGroup()
 	bw := g.Get("test")
@@ -62,18 +67,59 @@ func TestWRR(t *testing.T) {
 
 }
 
+func TestWRRDymc(t *testing.T) {
+	g := balancer.NewGroup()
+	bw := g.Get("test")
+	pmap := make(map[string]int)
+
+	bw.Update(balancer.Node{
+		ID:      "A",
+		Address: "A",
+		Weight:  1000,
+		Name:    "test",
+		OpTag:   balancer.OpAdd,
+	})
+	bw.Update(balancer.Node{
+		ID:      "B",
+		Address: "B",
+		Weight:  1000,
+		Name:    "test",
+		OpTag:   balancer.OpAdd,
+	})
+	bw.Update(balancer.Node{
+		ID:      "C",
+		Address: "C",
+		Weight:  1000,
+		Name:    "test",
+		OpTag:   balancer.OpAdd,
+	})
+
+	time.Sleep(time.Millisecond * 100)
+
+	for i := 0; i < 100; i++ {
+		nod, _ := bw.Pick()
+		pmap[nod.ID]++
+	}
+
+	fmt.Println("step 1", pmap)
+
+	bw.Update(balancer.Node{
+		ID:     "A",
+		Weight: 500,
+		OpTag:  balancer.OpUp,
+	})
+	time.Sleep(time.Millisecond * 100)
+
+	for i := 0; i < 100; i++ {
+		nod, _ := bw.Pick()
+		pmap[nod.ID]++
+	}
+
+	fmt.Println("step 2", pmap)
+}
+
 func TestWRROp(t *testing.T) {
 
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 	g := balancer.NewGroup()
 	bw := g.Get("test")
 
@@ -107,16 +153,6 @@ func TestWRROp(t *testing.T) {
 
 //  2637153	       442 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 
 	g := balancer.NewGroup()
 	bw := g.Get("test")
