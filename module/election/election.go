@@ -12,7 +12,9 @@ type Builder interface {
 
 // IElection 选举器需要提供的接口
 type IElection interface {
+	// 
 	IsMaster() bool
+
 	Run()
 	Close()
 }

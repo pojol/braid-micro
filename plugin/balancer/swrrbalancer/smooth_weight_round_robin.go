@@ -1,8 +1,6 @@
 package swrrbalancer
 
 import (
-	"fmt"
-
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/plugin/balancer"
 )
@@ -68,14 +66,12 @@ func (wr *swrrBalancer) Update(nod balancer.Node) {
 }
 
 // Pick 执行算法，选取节点
-func (wr *swrrBalancer) Pick() (string, error) {
+func (wr *swrrBalancer) Pick() (balancer.Node, error) {
 	var tmpWeight int
 	var idx int
 
-	fmt.Println("pick", wr.nods)
-
 	if len(wr.nods) <= 0 {
-		return "", balancer.ErrBalanceEmpty
+		return balancer.Node{}, balancer.ErrBalanceEmpty
 	}
 
 	for k, v := range wr.nods {
@@ -93,7 +89,7 @@ func (wr *swrrBalancer) Pick() (string, error) {
 		}
 	}
 
-	return wr.nods[idx].orgNod.Address, nil
+	return wr.nods[idx].orgNod, nil
 }
 
 func (wr *swrrBalancer) add(nod balancer.Node) {
@@ -107,8 +103,6 @@ func (wr *swrrBalancer) add(nod balancer.Node) {
 		orgNod:    nod,
 		curWeight: int(nod.Weight),
 	})
-
-	fmt.Println("add", wr.nods)
 
 	wr.calcTotalWeight()
 	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
@@ -141,6 +135,8 @@ func (wr *swrrBalancer) syncWeight(nod balancer.Node) {
 		wr.nods[idx].orgNod.Weight = nod.Weight
 		wr.calcTotalWeight()
 	}
+
+	log.Debugf("update weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func init() {

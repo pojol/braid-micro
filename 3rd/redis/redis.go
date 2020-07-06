@@ -69,6 +69,11 @@ func (rc *Client) Init(cfg interface{}) error {
 	return err
 }
 
+// InitWithDefault 基于默认配置进行初始化
+func (rc *Client) InitWithDefault() error {
+	return rc.Init(defaultConnPoolConfig)
+}
+
 // Close 释放redis
 func (rc *Client) Close() {
 	rc.pool.Close()
