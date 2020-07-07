@@ -50,7 +50,9 @@ func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 	}
 
 	b.cfg = cecfg
-
+	if b.cfg.Tag == "" {
+		b.cfg.Tag = DiscoverTag
+	}
 	return nil
 }
 
@@ -75,6 +77,8 @@ type Cfg struct {
 
 	// 注册中心
 	ConsulAddress string
+
+	Tag string
 }
 
 // Discover 发现管理braid相关的节点
@@ -102,7 +106,7 @@ type syncNode struct {
 
 func (dc *consulDiscover) discoverImpl() {
 
-	services, err := consul.GetCatalogServices(dc.cfg.ConsulAddress, DiscoverTag)
+	services, err := consul.GetCatalogServices(dc.cfg.ConsulAddress, dc.cfg.Tag)
 	if err != nil {
 		return
 	}
