@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,7 +72,7 @@ func New(name string, discoverOpt Option, opts ...Option) IClient {
 
 	c = &Client{
 		cfg: config{
-			Name:         name,
+			Name:         strings.ToLower(name),
 			PoolInitNum:  defaultPoolInitNum,
 			PoolCapacity: defaultPoolCapacity,
 			PoolIdle:     defaultPoolIdle,

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
@@ -51,7 +52,7 @@ func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 
 	b.cfg = cecfg
 	if b.cfg.Tag == "" {
-		b.cfg.Tag = DiscoverTag
+		b.cfg.Tag = strings.ToLower(DiscoverTag)
 	}
 	return nil
 }
