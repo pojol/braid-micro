@@ -39,11 +39,12 @@ func WithLink() Option {
 }
 
 // WithConsul 使用consul作为发现器支持
-func WithConsul(address string) Option {
+func WithConsul(address string, discoverTag string) Option {
 	return func(r *Client) {
 		r.cfg.consulCfg.ConsulAddress = address
 		r.cfg.consulCfg.Interval = time.Second * 2
 		r.cfg.consulCfg.Name = r.cfg.Name
+		r.cfg.consulCfg.Tag = discoverTag
 
 		r.discovBuilder = discover.GetBuilder(consuldiscover.DiscoverName)
 		err := r.discovBuilder.SetCfg(r.cfg.consulCfg)
