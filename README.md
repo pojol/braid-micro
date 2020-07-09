@@ -31,6 +31,21 @@
 
 
 
+#### rpc-client sample
+```go
+	b := New("test")
+	b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, consuldiscover.WithInterval(time.Second*3)),
+		BalancerBySwrr(),
+		RPCClient(grpcclient.WithPoolCapacity(128)))
+
+	b.Run()
+	defer b.Close()
+
+	Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
+```
+
+
+
 #### 快速开始
 
 > 获取braid
