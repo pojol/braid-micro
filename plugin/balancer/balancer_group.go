@@ -8,41 +8,30 @@ import (
 
 // Group 负载均衡组管理器
 type Group struct {
-	m sync.Map
-
-	builderName string
+	m       sync.Map
+	builder Builder
 }
+
+var (
+	bg *Group
+)
 
 // NewGroup 创建负载均衡组
-func NewGroup(opts ...Option) *Group {
+func NewGroup(builder Builder) *Group {
 
-	g := &Group{
-		builderName: "SmoothWeightedRoundrobin",
+	bg = &Group{
+		builder: builder,
 	}
 
-	for _, opt := range opts {
-		opt(g)
-	}
-
-	return g
-}
-
-// Option group config wraps
-type Option func(*Group)
-
-// WithBuilder 通过其他balancer构建
-func WithBuilder(builderName string) Option {
-	return func(g *Group) {
-		g.builderName = builderName
-	}
+	return bg
 }
 
 // Get 通过
-func (g *Group) Get(nodName string) Balancer {
-	wb, ok := g.m.Load(nodName)
+func Get(nodName string) Balancer {
+	wb, ok := bg.m.Load(nodName)
 	if !ok {
-		wb = newBalancerWrapper(GetBuilder(g.builderName))
-		g.m.Store(nodName, wb)
+		wb = newBalancerWrapper(bg.builder)
+		bg.m.Store(nodName, wb)
 
 		log.Debugf("add balance group %s", nodName)
 	}

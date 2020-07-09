@@ -1,4 +1,4 @@
-package election
+package elector
 
 import (
 	"strings"
@@ -6,13 +6,14 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(cfg interface{}) (IElection, error)
+	Build() (IElection, error)
 	Name() string
+	SetCfg(cfg interface{}) error
 }
 
 // IElection 选举器需要提供的接口
 type IElection interface {
-	// 
+	//
 	IsMaster() bool
 
 	Run()

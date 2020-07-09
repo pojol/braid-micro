@@ -6,7 +6,7 @@ import (
 
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/plugin/linker"
+	"github.com/pojol/braid/module/linker"
 	"github.com/stretchr/testify/assert"
 )
 

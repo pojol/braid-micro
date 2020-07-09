@@ -2,17 +2,25 @@ package discover
 
 import (
 	"strings"
-
-	"github.com/pojol/braid/plugin/balancer"
-	"github.com/pojol/braid/plugin/linker"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(bg *balancer.Group, link linker.ILinker) IDiscover
+	Build() IDiscover
 	Name() string
 	SetCfg(cfg interface{}) error
 }
+
+// Nod 发现节点结构
+type Nod struct {
+	ID      string
+	Name    string
+	Address string
+	Meta    interface{}
+}
+
+// Callback 发现回掉
+type Callback func(nod Nod)
 
 // IDiscover 发现服务 & 注册节点
 type IDiscover interface {
@@ -22,6 +30,8 @@ type IDiscover interface {
 
 var (
 	m = make(map[string]Builder)
+
+	discov IDiscover
 )
 
 // Register 注册balancer

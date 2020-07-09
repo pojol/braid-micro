@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/module/rpc/client/bproto"
 	"github.com/pojol/braid/module/rpc/server"
+	"github.com/pojol/braid/plugin/rpc/grpcclient/bproto"
+	"github.com/pojol/braid/plugin/rpc/grpcserver"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -45,8 +46,15 @@ func TestMain(m *testing.M) {
 	}))
 	defer l.Close()
 
-	s := server.New("test", server.WithListen(":1205"))
-	bproto.RegisterListenServer(server.Get(), &rpcServer{})
+	sb := server.GetBuilder(grpcserver.ServerName)
+	sb.SetCfg(grpcserver.Config{
+		Name:          "test",
+		Tracing:       false,
+		ListenAddress: ":1205",
+	})
+
+	s := sb.Build()
+	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	time.Sleep(time.Millisecond * 10)
 

@@ -1,4 +1,4 @@
-package consulelection
+package consulelector
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/module/election"
+	"github.com/pojol/braid/module/elector"
 )
 
 func TestElection(t *testing.T) {
@@ -24,12 +24,14 @@ func TestElection(t *testing.T) {
 	}))
 	defer l.Close()
 
-	e, _ := election.GetBuilder(ElectionName).Build(Cfg{
+	eb := elector.GetBuilder(ElectionName)
+	eb.SetCfg(Cfg{
 		Address:           mock.ConsulAddr,
 		Name:              "test",
 		LockTick:          time.Second,
 		RefushSessionTick: time.Second,
 	})
+	e, _ := eb.Build()
 
 	e.Run()
 	time.Sleep(time.Second)

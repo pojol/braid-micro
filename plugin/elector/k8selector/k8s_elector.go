@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/module/election"
+	"github.com/pojol/braid/module/elector"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -25,9 +25,11 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-type k8sElectorBuilder struct{}
+type k8sElectorBuilder struct {
+	cfg Cfg
+}
 
-func newK8sElector() election.Builder {
+func newK8sElector() elector.Builder {
 	return &k8sElectorBuilder{}
 }
 
@@ -58,13 +60,19 @@ func (*k8sElectorBuilder) Name() string {
 	return ElectionName
 }
 
-func (*k8sElectorBuilder) Build(cfg interface{}) (election.IElection, error) {
-	kecfg, ok := cfg.(Cfg)
+func (eb *k8sElectorBuilder) SetCfg(cfg interface{}) error {
+	cecfg, ok := cfg.(Cfg)
 	if !ok {
-		return nil, ErrConfigConvert
+		return ErrConfigConvert
 	}
 
-	clientset, err := newClientset(kecfg.KubeCfg)
+	eb.cfg = cecfg
+	return nil
+}
+
+func (eb *k8sElectorBuilder) Build() (elector.IElection, error) {
+
+	clientset, err := newClientset(eb.cfg.KubeCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -72,26 +80,26 @@ func (*k8sElectorBuilder) Build(cfg interface{}) (election.IElection, error) {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      "braid-lock",
-			Namespace: kecfg.Namespace,
+			Namespace: eb.cfg.Namespace,
 		},
 		Client: clientset.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: kecfg.NodID,
+			Identity: eb.cfg.NodID,
 		},
 	}
 
 	elector, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
-		LeaseDuration:   30 * time.Second,  // 租约时间
-		RenewDeadline:   10 * time.Second,  // 更新租约时间
-		RetryPeriod:     kecfg.RetryPeriod, // 非master节点的重试时间
+		LeaseDuration:   30 * time.Second,   // 租约时间
+		RenewDeadline:   10 * time.Second,   // 更新租约时间
+		RetryPeriod:     eb.cfg.RetryPeriod, // 非master节点的重试时间
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {},
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
-				if identity == kecfg.NodID {
-					log.SysElection(identity)
+				if identity == eb.cfg.NodID {
+					log.SysElection(eb.cfg.NodID, identity)
 				}
 			},
 		},
@@ -101,7 +109,7 @@ func (*k8sElectorBuilder) Build(cfg interface{}) (election.IElection, error) {
 	}
 
 	el := &k8sElector{
-		cfg:     kecfg,
+		cfg:     eb.cfg,
 		elector: elector,
 	}
 
@@ -137,5 +145,5 @@ func (e *k8sElector) Close() {
 }
 
 func init() {
-	election.Register(newK8sElector())
+	elector.Register(newK8sElector())
 }

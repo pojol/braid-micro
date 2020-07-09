@@ -1,4 +1,4 @@
-package consulelection
+package consulelector
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/module/election"
+	"github.com/pojol/braid/module/elector"
 )
 
 const (
@@ -20,20 +20,28 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-type consulElectionBuilder struct{}
+type consulElectionBuilder struct {
+	cfg Cfg
+}
 
-func newConsulElection() election.Builder {
+func newConsulElection() elector.Builder {
 	return &consulElectionBuilder{}
 }
 
-func (*consulElectionBuilder) Build(cfg interface{}) (election.IElection, error) {
+func (eb *consulElectionBuilder) SetCfg(cfg interface{}) error {
 	cecfg, ok := cfg.(Cfg)
 	if !ok {
-		return nil, ErrConfigConvert
+		return ErrConfigConvert
 	}
 
+	eb.cfg = cecfg
+	return nil
+}
+
+func (eb *consulElectionBuilder) Build() (elector.IElection, error) {
+
 	e := &consulElection{
-		cfg: cecfg,
+		cfg: eb.cfg,
 	}
 
 	// verfiy
@@ -48,9 +56,7 @@ func (*consulElectionBuilder) Build(cfg interface{}) (election.IElection, error)
 		return nil, err
 	}
 	if locked {
-		log.SysElection("master")
-	} else {
-		log.SysElection("slave")
+		log.SysElection(e.cfg.Name, sid)
 	}
 
 	e.sessionID = sid
@@ -67,7 +73,6 @@ func (*consulElectionBuilder) Name() string {
 type Cfg struct {
 	Address           string
 	Name              string
-	NodeID            string
 	LockTick          time.Duration
 	RefushSessionTick time.Duration
 }
@@ -110,7 +115,7 @@ func (e *consulElection) runImpl() {
 			succ, _ := consul.AcquireLock(e.cfg.Address, e.cfg.Name, e.sessionID)
 			if succ {
 				e.locked = true
-				log.SysElection(e.cfg.NodeID)
+				log.SysElection(e.cfg.Name, e.sessionID)
 			}
 		}
 	}
@@ -144,5 +149,5 @@ func (e *consulElection) Close() {
 }
 
 func init() {
-	election.Register(newConsulElection())
+	elector.Register(newConsulElection())
 }
