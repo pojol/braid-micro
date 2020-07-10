@@ -36,7 +36,7 @@
 b := New("test")
 b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr),
   BalancerBySwrr(),
-  RPCClient(grpcclient.WithPoolCapacity(128)))
+  GRPCClient(grpcclient.WithPoolCapacity(128)))
 
 b.Run()
 defer b.Close()
