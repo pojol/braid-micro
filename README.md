@@ -34,7 +34,7 @@
 #### rpc-client sample
 ```go
 b := New("test")
-b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, consuldiscover.WithInterval(time.Second*3)),
+b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr),
   BalancerBySwrr(),
   RPCClient(grpcclient.WithPoolCapacity(128)))
 
