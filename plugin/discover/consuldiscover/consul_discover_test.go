@@ -8,11 +8,12 @@ import (
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/plugin/balancer/swrrbalancer"
 	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
 )
 
-func TestDiscover(t *testing.T) {
-
+func TestMain(m *testing.M) {
 	mock.Init()
 	l := log.New(log.Config{
 		Mode:   log.DebugMode,
@@ -35,6 +36,14 @@ func TestDiscover(t *testing.T) {
 		MaxIdle:        16,
 		MaxActive:      128,
 	})
+	defer r.Close()
+
+	balancer.NewGroup(balancer.GetBuilder(swrrbalancer.BalancerName))
+
+	m.Run()
+}
+
+func TestDiscover(t *testing.T) {
 
 	b := discover.GetBuilder(DiscoverName)
 	b.SetCfg(Cfg{
