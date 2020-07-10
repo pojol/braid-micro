@@ -1,6 +1,8 @@
 package swrrbalancer
 
 import (
+	"sync"
+
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/plugin/balancer"
 )
@@ -33,6 +35,7 @@ type weightedNod struct {
 type swrrBalancer struct {
 	totalWeight int
 	nods        []weightedNod
+	sync.Mutex
 }
 
 func (wr *swrrBalancer) calcTotalWeight() {
@@ -55,6 +58,8 @@ func (wr *swrrBalancer) isExist(id string) (int, bool) {
 
 // Update 更新负载均衡节点
 func (wr *swrrBalancer) Update(nod balancer.Node) {
+	wr.Lock()
+	defer wr.Unlock()
 
 	if nod.OpTag == balancer.OpAdd {
 		wr.add(nod)
@@ -63,13 +68,14 @@ func (wr *swrrBalancer) Update(nod balancer.Node) {
 	} else if nod.OpTag == balancer.OpUp {
 		wr.syncWeight(nod)
 	}
-
 }
 
 // Pick 执行算法，选取节点
 func (wr *swrrBalancer) Pick() (balancer.Node, error) {
 	var tmpWeight int
 	var idx int
+	wr.Lock()
+	defer wr.Unlock()
 
 	if len(wr.nods) <= 0 {
 		return balancer.Node{}, balancer.ErrBalanceEmpty
@@ -100,12 +106,16 @@ func (wr *swrrBalancer) add(nod balancer.Node) {
 		return
 	}
 
+	wr.Lock()
+	defer wr.Unlock()
+
 	wr.nods = append(wr.nods, weightedNod{
 		orgNod:    nod,
 		curWeight: int(nod.Weight),
 	})
 
 	wr.calcTotalWeight()
+
 	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
@@ -119,6 +129,9 @@ func (wr *swrrBalancer) rmv(nod balancer.Node) {
 		// log
 		return
 	}
+
+	wr.Lock()
+	defer wr.Unlock()
 
 	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
 
