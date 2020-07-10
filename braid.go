@@ -7,6 +7,7 @@ import (
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/rpc/client"
+	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/balancer"
 )
@@ -18,6 +19,9 @@ type Braid struct {
 	clientBuilder client.Builder
 	client        client.IClient
 
+	serverBuilder server.Builder
+	server        server.ISserver
+
 	discoverBuilder discover.Builder
 	discover        discover.IDiscover
 
@@ -25,6 +29,7 @@ type Braid struct {
 	linker        linker.ILinker
 
 	electorBuild elector.Builder
+	elector      elector.IElection
 
 	balancerBuilder balancer.Builder
 
@@ -64,6 +69,14 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		balancer.NewGroup(b.balancerBuilder)
 	}
 
+	if b.electorBuild != nil {
+		b.elector, _ = b.electorBuild.Build()
+	}
+
+	if b.serverBuilder != nil {
+		b.server = b.serverBuilder.Build()
+	}
+
 	if b.clientBuilder != nil {
 
 		// check balancer
@@ -88,6 +101,14 @@ func (b *Braid) Run() {
 		b.discover.Discover()
 	}
 
+	if b.elector != nil {
+		b.elector.Run()
+	}
+
+	if b.server != nil {
+		b.server.Run()
+	}
+
 }
 
 // Client grpc-client
@@ -95,11 +116,24 @@ func Client() client.IClient {
 	return braidGlobal.client
 }
 
+// Server grpc-server
+func Server() server.ISserver {
+	return braidGlobal.server
+}
+
 // Close 关闭braid
 func (b *Braid) Close() {
 
 	if b.discover != nil {
 		b.discover.Close()
+	}
+
+	if b.elector != nil {
+		b.elector.Close()
+	}
+
+	if b.server != nil {
+		b.server.Close()
 	}
 
 }

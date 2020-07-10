@@ -7,6 +7,7 @@ import (
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/rpc/client"
+	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/balancer/swrrbalancer"
 	"github.com/pojol/braid/plugin/discover/consuldiscover"
@@ -14,6 +15,7 @@ import (
 	"github.com/pojol/braid/plugin/elector/k8selector"
 	"github.com/pojol/braid/plugin/linker/redislinker"
 	"github.com/pojol/braid/plugin/rpc/grpcclient"
+	"github.com/pojol/braid/plugin/rpc/grpcserver"
 )
 
 type config struct {
@@ -61,12 +63,12 @@ func LinkerByRedis() Plugin {
 }
 
 // ElectorByConsul 基于consul实现的elector
-func ElectorByConsul(name string) Plugin {
+func ElectorByConsul() Plugin {
 	return func(b *Braid) {
 		b.electorBuild = elector.GetBuilder(consulelector.ElectionName)
 		b.electorBuild.SetCfg(consulelector.Cfg{
 			Address: "http://127.0.0.1:8500",
-			Name:    name,
+			Name:    b.cfg.Name,
 		})
 	}
 }
@@ -84,8 +86,8 @@ func ElectorByK8s(kubeconfig string, nodid string) Plugin {
 	}
 }
 
-// RPCClient rpc-client
-func RPCClient(opts ...grpcclient.Option) Plugin {
+// GRPCClient rpc-client
+func GRPCClient(opts ...grpcclient.Option) Plugin {
 	return func(b *Braid) {
 
 		cfg := grpcclient.Config{
@@ -100,5 +102,23 @@ func RPCClient(opts ...grpcclient.Option) Plugin {
 
 		b.clientBuilder = client.GetBuilder(grpcclient.ClientName)
 		b.clientBuilder.SetCfg(cfg)
+	}
+}
+
+// GRPCServer rpc-server
+func GRPCServer(opts ...grpcserver.Option) Plugin {
+	return func(b *Braid) {
+		cfg := grpcserver.Config{
+			Tracing:       false,
+			Name:          b.cfg.Name,
+			ListenAddress: ":14222",
+		}
+
+		for _, opt := range opts {
+			opt(&cfg)
+		}
+
+		b.serverBuilder = server.GetBuilder(grpcserver.ServerName)
+		b.serverBuilder.SetCfg(cfg)
 	}
 }

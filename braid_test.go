@@ -33,7 +33,7 @@ func TestWithClient(t *testing.T) {
 	b := New("test")
 	b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, consuldiscover.WithInterval(time.Second*3)),
 		BalancerBySwrr(),
-		RPCClient(grpcclient.WithPoolCapacity(128)))
+		GRPCClient(grpcclient.WithPoolCapacity(128)))
 
 	b.Run()
 	defer b.Close()
