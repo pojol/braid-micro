@@ -1,4 +1,4 @@
-package server
+package grpcserver
 
 import (
 	"context"
@@ -10,7 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/module/rpc/client/bproto"
+	"github.com/pojol/braid/module/rpc/server"
+	"github.com/pojol/braid/plugin/rpc/grpcclient/bproto"
 	"google.golang.org/grpc"
 )
 
@@ -45,11 +46,17 @@ func TestNew(t *testing.T) {
 	}))
 	defer l.Close()
 
-	s := New("normal", WithListen(":14111"))
+	b := server.GetBuilder(ServerName)
+	b.SetCfg(Config{
+		Tracing:       false,
+		ListenAddress: ":14111",
+	})
+	s := b.Build()
 
-	bproto.RegisterListenServer(Get(), &rpcServer{})
+	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 
 	s.Run()
+	defer s.Close()
 	time.Sleep(time.Millisecond * 10)
 
 	conn, err := grpc.Dial("localhost:14111", grpc.WithInsecure())
@@ -70,15 +77,21 @@ func TestNew(t *testing.T) {
 		ReqBody: nil,
 	}, rres)
 	assert.NotEqual(t, err, nil)
-
-	s.Close()
 }
 
 func TestOpts(t *testing.T) {
 
-	New("testopt", WithTracing())
-	assert.Equal(t, server.cfg.Tracing, true)
+	cfg := Config{
+		Tracing:       false,
+		ListenAddress: ":14222",
+	}
 
-	New("testopt", WithListen(":1201"))
-	assert.Equal(t, server.cfg.ListenAddress, ":1201")
+	op := WithTracing()
+	op(&cfg)
+
+	assert.Equal(t, cfg.Tracing, true)
+
+	op = WithListen(":1201")
+	op(&cfg)
+	assert.Equal(t, cfg.ListenAddress, ":1201")
 }

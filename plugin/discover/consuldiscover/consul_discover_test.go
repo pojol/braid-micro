@@ -7,9 +7,8 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/module/discover"
 	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
-	"github.com/pojol/braid/plugin/discover"
 )
 
 func TestDiscover(t *testing.T) {
@@ -37,14 +36,13 @@ func TestDiscover(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	bg := balancer.NewGroup()
 	b := discover.GetBuilder(DiscoverName)
 	b.SetCfg(Cfg{
-		Name:          "test",
-		Interval:      time.Second * 2,
-		ConsulAddress: mock.ConsulAddr,
+		Name:     "test",
+		Interval: time.Second * 2,
+		Address:  mock.ConsulAddr,
 	})
-	d := b.Build(bg, nil)
+	d := b.Build()
 
 	d.Discover()
 

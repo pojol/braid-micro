@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/plugin/linker"
+	"github.com/pojol/braid/module/linker"
 )
 
 const (
@@ -45,6 +45,11 @@ type redisLinker struct {
 }
 
 func (l *redisLinker) Target(token string) (target string, err error) {
+
+	if token == "" {
+		return "", nil
+	}
+
 	return redis.Get().HGet(TokenAddressHash, token)
 }
 
@@ -73,7 +78,12 @@ func (l *redisLinker) Link(token string, nodid string, target string) error {
 	return nil
 }
 
+// Unlink 当前节点所属的用户离线
 func (l *redisLinker) Unlink(token string) error {
+
+	if token == "" {
+		return nil
+	}
 
 	return nil
 }
@@ -83,6 +93,8 @@ func (l *redisLinker) Num(nodid string) (int, error) {
 	return redis.Get().LLen(linkField)
 }
 
+// Offline 删除离线节点的链路缓存
+// 注: 这个函数调用可能会被多个节点调用
 func (l *redisLinker) Offline(nodid string) error {
 	client := redis.Get()
 	linkField := TokenList + "_" + nodid

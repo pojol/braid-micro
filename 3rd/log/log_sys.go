@@ -56,10 +56,11 @@ func SysCompose(nods []string, desc string) {
 }
 
 // SysElection 选举日志
-func SysElection(nod string) {
+func SysElection(nod string, session string) {
 	logPtr.SysLog.Info("current master nod",
 		zap.String("logt", LogElector),
 		zap.String("node", nod),
+		zap.String("session", session),
 	)
 }
 

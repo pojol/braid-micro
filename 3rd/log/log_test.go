@@ -27,7 +27,7 @@ func TestLog(t *testing.T) {
 	SysRoutingError("login", "routing warning")
 	SysWelcome("test", "debug", "?", "welcome")
 	SysCompose([]string{"11"}, "compose")
-	SysElection("master")
+	SysElection("master", "xx10")
 }
 
 func TestOpts(t *testing.T) {

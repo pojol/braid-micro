@@ -28,8 +28,8 @@ func TestMain(t *testing.M) {
 
 func TestWRR(t *testing.T) {
 
-	g := balancer.NewGroup()
-	bw := g.Get("test")
+	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	bw := balancer.Get("test")
 
 	bw.Update(balancer.Node{
 		ID:      "A",
@@ -68,8 +68,8 @@ func TestWRR(t *testing.T) {
 }
 
 func TestWRRDymc(t *testing.T) {
-	g := balancer.NewGroup()
-	bw := g.Get("test")
+	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	bw := balancer.Get("test")
 	pmap := make(map[string]int)
 
 	bw.Update(balancer.Node{
@@ -120,8 +120,8 @@ func TestWRRDymc(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
-	g := balancer.NewGroup()
-	bw := g.Get("test")
+	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	bw := balancer.Get("test")
 
 	bw.Update(balancer.Node{
 		ID:     "A",
@@ -154,8 +154,8 @@ func TestWRROp(t *testing.T) {
 //  2637153	       442 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
 
-	g := balancer.NewGroup()
-	bw := g.Get("test")
+	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	bw := balancer.Get("test")
 
 	for i := 0; i < 100; i++ {
 		bw.Update(balancer.Node{

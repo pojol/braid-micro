@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	balancerName = "SmoothWeightedRoundrobin"
+	// BalancerName 平滑加权负载均衡
+	BalancerName = "SmoothWeightedRoundrobin"
 )
 
 type smoothWeightRoundrobinBuilder struct{}
@@ -20,7 +21,7 @@ func (*smoothWeightRoundrobinBuilder) Build() balancer.Balancer {
 }
 
 func (*smoothWeightRoundrobinBuilder) Name() string {
-	return balancerName
+	return BalancerName
 }
 
 type weightedNod struct {
