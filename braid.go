@@ -60,6 +60,10 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		b.discover = b.discoverBuilder.Build()
 	}
 
+	if b.balancerBuilder != nil {
+		balancer.NewGroup(b.balancerBuilder)
+	}
+
 	if b.clientBuilder != nil {
 
 		// check balancer
