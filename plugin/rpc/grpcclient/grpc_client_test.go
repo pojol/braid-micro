@@ -62,11 +62,12 @@ func TestCaller(t *testing.T) {
 	serviceName := "service"
 
 	tc, cancel := context.WithTimeout(context.TODO(), time.Millisecond*200)
+	defer cancel()
+
 	c.Invoke(tc, nodeName, "/bproto.listen/routing", "", &bproto.RouteReq{
 		Nod:     nodeName,
 		Service: serviceName,
 		ReqBody: []byte{},
 	}, res)
 
-	cancel()
 }

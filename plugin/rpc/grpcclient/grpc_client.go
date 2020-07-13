@@ -132,6 +132,12 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	var err error
 	var nod balancer.Node
 
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
 	if c.linked() {
 		address, err = c.linker.Target(token)
 		if err != nil {
@@ -157,6 +163,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 		//log
 		return
 	}
+	defer conn.Put()
 
 	//opts...
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
@@ -168,7 +175,6 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 		conn.Unhealthy()
 	}
 
-	conn.Put()
 }
 
 // Pool 获取grpc连接池

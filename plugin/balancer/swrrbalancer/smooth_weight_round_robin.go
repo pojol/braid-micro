@@ -106,9 +106,6 @@ func (wr *swrrBalancer) add(nod balancer.Node) {
 		return
 	}
 
-	wr.Lock()
-	defer wr.Unlock()
-
 	wr.nods = append(wr.nods, weightedNod{
 		orgNod:    nod,
 		curWeight: int(nod.Weight),
@@ -129,9 +126,6 @@ func (wr *swrrBalancer) rmv(nod balancer.Node) {
 		// log
 		return
 	}
-
-	wr.Lock()
-	defer wr.Unlock()
 
 	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
 
