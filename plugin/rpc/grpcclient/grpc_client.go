@@ -11,6 +11,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
+	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
@@ -96,7 +97,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	return caConn, nil
 }
 
-func pick(nodName string) (balancer.Node, error) {
+func pick(nodName string) (discover.Node, error) {
 	nod, err := balancer.Get(nodName).Pick()
 	if err != nil {
 		// err log
@@ -130,7 +131,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	var address string
 	var err error
-	var nod balancer.Node
+	var nod discover.Node
 
 	select {
 	case <-ctx.Done():

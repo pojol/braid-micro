@@ -2,29 +2,41 @@ package discover
 
 import (
 	"strings"
+
+	"github.com/pojol/braid/module/pubsub"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build() IDiscover
+	Build(ps pubsub.IPubsub) IDiscover
 	Name() string
 	SetCfg(cfg interface{}) error
 }
 
-// Nod 发现节点结构
-type Nod struct {
-	ID      string
+// Node 发现节点结构
+type Node struct {
+	ID string
+	// 负载均衡节点的名称，这个名称主要用于均衡节点分组。
 	Name    string
 	Address string
-	Meta    interface{}
+
+	// 节点的权重值
+	Weight int
 }
 
-// Callback 发现回掉
-type Callback func(nod Nod)
+// event
+const (
+	EventAdd    = "discover_event_add"
+	EventRmv    = "discover_event_remove"
+	EventUpdate = "discover_event_update"
+)
 
 // IDiscover 发现服务 & 注册节点
 type IDiscover interface {
+	// 实现发现服务
 	Discover()
+
+	// 关闭发现服务
 	Close()
 }
 
