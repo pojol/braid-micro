@@ -1,4 +1,4 @@
-package pubsubkafka
+package pubsubproc
 
 import (
 	"sync"
@@ -8,36 +8,36 @@ import (
 )
 
 const (
-	// PubsubName 选举器名称
-	PubsubName = "KafkaPubsub"
+	// PubsubName 进程内的消息通知
+	PubsubName = "ProcPubsub"
 )
 
-type kafkaPubsubBuilder struct {
+type procPubsubBuilder struct {
 }
 
-func newKafkaPubsub() pubsub.Builder {
-	return &kafkaPubsubBuilder{}
+func newProcPubsub() pubsub.Builder {
+	return &procPubsubBuilder{}
 }
 
-func (*kafkaPubsubBuilder) Build() pubsub.IPubsub {
+func (*procPubsubBuilder) Build() pubsub.IPubsub {
 
-	ps := &kafkaPubsub{
+	ps := &procPubsub{
 		subs: make(map[string][]*braidsync.Unbounded),
 	}
 
 	return ps
 }
 
-func (*kafkaPubsubBuilder) Name() string {
+func (*procPubsubBuilder) Name() string {
 	return PubsubName
 }
 
-type kafkaPubsub struct {
+type procPubsub struct {
 	sync.RWMutex
 	subs map[string][]*braidsync.Unbounded
 }
 
-func (kps *kafkaPubsub) Sub(topic string) *braidsync.Unbounded {
+func (kps *procPubsub) Sub(topic string) *braidsync.Unbounded {
 	kps.Lock()
 	defer kps.Unlock()
 
@@ -47,7 +47,7 @@ func (kps *kafkaPubsub) Sub(topic string) *braidsync.Unbounded {
 	return ch
 }
 
-func (kps *kafkaPubsub) Pub(topic string, msg interface{}) {
+func (kps *procPubsub) Pub(topic string, msg interface{}) {
 	kps.RLock()
 	defer kps.RUnlock()
 
@@ -57,5 +57,5 @@ func (kps *kafkaPubsub) Pub(topic string, msg interface{}) {
 }
 
 func init() {
-	pubsub.Register(newKafkaPubsub())
+	pubsub.Register(newProcPubsub())
 }

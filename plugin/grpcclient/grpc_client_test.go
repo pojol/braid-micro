@@ -14,7 +14,7 @@ import (
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/grpcclient/bproto"
-	"github.com/pojol/braid/plugin/pubsubkafka"
+	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
 func TestMain(m *testing.M) {
@@ -37,12 +37,12 @@ func TestMain(m *testing.M) {
 		Interval: time.Second * 2,
 		Address:  mock.ConsulAddr,
 	})
-	discv := db.Build(pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
+	discv := db.Build(pubsub.GetBuilder(pubsubproc.PubsubName).Build())
 	discv.Discover()
 	defer discv.Close()
 
 	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
-		pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
+		pubsub.GetBuilder(pubsubproc.PubsubName).Build())
 
 	m.Run()
 }
