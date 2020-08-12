@@ -4,12 +4,14 @@ import (
 	"sync"
 
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module/pubsub"
 )
 
 // Group 负载均衡组管理器
 type Group struct {
 	m       sync.Map
 	builder Builder
+	ps      pubsub.IPubsub
 }
 
 var (
@@ -17,10 +19,11 @@ var (
 )
 
 // NewGroup 创建负载均衡组
-func NewGroup(builder Builder) *Group {
+func NewGroup(builder Builder, pubsub pubsub.IPubsub) *Group {
 
 	bg = &Group{
 		builder: builder,
+		ps:      pubsub,
 	}
 
 	return bg
@@ -30,9 +33,8 @@ func NewGroup(builder Builder) *Group {
 func Get(nodName string) Balancer {
 	wb, ok := bg.m.Load(nodName)
 	if !ok {
-		wb = newBalancerWrapper(bg.builder)
+		wb = bg.builder.Build(bg.ps)
 		bg.m.Store(nodName, wb)
-
 		log.Debugf("add balance group %s", nodName)
 	}
 

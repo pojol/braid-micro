@@ -1,4 +1,4 @@
-package swrrbalancer
+package balancerswrr
 
 import (
 	"fmt"
@@ -7,7 +7,10 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/module/balancer"
+	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/plugin/pubsubkafka"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,30 +30,29 @@ func TestMain(t *testing.M) {
 }
 
 func TestWRR(t *testing.T) {
-
-	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	ps := pubsub.GetBuilder(pubsubkafka.PubsubName).Build()
+	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
-	bw.Update(balancer.Node{
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(balancer.Node{
+
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(balancer.Node{
+
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
 
 	var tests = []struct {
@@ -68,30 +70,30 @@ func TestWRR(t *testing.T) {
 }
 
 func TestWRRDymc(t *testing.T) {
-	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	ps := pubsub.GetBuilder(pubsubkafka.PubsubName).Build()
+	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 	pmap := make(map[string]int)
 
-	bw.Update(balancer.Node{
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  1000,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(balancer.Node{
+
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  1000,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
-	bw.Update(balancer.Node{
+
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1000,
 		Name:    "test",
-		OpTag:   balancer.OpAdd,
 	})
 
 	time.Sleep(time.Millisecond * 100)
@@ -103,10 +105,9 @@ func TestWRRDymc(t *testing.T) {
 
 	fmt.Println("step 1", pmap)
 
-	bw.Update(balancer.Node{
+	ps.Pub(discover.EventUpdate, discover.Node{
 		ID:     "A",
 		Weight: 500,
-		OpTag:  balancer.OpUp,
 	})
 	time.Sleep(time.Millisecond * 100)
 
@@ -120,32 +121,25 @@ func TestWRRDymc(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
-	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	ps := pubsub.GetBuilder(pubsubkafka.PubsubName).Build()
+	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
-	bw.Update(balancer.Node{
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:     "A",
 		Name:   "test",
 		Weight: 4,
-		OpTag:  balancer.OpAdd,
 	})
 
-	bw.Update(balancer.Node{
-		ID:    "A",
-		Name:  "test",
-		OpTag: balancer.OpRmv,
+	ps.Pub(discover.EventRmv, discover.Node{
+		ID:   "A",
+		Name: "test",
 	})
 
-	bw.Update(balancer.Node{
+	ps.Pub(discover.EventAdd, discover.Node{
 		ID:     "B",
 		Name:   "test",
 		Weight: 2,
-		OpTag:  balancer.OpAdd,
-	})
-	bw.Update(balancer.Node{
-		ID:    "B",
-		Name:  "test",
-		OpTag: balancer.OpUp,
 	})
 
 	bw.Pick()
@@ -153,16 +147,15 @@ func TestWRROp(t *testing.T) {
 
 //  2637153	       442 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
-
-	balancer.NewGroup(balancer.GetBuilder(BalancerName))
+	ps := pubsub.GetBuilder(pubsubkafka.PubsubName).Build()
+	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
 	for i := 0; i < 100; i++ {
-		bw.Update(balancer.Node{
+		ps.Pub(discover.EventAdd, discover.Node{
 			ID:     strconv.Itoa(i),
 			Name:   "test",
 			Weight: i,
-			OpTag:  balancer.OpAdd,
 		})
 	}
 

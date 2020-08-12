@@ -7,8 +7,8 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/plugin/discover/consuldiscover"
-	"github.com/pojol/braid/plugin/rpc/grpcclient"
+	"github.com/pojol/braid/plugin/discoverconsul"
+	"github.com/pojol/braid/plugin/grpcclient"
 )
 
 func TestMain(m *testing.M) {
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 func TestWithClient(t *testing.T) {
 
 	b := New("test")
-	b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, consuldiscover.WithInterval(time.Second*3)),
+	b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
 		BalancerBySwrr(),
 		GRPCClient(grpcclient.WithPoolCapacity(128)))
 

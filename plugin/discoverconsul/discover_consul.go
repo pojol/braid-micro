@@ -1,4 +1,4 @@
-package consuldiscover
+package discoverconsul
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/module/pubsub"
 )
 
 const (
@@ -56,10 +56,11 @@ func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *consulDiscoverBuilder) Build() discover.IDiscover {
+func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub) discover.IDiscover {
 
 	e := &consulDiscover{
 		cfg:        b.cfg,
+		pubsub:     ps,
 		passingMap: make(map[string]*syncNode),
 	}
 
@@ -101,7 +102,8 @@ type consulDiscover struct {
 	discoverTicker   *time.Ticker
 	syncWeightTicker *time.Ticker
 
-	cfg Cfg
+	cfg    Cfg
+	pubsub pubsub.IPubsub
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -139,12 +141,12 @@ func (dc *consulDiscover) discoverImpl() {
 			}
 
 			dc.passingMap[service.ServiceID] = &sn
-			balancer.Get(sn.service).Update(balancer.Node{
+
+			dc.pubsub.Pub(discover.EventAdd, discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
 				Weight:  sn.physWeight,
-				OpTag:   balancer.OpAdd,
 			})
 
 		}
@@ -153,10 +155,9 @@ func (dc *consulDiscover) discoverImpl() {
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
 
-			balancer.Get(dc.passingMap[k].service).Update(balancer.Node{
-				ID:    dc.passingMap[k].id,
-				Name:  dc.passingMap[k].service,
-				OpTag: balancer.OpRmv,
+			dc.pubsub.Pub(discover.EventRmv, discover.Node{
+				ID:   dc.passingMap[k].id,
+				Name: dc.passingMap[k].service,
 			})
 
 			delete(dc.passingMap, k)

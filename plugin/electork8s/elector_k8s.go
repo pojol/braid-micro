@@ -1,4 +1,4 @@
-package k8selector
+package electork8s
 
 import (
 	"context"

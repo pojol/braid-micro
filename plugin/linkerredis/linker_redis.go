@@ -1,4 +1,4 @@
-package redislinker
+package linkerredis
 
 import (
 	"errors"

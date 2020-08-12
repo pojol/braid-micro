@@ -3,13 +3,15 @@ package braid
 import (
 	"fmt"
 
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/plugin/pubsubkafka"
 )
 
 // Braid framework instance
@@ -32,6 +34,9 @@ type Braid struct {
 	elector      elector.IElection
 
 	balancerBuilder balancer.Builder
+
+	pubsubBuilder pubsub.Builder
+	pubsub        pubsub.IPubsub
 
 	tracer *tracer.Tracer
 }
@@ -60,13 +65,16 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		plugin(braidGlobal)
 	}
 
+	b.pubsubBuilder = pubsub.GetBuilder(pubsubkafka.PubsubName)
+	b.pubsub = b.pubsubBuilder.Build()
+
 	// build
 	if b.discoverBuilder != nil {
-		b.discover = b.discoverBuilder.Build()
+		b.discover = b.discoverBuilder.Build(b.pubsub)
 	}
 
 	if b.balancerBuilder != nil {
-		balancer.NewGroup(b.balancerBuilder)
+		balancer.NewGroup(b.balancerBuilder, b.pubsub)
 	}
 
 	if b.electorBuild != nil {

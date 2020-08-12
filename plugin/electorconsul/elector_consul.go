@@ -1,4 +1,4 @@
-package consulelector
+package electorconsul
 
 import (
 	"errors"

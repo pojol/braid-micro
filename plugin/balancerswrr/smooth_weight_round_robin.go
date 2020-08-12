@@ -1,8 +1,12 @@
-package swrrbalancer
+package balancerswrr
 
 import (
+	"sync"
+
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/plugin/balancer"
+	"github.com/pojol/braid/module/balancer"
+	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/pubsub"
 )
 
 const (
@@ -16,8 +20,37 @@ func newSmoothWightRoundrobinBalancer() balancer.Builder {
 	return &smoothWeightRoundrobinBuilder{}
 }
 
-func (*smoothWeightRoundrobinBuilder) Build() balancer.Balancer {
-	return &swrrBalancer{}
+func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Balancer {
+	swrr := &swrrBalancer{
+		pubsub: pubsub,
+	}
+
+	go swrr.watcher()
+
+	return swrr
+}
+
+func (wr *swrrBalancer) watcher() {
+
+	addBuf := wr.pubsub.Sub(discover.EventAdd)
+	rmvBuf := wr.pubsub.Sub(discover.EventRmv)
+	updateBuf := wr.pubsub.Sub(discover.EventUpdate)
+
+	for {
+		select {
+		case nod := <-addBuf.Get():
+			wr.add(nod.(discover.Node))
+			addBuf.Load()
+		case nod := <-rmvBuf.Get():
+			wr.rmv(nod.(discover.Node))
+			rmvBuf.Load()
+		case nod := <-updateBuf.Get():
+			wr.syncWeight(nod.(discover.Node))
+			updateBuf.Load()
+		default:
+		}
+	}
+
 }
 
 func (*smoothWeightRoundrobinBuilder) Name() string {
@@ -25,14 +58,17 @@ func (*smoothWeightRoundrobinBuilder) Name() string {
 }
 
 type weightedNod struct {
-	orgNod    balancer.Node
+	orgNod    discover.Node
 	curWeight int
 }
 
 // swrrBalancer 平滑加权轮询
 type swrrBalancer struct {
+	pubsub pubsub.IPubsub
+
 	totalWeight int
 	nods        []weightedNod
+	sync.Mutex
 }
 
 func (wr *swrrBalancer) calcTotalWeight() {
@@ -53,26 +89,15 @@ func (wr *swrrBalancer) isExist(id string) (int, bool) {
 	return -1, false
 }
 
-// Update 更新负载均衡节点
-func (wr *swrrBalancer) Update(nod balancer.Node) {
-
-	if nod.OpTag == balancer.OpAdd {
-		wr.add(nod)
-	} else if nod.OpTag == balancer.OpRmv {
-		wr.rmv(nod)
-	} else if nod.OpTag == balancer.OpUp {
-		wr.syncWeight(nod)
-	}
-
-}
-
 // Pick 执行算法，选取节点
-func (wr *swrrBalancer) Pick() (balancer.Node, error) {
+func (wr *swrrBalancer) Pick() (discover.Node, error) {
 	var tmpWeight int
 	var idx int
+	wr.Lock()
+	defer wr.Unlock()
 
 	if len(wr.nods) <= 0 {
-		return balancer.Node{}, balancer.ErrBalanceEmpty
+		return discover.Node{}, balancer.ErrBalanceEmpty
 	}
 
 	for k, v := range wr.nods {
@@ -93,7 +118,7 @@ func (wr *swrrBalancer) Pick() (balancer.Node, error) {
 	return wr.nods[idx].orgNod, nil
 }
 
-func (wr *swrrBalancer) add(nod balancer.Node) {
+func (wr *swrrBalancer) add(nod discover.Node) {
 
 	if _, ok := wr.isExist(nod.ID); ok {
 		// log
@@ -106,10 +131,11 @@ func (wr *swrrBalancer) add(nod balancer.Node) {
 	})
 
 	wr.calcTotalWeight()
-	log.Debugf("add weighted nod id : %s space : %s", nod.ID, nod.Name)
+
+	log.Debugf("add weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
-func (wr *swrrBalancer) rmv(nod balancer.Node) {
+func (wr *swrrBalancer) rmv(nod discover.Node) {
 
 	var ok bool
 	var idx int
@@ -126,7 +152,7 @@ func (wr *swrrBalancer) rmv(nod balancer.Node) {
 	log.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *swrrBalancer) syncWeight(nod balancer.Node) {
+func (wr *swrrBalancer) syncWeight(nod discover.Node) {
 
 	var ok bool
 	var idx int

@@ -1,4 +1,4 @@
-package consuldiscover
+package discoverconsul
 
 import (
 	"testing"
@@ -7,12 +7,14 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/plugin/balancerswrr"
+	"github.com/pojol/braid/plugin/pubsubkafka"
 )
 
-func TestDiscover(t *testing.T) {
-
+func TestMain(m *testing.M) {
 	mock.Init()
 	l := log.New(log.Config{
 		Mode:   log.DebugMode,
@@ -35,6 +37,15 @@ func TestDiscover(t *testing.T) {
 		MaxIdle:        16,
 		MaxActive:      128,
 	})
+	defer r.Close()
+
+	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
+		pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
+
+	m.Run()
+}
+
+func TestDiscover(t *testing.T) {
 
 	b := discover.GetBuilder(DiscoverName)
 	b.SetCfg(Cfg{
@@ -42,7 +53,7 @@ func TestDiscover(t *testing.T) {
 		Interval: time.Second * 2,
 		Address:  mock.ConsulAddr,
 	})
-	d := b.Build()
+	d := b.Build(pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
 
 	d.Discover()
 
