@@ -145,7 +145,7 @@ func TestWRROp(t *testing.T) {
 	bw.Pick()
 }
 
-//  2637153	       442 ns/op	       0 B/op	       0 allocs/op
+//20664206	        58.9 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
 	ps := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
