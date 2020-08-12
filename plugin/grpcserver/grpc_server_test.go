@@ -11,7 +11,7 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/plugin/rpc/grpcclient/bproto"
+	"github.com/pojol/braid/plugin/grpcclient/bproto"
 	"google.golang.org/grpc"
 )
 

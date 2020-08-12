@@ -3,6 +3,7 @@ package braid
 import (
 	"fmt"
 
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
@@ -10,7 +11,6 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/pubsubkafka"
 )
 

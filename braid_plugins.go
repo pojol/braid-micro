@@ -3,19 +3,19 @@ package braid
 import (
 	"time"
 
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/plugin/balancer"
-	"github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/electork8s"
-	"github.com/pojol/braid/plugin/linker/redislinker"
-	"github.com/pojol/braid/plugin/rpc/grpcclient"
-	"github.com/pojol/braid/plugin/rpc/grpcserver"
+	"github.com/pojol/braid/plugin/grpcclient"
+	"github.com/pojol/braid/plugin/grpcserver"
+	"github.com/pojol/braid/plugin/linkerredis"
 )
 
 type config struct {
@@ -51,14 +51,14 @@ func DiscoverByConsul(address string, options ...discoverconsul.Option) Plugin {
 // BalancerBySwrr 基于平滑加权负载均衡
 func BalancerBySwrr() Plugin {
 	return func(b *Braid) {
-		b.balancerBuilder = balancer.GetBuilder(swrrbalancer.BalancerName)
+		b.balancerBuilder = balancer.GetBuilder(balancerswrr.BalancerName)
 	}
 }
 
 // LinkerByRedis 基于redis实现的链路缓存机制
 func LinkerByRedis() Plugin {
 	return func(b *Braid) {
-		b.linkerBuilder = linker.GetBuilder(redislinker.LinkerName)
+		b.linkerBuilder = linker.GetBuilder(linkerredis.LinkerName)
 	}
 }
 

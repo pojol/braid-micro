@@ -8,7 +8,7 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/plugin/discoverconsul"
-	"github.com/pojol/braid/plugin/rpc/grpcclient"
+	"github.com/pojol/braid/plugin/grpcclient"
 )
 
 func TestMain(m *testing.M) {

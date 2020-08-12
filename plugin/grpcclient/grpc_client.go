@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/plugin/balancer"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/rpc/client"

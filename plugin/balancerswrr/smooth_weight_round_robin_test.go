@@ -1,4 +1,4 @@
-package swrrbalancer
+package balancerswrr
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
-	"github.com/pojol/braid/plugin/balancer"
 	"github.com/pojol/braid/plugin/pubsubkafka"
 	"github.com/stretchr/testify/assert"
 )

@@ -53,7 +53,6 @@ func (kps *kafkaPubsub) Pub(topic string, msg interface{}) {
 
 	for _, ch := range kps.subs[topic] {
 		ch.Put(msg)
-		ch.Load()
 	}
 }
 

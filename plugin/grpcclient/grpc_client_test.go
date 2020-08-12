@@ -7,14 +7,14 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/plugin/balancer"
-	"github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
+	"github.com/pojol/braid/plugin/grpcclient/bproto"
 	"github.com/pojol/braid/plugin/pubsubkafka"
-	"github.com/pojol/braid/plugin/rpc/grpcclient/bproto"
 )
 
 func TestMain(m *testing.M) {
@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 	discv.Discover()
 	defer discv.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(swrrbalancer.BalancerName),
+	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
 		pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
 
 	m.Run()

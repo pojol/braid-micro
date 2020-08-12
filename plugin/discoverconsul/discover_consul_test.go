@@ -7,11 +7,10 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
-	"github.com/pojol/braid/plugin/balancer"
-	"github.com/pojol/braid/plugin/balancer/swrrbalancer"
-	_ "github.com/pojol/braid/plugin/balancer/swrrbalancer"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/pubsubkafka"
 )
 
@@ -40,7 +39,7 @@ func TestMain(m *testing.M) {
 	})
 	defer r.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(swrrbalancer.BalancerName),
+	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
 		pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
 
 	m.Run()
