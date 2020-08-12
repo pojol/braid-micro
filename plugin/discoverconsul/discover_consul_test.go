@@ -11,7 +11,7 @@ import (
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/plugin/balancerswrr"
-	"github.com/pojol/braid/plugin/pubsubkafka"
+	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
 func TestMain(m *testing.M) {
@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	defer r.Close()
 
 	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
-		pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
+		pubsub.GetBuilder(pubsubproc.PubsubName).Build())
 
 	m.Run()
 }
@@ -53,7 +53,7 @@ func TestDiscover(t *testing.T) {
 		Interval: time.Second * 2,
 		Address:  mock.ConsulAddr,
 	})
-	d := b.Build(pubsub.GetBuilder(pubsubkafka.PubsubName).Build())
+	d := b.Build(pubsub.GetBuilder(pubsubproc.PubsubName).Build())
 
 	d.Discover()
 

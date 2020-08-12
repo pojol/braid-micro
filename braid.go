@@ -11,7 +11,7 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/pubsubkafka"
+	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
 // Braid framework instance
@@ -65,7 +65,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		plugin(braidGlobal)
 	}
 
-	b.pubsubBuilder = pubsub.GetBuilder(pubsubkafka.PubsubName)
+	b.pubsubBuilder = pubsub.GetBuilder(pubsubproc.PubsubName)
 	b.pubsub = b.pubsubBuilder.Build()
 
 	// build
