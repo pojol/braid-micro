@@ -14,7 +14,10 @@ type Builder interface {
 
 // IPubsub 异步消息通知
 type IPubsub interface {
+	// 订阅
 	Sub(topic string) *braidsync.Unbounded
+
+	// 通知
 	Pub(topic string, msg interface{})
 }
 
@@ -34,24 +37,3 @@ func GetBuilder(name string) Builder {
 	}
 	return nil
 }
-
-/*
-// 内部
-
-ps.Pub("braid_event_discover", discover.Nod{})
-
-balancer.Init() {
-	discoverCH = balancer.Sub("braid_event_discover")
-
-	go func() {
-		for {
-			select {
-			case <-discoverCH:
-				todo ...
-			}
-		}
-	}()
-}
-
-// 跨进程
-*/

@@ -31,12 +31,17 @@ const (
 	EventUpdate = "discover_event_update"
 )
 
-// IDiscover 发现服务 & 注册节点
+// IDiscover 服务发现
 type IDiscover interface {
-	// 实现发现服务
+	// 通过Tag发现集群内的服务，
+	// 将新的服务信息通知到已订阅的各个模块中，
+	// 在braid中主要提供从两种中心里实现发现逻辑（docker部署采用consul，k8s部署采用它提供的接口
+	//
+	// 注：braid本身没有提供服务注册的接口，在采用docker部署时，
+	// 注册由容器注册服务提供（https://github.com/gliderlabs/registrator
 	Discover()
 
-	// 关闭发现服务
+	// 关闭服务发现
 	Close()
 }
 
