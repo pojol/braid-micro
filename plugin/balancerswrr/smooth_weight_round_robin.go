@@ -32,25 +32,23 @@ func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Bala
 
 func (wr *swrrBalancer) watcher() {
 
-	addBuf := wr.pubsub.Sub(discover.EventAdd)
-	rmvBuf := wr.pubsub.Sub(discover.EventRmv)
-	updateBuf := wr.pubsub.Sub(discover.EventUpdate)
+	addConsumer := wr.pubsub.Sub(discover.EventAdd)
+	addConsumer.AddHandler(func(msg *pubsub.Message) error {
+		wr.add(msg.Body.(discover.Node))
+		return nil
+	})
 
-	for {
-		select {
-		case nod := <-addBuf.Get():
-			wr.add(nod.(discover.Node))
-			addBuf.Load()
-		case nod := <-rmvBuf.Get():
-			wr.rmv(nod.(discover.Node))
-			rmvBuf.Load()
-		case nod := <-updateBuf.Get():
-			wr.syncWeight(nod.(discover.Node))
-			updateBuf.Load()
-		default:
-		}
-	}
+	rmvConsumer := wr.pubsub.Sub(discover.EventRmv)
+	rmvConsumer.AddHandler(func(msg *pubsub.Message) error {
+		wr.rmv(msg.Body.(discover.Node))
+		return nil
+	})
 
+	upConsumer := wr.pubsub.Sub(discover.EventUpdate)
+	upConsumer.AddHandler(func(msg *pubsub.Message) error {
+		wr.rmv(msg.Body.(discover.Node))
+		return nil
+	})
 }
 
 func (*smoothWeightRoundrobinBuilder) Name() string {

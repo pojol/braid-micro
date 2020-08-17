@@ -85,6 +85,13 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		b.server = b.serverBuilder.Build()
 	}
 
+	if b.linker != nil {
+		if b.electorBuild != nil {
+
+		}
+
+	}
+
 	if b.clientBuilder != nil {
 
 		// check balancer

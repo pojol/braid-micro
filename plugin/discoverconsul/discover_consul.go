@@ -142,12 +142,12 @@ func (dc *consulDiscover) discoverImpl() {
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.pubsub.Pub(discover.EventAdd, discover.Node{
+			dc.pubsub.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
 				Weight:  sn.physWeight,
-			})
+			}))
 
 		}
 	}
@@ -155,10 +155,10 @@ func (dc *consulDiscover) discoverImpl() {
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
 
-			dc.pubsub.Pub(discover.EventRmv, discover.Node{
+			dc.pubsub.Pub(discover.EventRmv, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
-			})
+			}))
 
 			delete(dc.passingMap, k)
 		}

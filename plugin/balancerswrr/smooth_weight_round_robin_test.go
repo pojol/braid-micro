@@ -34,26 +34,26 @@ func TestWRR(t *testing.T) {
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    "test",
-	})
+	}))
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    "test",
-	})
+	}))
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
 		Name:    "test",
-	})
+	}))
 
 	var tests = []struct {
 		ID string
@@ -75,26 +75,26 @@ func TestWRRDymc(t *testing.T) {
 	bw := balancer.Get("test")
 	pmap := make(map[string]int)
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  1000,
 		Name:    "test",
-	})
+	}))
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  1000,
 		Name:    "test",
-	})
+	}))
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1000,
 		Name:    "test",
-	})
+	}))
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -105,10 +105,10 @@ func TestWRRDymc(t *testing.T) {
 
 	fmt.Println("step 1", pmap)
 
-	ps.Pub(discover.EventUpdate, discover.Node{
+	ps.Pub(discover.EventUpdate, pubsub.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
-	})
+	}))
 	time.Sleep(time.Millisecond * 100)
 
 	for i := 0; i < 100; i++ {
@@ -125,22 +125,22 @@ func TestWRROp(t *testing.T) {
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:     "A",
 		Name:   "test",
 		Weight: 4,
-	})
+	}))
 
-	ps.Pub(discover.EventRmv, discover.Node{
+	ps.Pub(discover.EventRmv, pubsub.NewMessage(discover.Node{
 		ID:   "A",
 		Name: "test",
-	})
+	}))
 
-	ps.Pub(discover.EventAdd, discover.Node{
+	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 		ID:     "B",
 		Name:   "test",
 		Weight: 2,
-	})
+	}))
 
 	bw.Pick()
 }
@@ -152,11 +152,11 @@ func BenchmarkWRR(b *testing.B) {
 	bw := balancer.Get("test")
 
 	for i := 0; i < 100; i++ {
-		ps.Pub(discover.EventAdd, discover.Node{
+		ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
 			ID:     strconv.Itoa(i),
 			Name:   "test",
 			Weight: i,
-		})
+		}))
 	}
 
 	time.Sleep(time.Millisecond * 100)

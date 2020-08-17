@@ -22,7 +22,7 @@ func newProcPubsub() pubsub.Builder {
 func (*procPubsubBuilder) Build() pubsub.IPubsub {
 
 	ps := &procPubsub{
-		subs: make(map[string][]*braidsync.Unbounded),
+		consumer: make(map[string][]pubsub.IConsumer),
 	}
 
 	return ps
@@ -34,26 +34,72 @@ func (*procPubsubBuilder) Name() string {
 
 type procPubsub struct {
 	sync.RWMutex
-	subs map[string][]*braidsync.Unbounded
+	consumer map[string][]pubsub.IConsumer
 }
 
-func (kps *procPubsub) Sub(topic string) *braidsync.Unbounded {
+// Consumer 消费者
+type procConsumer struct {
+	buff   *braidsync.Unbounded
+	exitCh *braidsync.Switch
+}
+
+func (c *procConsumer) AddHandler(handler pubsub.HandlerFunc) {
+
+	go func() {
+		for {
+			select {
+			case msg := <-c.buff.Get():
+				handler(msg.(*pubsub.Message))
+				c.buff.Load()
+			case <-c.exitCh.Done():
+			}
+
+			if c.exitCh.HasOpend() {
+				return
+			}
+		}
+	}()
+
+}
+
+func (c *procConsumer) Exit() {
+	c.exitCh.Open()
+}
+
+func (c *procConsumer) IsExited() bool {
+	return c.exitCh.HasOpend()
+}
+
+func (c *procConsumer) PutMsg(msg *pubsub.Message) {
+	c.buff.Put(msg)
+}
+
+func (kps *procPubsub) Sub(topic string) pubsub.IConsumer {
 	kps.Lock()
 	defer kps.Unlock()
 
-	ch := braidsync.NewUnbounded()
-	kps.subs[topic] = append(kps.subs[topic], ch)
+	c := &procConsumer{
+		buff:   braidsync.NewUnbounded(),
+		exitCh: braidsync.NewSwitch(),
+	}
+	kps.consumer[topic] = append(kps.consumer[topic], c)
 
-	return ch
+	return c
 }
 
-func (kps *procPubsub) Pub(topic string, msg interface{}) {
+func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
 	kps.RLock()
 	defer kps.RUnlock()
 
-	for _, ch := range kps.subs[topic] {
-		ch.Put(msg)
+	for i := 0; i < len(kps.consumer[topic]); i++ {
+		if kps.consumer[topic][i].IsExited() {
+			kps.consumer[topic] = append(kps.consumer[topic][:i], kps.consumer[topic][i+1:]...)
+			i--
+		} else {
+			kps.consumer[topic][i].PutMsg(msg)
+		}
 	}
+
 }
 
 func init() {
