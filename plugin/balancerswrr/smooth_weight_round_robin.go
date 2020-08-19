@@ -32,20 +32,20 @@ func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Bala
 
 func (wr *swrrBalancer) watcher() {
 
-	addConsumer := wr.pubsub.Sub(discover.EventAdd)
-	addConsumer.AddHandler(func(msg *pubsub.Message) error {
+	addSub := wr.pubsub.Sub(discover.EventAdd)
+	addSub.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
 		wr.add(msg.Body.(discover.Node))
 		return nil
 	})
 
-	rmvConsumer := wr.pubsub.Sub(discover.EventRmv)
-	rmvConsumer.AddHandler(func(msg *pubsub.Message) error {
+	rmvSub := wr.pubsub.Sub(discover.EventRmv)
+	rmvSub.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
 		wr.rmv(msg.Body.(discover.Node))
 		return nil
 	})
 
 	upConsumer := wr.pubsub.Sub(discover.EventUpdate)
-	upConsumer.AddHandler(func(msg *pubsub.Message) error {
+	upConsumer.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
 		wr.rmv(msg.Body.(discover.Node))
 		return nil
 	})

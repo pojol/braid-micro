@@ -22,7 +22,7 @@ func newProcPubsub() pubsub.Builder {
 func (*procPubsubBuilder) Build() pubsub.IPubsub {
 
 	ps := &procPubsub{
-		consumer: make(map[string][]pubsub.IConsumer),
+		subscriber: make(map[string]pubsub.ISubscriber),
 	}
 
 	return ps
@@ -32,18 +32,13 @@ func (*procPubsubBuilder) Name() string {
 	return PubsubName
 }
 
-type procPubsub struct {
-	sync.RWMutex
-	consumer map[string][]pubsub.IConsumer
-}
-
 // Consumer 消费者
 type procConsumer struct {
 	buff   *braidsync.Unbounded
 	exitCh *braidsync.Switch
 }
 
-func (c *procConsumer) AddHandler(handler pubsub.HandlerFunc) {
+func (c *procConsumer) OnArrived(handler pubsub.HandlerFunc) {
 
 	go func() {
 		for {
@@ -74,30 +69,64 @@ func (c *procConsumer) PutMsg(msg *pubsub.Message) {
 	c.buff.Put(msg)
 }
 
-func (kps *procPubsub) Sub(topic string) pubsub.IConsumer {
-	kps.Lock()
-	defer kps.Unlock()
+type procSubscriber struct {
+	group []pubsub.IConsumer
+	sync.Mutex
+}
+
+func (ps *procSubscriber) AddConsumer() pubsub.IConsumer {
+
+	ps.Lock()
+	defer ps.Unlock()
 
 	c := &procConsumer{
 		buff:   braidsync.NewUnbounded(),
 		exitCh: braidsync.NewSwitch(),
 	}
-	kps.consumer[topic] = append(kps.consumer[topic], c)
+
+	ps.group = append(ps.group, c)
 
 	return c
+}
+
+func (ps *procSubscriber) AppendConsumer() pubsub.IConsumer {
+	return nil
+}
+
+func (ps *procSubscriber) PutMsg(msg *pubsub.Message) {
+	for i := 0; i < len(ps.group); i++ {
+		if ps.group[i].IsExited() {
+			ps.group = append(ps.group[:i], ps.group[i+1:]...)
+			i--
+		} else {
+			ps.group[i].PutMsg(msg)
+		}
+	}
+}
+
+// procPubsub 进程内使用的pub-sub消息分发队列
+type procPubsub struct {
+	sync.RWMutex
+	subscriber map[string]pubsub.ISubscriber
+}
+
+func (kps *procPubsub) Sub(topic string) pubsub.ISubscriber {
+	kps.Lock()
+	defer kps.Unlock()
+
+	if _, ok := kps.subscriber[topic]; !ok {
+		kps.subscriber[topic] = &procSubscriber{}
+	}
+
+	return kps.subscriber[topic]
 }
 
 func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
 	kps.RLock()
 	defer kps.RUnlock()
 
-	for i := 0; i < len(kps.consumer[topic]); i++ {
-		if kps.consumer[topic][i].IsExited() {
-			kps.consumer[topic] = append(kps.consumer[topic][:i], kps.consumer[topic][i+1:]...)
-			i--
-		} else {
-			kps.consumer[topic][i].PutMsg(msg)
-		}
+	if _, ok := kps.subscriber[topic]; ok {
+		kps.subscriber[topic].PutMsg(msg)
 	}
 
 }

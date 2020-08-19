@@ -32,7 +32,7 @@ type HandlerFunc func(message *Message) error
 
 // IConsumer 消费者接口
 type IConsumer interface {
-	AddHandler(handler HandlerFunc)
+	OnArrived(handler HandlerFunc)
 
 	PutMsg(msg *Message)
 
@@ -40,12 +40,36 @@ type IConsumer interface {
 	IsExited() bool
 }
 
+// ISubscriber 订阅接口
+type ISubscriber interface {
+	// 添加消费者，竞争消费
+	AddConsumer() IConsumer
+	// 添加消费者，共同消费
+	AppendConsumer() IConsumer
+
+	PutMsg(msg *Message)
+}
+
 // IPubsub 异步消息通知
 type IPubsub interface {
-	// 订阅
-	Sub(topic string) IConsumer
+	// 订阅， 创建一个消费者组
+	// 1 topic : 1 consumer
+	// sub1 := pubsub.Sub("discover_add")
+	// sub.AddConsumer().OnArrived( func(msg *pubsub.Message) error { return nil } )
+	// sub2 := pubsub.Sub("discover_rmv")
+	// sub2.AddConsumer().OnArrived()
+	//
+	// 1 topic : N consumer (一个topic 被多个consumer 竞争消费
+	// sub1 := pubsub.Sub("discover_add").AddConsumer().OnArrived()
+	// sub2 := pubsub.Sub("discover_add").AddConsumer().OnArrived()
+	//
+	// 1 topic : N consumer (一个topic 拥有多个consumer 共同消费
+	// sub := pubsub.Sub("discover_add")
+	// sub.AddConsumer().OnArrived()
+	// sub.AppendConsumer().OnArrived()
+	Sub(topic string) ISubscriber
 
-	// 通知
+	// 生产一条 message 投送到 topic。
 	Pub(topic string, msg *Message)
 }
 

@@ -15,8 +15,9 @@ func TestConsumer(t *testing.T) {
 	pb := pubsub.GetBuilder(PubsubName).Build()
 	var testTick uint64
 
-	testConsumer := pb.Sub("test")
-	testConsumer.AddHandler(func(msg *pubsub.Message) error {
+	tsub := pb.Sub("test")
+	tconsumer := tsub.AddConsumer()
+	tconsumer.OnArrived(func(msg *pubsub.Message) error {
 		fmt.Println("consume topic", "test", msg.Body)
 		atomic.AddUint64(&testTick, 1)
 		return nil
@@ -26,7 +27,7 @@ func TestConsumer(t *testing.T) {
 	pb.Pub("test", pubsub.NewMessage("test2"))
 
 	time.Sleep(time.Millisecond * 100)
-	testConsumer.Exit()
+	tconsumer.Exit()
 	pb.Pub("test", pubsub.NewMessage("test3"))
 
 	time.Sleep(time.Second)
