@@ -1,21 +1,71 @@
 package pubsub
 
 import (
+	"encoding/json"
 	"strings"
-
-	"github.com/pojol/braid/internal/braidsync"
+	"time"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build() IPubsub
+	Build() (IPubsub, error)
 	Name() string
+	SetCfg(cfg interface{}) error
+}
+
+// Message 消息体
+type Message struct {
+	ID        string
+	Body      []byte
+	Timestamp int64
+}
+
+// NewMessage 构建消息体
+func NewMessage(body interface{}) *Message {
+
+	byt, err := json.Marshal(body)
+	if err != nil {
+		byt = []byte{}
+	}
+
+	return &Message{
+		ID:        "",
+		Body:      byt,
+		Timestamp: time.Now().UnixNano(),
+	}
+}
+
+// HandlerFunc 消息处理函数
+type HandlerFunc func(message *Message) error
+
+// IConsumer 消费者接口
+type IConsumer interface {
+	OnArrived(handler HandlerFunc)
+
+	PutMsg(msg *Message)
+
+	Exit()
+	IsExited() bool
+}
+
+// ISubscriber 订阅接口
+type ISubscriber interface {
+
+	// AddShared add shared consumer
+	AddShared() IConsumer
+	// AddCompetition add competition consumer
+	AddCompetition() IConsumer
+
+	GetConsumer(cid string) []IConsumer
 }
 
 // IPubsub 异步消息通知
 type IPubsub interface {
-	Sub(topic string) *braidsync.Unbounded
-	Pub(topic string, msg interface{})
+	// Sub 订阅， 创建一个订阅者，它包含一组消费者
+	Sub(topic string) ISubscriber
+
+	// Pub produce a message put in topic。
+	Pub(topic string, msg *Message)
 }
 
 var (
@@ -34,24 +84,3 @@ func GetBuilder(name string) Builder {
 	}
 	return nil
 }
-
-/*
-// 内部
-
-ps.Pub("braid_event_discover", discover.Nod{})
-
-balancer.Init() {
-	discoverCH = balancer.Sub("braid_event_discover")
-
-	go func() {
-		for {
-			select {
-			case <-discoverCH:
-				todo ...
-			}
-		}
-	}()
-}
-
-// 跨进程
-*/

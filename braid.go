@@ -66,7 +66,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	}
 
 	b.pubsubBuilder = pubsub.GetBuilder(pubsubproc.PubsubName)
-	b.pubsub = b.pubsubBuilder.Build()
+	b.pubsub, _ = b.pubsubBuilder.Build()
 
 	// build
 	if b.discoverBuilder != nil {
@@ -83,6 +83,13 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	if b.serverBuilder != nil {
 		b.server = b.serverBuilder.Build()
+	}
+
+	if b.linker != nil {
+		if b.electorBuild != nil {
+
+		}
+
 	}
 
 	if b.clientBuilder != nil {

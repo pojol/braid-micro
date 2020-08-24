@@ -39,8 +39,8 @@ func TestMain(m *testing.M) {
 	})
 	defer r.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
-		pubsub.GetBuilder(pubsubproc.PubsubName).Build())
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName), ps)
 
 	m.Run()
 }
@@ -53,7 +53,9 @@ func TestDiscover(t *testing.T) {
 		Interval: time.Second * 2,
 		Address:  mock.ConsulAddr,
 	})
-	d := b.Build(pubsub.GetBuilder(pubsubproc.PubsubName).Build())
+
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	d := b.Build(ps)
 
 	d.Discover()
 

@@ -13,10 +13,13 @@ type Builder interface {
 
 // IElection 选举器需要提供的接口
 type IElection interface {
-	//
+	// 当前节点是否为Master节点
+	// 适用于一些只能在单个进程内处理的业务
 	IsMaster() bool
 
+	// 侦听
 	Run()
+	// 关闭
 	Close()
 }
 
