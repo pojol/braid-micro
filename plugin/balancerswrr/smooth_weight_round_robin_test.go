@@ -30,7 +30,7 @@ func TestMain(t *testing.M) {
 }
 
 func TestWRR(t *testing.T) {
-	ps := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
@@ -70,7 +70,7 @@ func TestWRR(t *testing.T) {
 }
 
 func TestWRRDymc(t *testing.T) {
-	ps := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 	pmap := make(map[string]int)
@@ -121,7 +121,7 @@ func TestWRRDymc(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
-	ps := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 
@@ -147,7 +147,7 @@ func TestWRROp(t *testing.T) {
 
 //20664206	        58.9 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
-	ps := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
 	bw := balancer.Get("test")
 

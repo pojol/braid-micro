@@ -19,17 +19,21 @@ func newProcPubsub() pubsub.Builder {
 	return &procPubsubBuilder{}
 }
 
-func (*procPubsubBuilder) Build() pubsub.IPubsub {
+func (*procPubsubBuilder) Build() (pubsub.IPubsub, error) {
 
 	ps := &procPubsub{
 		subscriber: make(map[string]pubsub.ISubscriber),
 	}
 
-	return ps
+	return ps, nil
 }
 
 func (*procPubsubBuilder) Name() string {
 	return PubsubName
+}
+
+func (*procPubsubBuilder) SetCfg(cfg interface{}) error {
+	return nil
 }
 
 // Consumer 消费者
@@ -74,7 +78,7 @@ type procSubscriber struct {
 	sync.Mutex
 }
 
-func (ps *procSubscriber) AddConsumer() pubsub.IConsumer {
+func (ps *procSubscriber) AddCompetition() pubsub.IConsumer {
 
 	ps.Lock()
 	defer ps.Unlock()
@@ -89,11 +93,18 @@ func (ps *procSubscriber) AddConsumer() pubsub.IConsumer {
 	return c
 }
 
-func (ps *procSubscriber) AppendConsumer() pubsub.IConsumer {
+func (ps *procSubscriber) AddShared() pubsub.IConsumer {
 	return nil
 }
 
-func (ps *procSubscriber) PutMsg(msg *pubsub.Message) {
+func (ps *procSubscriber) GetConsumer(cid string) []pubsub.IConsumer {
+	ps.Lock()
+	defer ps.Unlock()
+
+	return ps.group
+}
+
+func (ps *procSubscriber) PutMsg(groupid string, msg *pubsub.Message) {
 	for i := 0; i < len(ps.group); i++ {
 		if ps.group[i].IsExited() {
 			ps.group = append(ps.group[:i], ps.group[i+1:]...)
@@ -122,11 +133,13 @@ func (kps *procPubsub) Sub(topic string) pubsub.ISubscriber {
 }
 
 func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
-	kps.RLock()
-	defer kps.RUnlock()
 
 	if _, ok := kps.subscriber[topic]; ok {
-		kps.subscriber[topic].PutMsg(msg)
+
+		consumerLst := kps.subscriber[topic].GetConsumer("")
+		for _, v := range consumerLst {
+			v.PutMsg(msg)
+		}
 	}
 
 }

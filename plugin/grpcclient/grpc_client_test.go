@@ -37,12 +37,13 @@ func TestMain(m *testing.M) {
 		Interval: time.Second * 2,
 		Address:  mock.ConsulAddr,
 	})
-	discv := db.Build(pubsub.GetBuilder(pubsubproc.PubsubName).Build())
+
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	discv := db.Build(ps)
 	discv.Discover()
 	defer discv.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName),
-		pubsub.GetBuilder(pubsubproc.PubsubName).Build())
+	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName), ps)
 
 	m.Run()
 }

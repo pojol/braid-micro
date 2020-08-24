@@ -26,9 +26,9 @@ type Node struct {
 
 // event
 const (
-	EventAdd    = "discover_event_add"
-	EventRmv    = "discover_event_remove"
-	EventUpdate = "discover_event_update"
+	EventAdd    = "event_discover_add"
+	EventRmv    = "event_discover_remove"
+	EventUpdate = "event_discover_update"
 )
 
 // IDiscover 服务发现

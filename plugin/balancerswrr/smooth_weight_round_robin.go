@@ -1,6 +1,7 @@
 package balancerswrr
 
 import (
+	"encoding/json"
 	"sync"
 
 	"github.com/pojol/braid/3rd/log"
@@ -33,20 +34,28 @@ func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Bala
 func (wr *swrrBalancer) watcher() {
 
 	addSub := wr.pubsub.Sub(discover.EventAdd)
-	addSub.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
-		wr.add(msg.Body.(discover.Node))
+	addSub.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
+
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		wr.add(nod)
 		return nil
 	})
 
 	rmvSub := wr.pubsub.Sub(discover.EventRmv)
-	rmvSub.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
-		wr.rmv(msg.Body.(discover.Node))
+	rmvSub.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+		wr.rmv(nod)
 		return nil
 	})
 
 	upConsumer := wr.pubsub.Sub(discover.EventUpdate)
-	upConsumer.AddConsumer().OnArrived(func(msg *pubsub.Message) error {
-		wr.rmv(msg.Body.(discover.Node))
+	upConsumer.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+		wr.syncWeight(nod)
 		return nil
 	})
 }
