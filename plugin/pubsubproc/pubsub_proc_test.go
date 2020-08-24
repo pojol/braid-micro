@@ -18,7 +18,7 @@ func TestConsumer(t *testing.T) {
 	tsub := pb.Sub("test")
 	tconsumer := tsub.AddCompetition()
 	tconsumer.OnArrived(func(msg *pubsub.Message) error {
-		fmt.Println("consume topic", "test", msg.Body)
+		fmt.Println("consume topic", "test", string(msg.Body))
 		atomic.AddUint64(&testTick, 1)
 		return nil
 	})
