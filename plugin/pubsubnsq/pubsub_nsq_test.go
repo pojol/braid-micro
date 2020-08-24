@@ -14,6 +14,8 @@ import (
 func TestMain(m *testing.M) {
 
 	mock.Init()
+	fmt.Println("nsqd addr", mock.NsqdAddr)
+	fmt.Println("lookupd addr", mock.NSQLookupdAddr)
 
 	m.Run()
 }
