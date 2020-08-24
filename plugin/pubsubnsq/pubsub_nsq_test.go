@@ -32,6 +32,7 @@ func TestNsq1V1(t *testing.T) {
 		lookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
+	fmt.Println(err)
 	assert.Equal(t, err, nil)
 
 	consumer := pb.Sub(topic).AddShared()
@@ -63,6 +64,7 @@ func TestNsqShared(t *testing.T) {
 		lookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
+	fmt.Println(err)
 	assert.Equal(t, err, nil)
 
 	consumer1 := pb.Sub(topic).AddShared()
@@ -105,6 +107,7 @@ func TestNsqCompetition(t *testing.T) {
 		lookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
+	fmt.Println(err)
 	assert.Equal(t, err, nil)
 
 	consumer1 := pb.Sub(topic).AddCompetition()
