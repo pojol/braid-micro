@@ -27,9 +27,8 @@ b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr),
 b.Run()
 defer b.Close()
 
-Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
+Client().Invoke(context.TODO(), "target", "method", "", args, reply)
 ```
-
 
 
 #### Quick start
