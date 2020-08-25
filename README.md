@@ -1,15 +1,13 @@
 ## braid
 A lightweight microservice framework that provides commonly used components. Using braid will enable us to focus on implementation without having to care about master-slave, adding and deleting services, scheduling, load balancing and other microservice logic. In addition, users can also implement their own plug-ins and customize the internal logic of the module.
 
-
+---
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid)](https://goreportcard.com/report/github.com/pojol/braid)
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
-
-> `v1.1.x` Preview version
 
 #### Feature
 * RPC
@@ -35,7 +33,7 @@ Client().Invoke(context.TODO(), "target", "method", "", args, reply)
 
 #### Quick start
 
-> get braid
+> get braid `v1.1.x` Preview version
 
 ```bash
 go get github.com/pojol/braid@latest
