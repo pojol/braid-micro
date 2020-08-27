@@ -1,5 +1,5 @@
-## braid
-A lightweight microservice framework that provides commonly used components. Using braid will enable us to focus on implementation without having to care about master-slave, adding and deleting services, scheduling, load balancing and other microservice logic. In addition, users can also implement their own plug-ins and customize the internal logic of the module.
+## Braid
+**Braid** plug-ins become service grid
 
 ---
 
@@ -9,13 +9,25 @@ A lightweight microservice framework that provides commonly used components. Usi
 
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
-#### Feature
+
+#### Plug-ins
 * RPC
+  - grpc-client
+  - grpc-server
 * Linker
 * Discover
+  - discover-consul
 * Balancer
+  - smooth-weight-round-robin
 * Elector
+  - elector-consul
+  - elector-k8s
+* Pub-sub
+  - pubsub-proc
+  - pubsub-nsq
 * Tracing
+  - tracing-jeager
+
 
 #### rpc-client sample
 ```go
