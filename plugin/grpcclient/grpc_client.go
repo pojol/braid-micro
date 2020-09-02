@@ -155,7 +155,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 		address = nod.Address
 		if c.linked() {
-			c.linker.Link(token, nod.ID, nod.Address)
+			c.linker.Link(token, nod.Address)
 		}
 	}
 

@@ -28,8 +28,8 @@ func TestNsq1V1(t *testing.T) {
 
 	psb := pubsub.GetBuilder(PubsubName)
 	psb.SetCfg(NsqConfig{
-		addres:       []string{mock.NsqdAddr},
-		lookupAddres: []string{mock.NSQLookupdAddr},
+		Addres:       []string{mock.NsqdAddr},
+		LookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
 	assert.Equal(t, err, nil)
@@ -58,8 +58,8 @@ func TestNsqShared(t *testing.T) {
 
 	psb := pubsub.GetBuilder(PubsubName)
 	psb.SetCfg(NsqConfig{
-		addres:       []string{mock.NsqdAddr},
-		lookupAddres: []string{mock.NSQLookupdAddr},
+		Addres:       []string{mock.NsqdAddr},
+		LookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
 	assert.Equal(t, err, nil)
@@ -100,8 +100,8 @@ func TestNsqCompetition(t *testing.T) {
 	psb := pubsub.GetBuilder(PubsubName)
 	psb.SetCfg(NsqConfig{
 		Channel:      "competition1",
-		addres:       []string{mock.NsqdAddr},
-		lookupAddres: []string{mock.NSQLookupdAddr},
+		Addres:       []string{mock.NsqdAddr},
+		LookupAddres: []string{mock.NSQLookupdAddr},
 	})
 	pb, err := psb.Build()
 	assert.Equal(t, err, nil)

@@ -32,8 +32,8 @@ func newNsqPubsub() pubsub.Builder {
 
 func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 
-	producers := make([]*nsq.Producer, len(pb.cfg.addres))
-	for _, addr := range pb.cfg.addres {
+	producers := make([]*nsq.Producer, len(pb.cfg.Addres))
+	for _, addr := range pb.cfg.Addres {
 		producer, err := nsq.NewProducer(addr, nsq.NewConfig())
 		if err != nil {
 			return nil, err
@@ -67,16 +67,6 @@ func (pb *nsqPubsubBuilder) SetCfg(cfg interface{}) error {
 	pb.cfg = nsqCfg
 
 	return nil
-}
-
-// NsqConfig nsq config
-type NsqConfig struct {
-	nsqCfg *nsq.Config
-
-	lookupAddres []string
-	addres       []string
-
-	Channel string
 }
 
 type nsqPubsub struct {
@@ -116,6 +106,8 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 	consumerLst := ch.ns.GetConsumer(ch.uuid)
 	for _, v := range consumerLst {
 
+		// 这里不能异步消费消息（因为不能表达出消费失败，将消息回退的逻辑）待修改。
+		// 如果消息执行到这里节点宕机，nsq可以将这个消息重新塞入到队列。
 		v.PutMsg(&pubsub.Message{
 			Body: msg.Body,
 		})
@@ -228,8 +220,8 @@ func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 		group:        make(map[string]pubsub.IConsumer),
 		Channel:      kps.cfg.Channel,
 		Topic:        topic,
-		lookupAddres: kps.cfg.lookupAddres,
-		addres:       kps.cfg.addres,
+		lookupAddres: kps.cfg.LookupAddres,
+		addres:       kps.cfg.Addres,
 	}
 
 	kps.subsrcibers = append(kps.subsrcibers, s)
