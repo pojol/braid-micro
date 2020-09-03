@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
@@ -86,6 +87,7 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		return nil
 	})
 
+	log.Debugf("build redis linker")
 	return e
 }
 
@@ -136,6 +138,7 @@ func (l *redisLinker) Link(token string, targetAddr string) error {
 		return err
 	}
 
+	log.Debugf("linked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
 	return nil
 }
 
@@ -166,6 +169,7 @@ func (l *redisLinker) Unlink(token string) error {
 		fmt.Println("unlink exec", err)
 	}
 
+	log.Debugf("unlinked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
 	return nil
 }
 

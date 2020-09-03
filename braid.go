@@ -92,7 +92,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		b.pubsub, _ = b.pubsubBuilder.Build()
 	}
 
-	if b.linker != nil {
+	if b.linkerBuilder != nil {
 		if b.electorBuild == nil {
 			fmt.Println("linker need depend elector")
 		}
@@ -140,6 +140,11 @@ func Client() client.IClient {
 // Server grpc-server
 func Server() server.ISserver {
 	return braidGlobal.server
+}
+
+// Pubsub pub-sub
+func Pubsub() pubsub.IPubsub {
+	return braidGlobal.pubsub
 }
 
 // Close 关闭braid
