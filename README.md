@@ -15,6 +15,7 @@
   - grpc-client
   - grpc-server
 * Linker
+  -  linker-redis   `linker based in the nsq and redis`
 * Discover
   - discover-consul
 * Balancer
