@@ -142,7 +142,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	if c.linked() {
 		address, err = c.linker.Target(token)
 		if err != nil {
-			// log
+			log.Debugf("linker.target warning %s", err.Error())
 			return
 		}
 	}
@@ -150,6 +150,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	if address == "" {
 		nod, err = pick(nodName)
 		if err != nil {
+			log.Debugf("pick warning %s", err.Error())
 			return
 		}
 
@@ -161,7 +162,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	conn, err := c.getConn(address)
 	if err != nil {
-		//log
+		log.Debugf("client get conn warning %s", err.Error())
 		return
 	}
 	defer conn.Put()
@@ -169,6 +170,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	//opts...
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
 	if err != nil {
+		log.Debugf("client invoke warning %s", err.Error())
 		if c.linked() {
 			c.linker.Unlink(token)
 		}

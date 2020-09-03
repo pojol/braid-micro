@@ -9,6 +9,7 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
 )
@@ -131,6 +132,9 @@ func (dc *consulDiscover) discoverImpl() {
 		}
 
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
+			// regist service
+			balancer.Get(service.ServiceName)
+			log.Debugf("new service %s id %s", service.ServiceName, service.ID)
 
 			sn := syncNode{
 				service:    service.ServiceName,
@@ -142,7 +146,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.pubsub.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+			dc.pubsub.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -154,8 +158,9 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
+			log.Debugf("remove service %s id %s", services[k].ServiceName, services[k].ID)
 
-			dc.pubsub.Pub(discover.EventRmv, pubsub.NewMessage(discover.Node{
+			dc.pubsub.Pub(discover.EventRmv+"_"+services[k].ServiceName, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))

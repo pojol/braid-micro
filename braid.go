@@ -69,6 +69,10 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	// build
 	if b.discoverBuilder != nil {
+		if b.balancerBuilder == nil {
+			fmt.Println("discover need depend balancer")
+		}
+
 		b.discover = b.discoverBuilder.Build(pb)
 	}
 
@@ -89,10 +93,10 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	}
 
 	if b.linker != nil {
-		if b.electorBuild != nil {
+		if b.electorBuild == nil {
 			fmt.Println("linker need depend elector")
 		}
-		if b.pubsubBuilder != nil {
+		if b.pubsubBuilder == nil {
 			fmt.Println("linker need depend pubsub")
 		}
 
@@ -100,13 +104,8 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	}
 
 	if b.clientBuilder != nil {
-
-		// check balancer
-		if b.balancerBuilder != nil {
-			fmt.Println("rpc-client need depend balancer")
-		}
 		// check discover
-		if b.discoverBuilder != nil {
+		if b.discoverBuilder == nil {
 			fmt.Println("rpc-client need depend discover")
 		}
 

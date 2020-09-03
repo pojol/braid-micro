@@ -33,7 +33,7 @@ func NewGroup(builder Builder, pubsub pubsub.IPubsub) *Group {
 func Get(nodName string) Balancer {
 	wb, ok := bg.m.Load(nodName)
 	if !ok {
-		wb = bg.builder.Build(bg.ps)
+		wb = bg.builder.Build(bg.ps, nodName)
 		bg.m.Store(nodName, wb)
 		log.Debugf("add balance group %s", nodName)
 	}

@@ -68,12 +68,19 @@ func LinkerByRedis() Plugin {
 }
 
 // ElectorByConsul 基于consul实现的elector
-func ElectorByConsul() Plugin {
+func ElectorByConsul(consulAddr string) Plugin {
 	return func(b *Braid) {
+
 		b.electorBuild = elector.GetBuilder(electorconsul.ElectionName)
+		if consulAddr == "" {
+			consulAddr = "http://127.0.0.1:8500"
+		}
+
 		b.electorBuild.SetCfg(electorconsul.Cfg{
-			Address: "http://127.0.0.1:8500",
-			Name:    b.cfg.Name,
+			Address:           consulAddr,
+			Name:              b.cfg.Name,
+			LockTick:          time.Second * 2,
+			RefushSessionTick: time.Second * 5,
 		})
 	}
 }
