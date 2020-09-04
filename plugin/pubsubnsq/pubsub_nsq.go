@@ -33,7 +33,6 @@ func newNsqPubsub() pubsub.Builder {
 
 func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 
-	fmt.Println("cfg len", len(pb.cfg.Addres))
 	producers := make([]*nsq.Producer, 0, len(pb.cfg.Addres))
 	for _, addr := range pb.cfg.Addres {
 		producer, err := nsq.NewProducer(addr, nsq.NewConfig())
@@ -236,9 +235,7 @@ func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 
 func (kps *nsqPubsub) Pub(topic string, msg *pubsub.Message) {
 
-	idx := rand.Intn(len(kps.producers))
-	p := kps.producers[idx]
-	fmt.Println(p, idx, len(kps.producers))
+	p := kps.producers[rand.Intn(len(kps.producers))]
 	p.Publish(topic, msg.Body)
 
 }
