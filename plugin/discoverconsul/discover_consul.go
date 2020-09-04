@@ -68,36 +68,6 @@ func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub) discover.IDiscover {
 	return e
 }
 
-// Cfg discover config
-type Cfg struct {
-	Name string
-
-	// 同步节点信息间隔
-	Interval time.Duration
-
-	// 注册中心
-	Address string
-
-	Tag string
-}
-
-// Option consul discover config wrapper
-type Option func(*Cfg)
-
-// WithTag 修改config中的discover tag
-func WithTag(discoverTag string) Option {
-	return func(c *Cfg) {
-		c.Tag = discoverTag
-	}
-}
-
-// WithInterval 修改config中的interval
-func WithInterval(interval time.Duration) Option {
-	return func(c *Cfg) {
-		c.Interval = interval
-	}
-}
-
 // Discover 发现管理braid相关的节点
 type consulDiscover struct {
 	discoverTicker   *time.Ticker
@@ -119,6 +89,17 @@ type syncNode struct {
 	physWeight int
 }
 
+func (dc *consulDiscover) InBlacklist(name string) bool {
+
+	for _, v := range dc.cfg.Blacklist {
+		if v == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (dc *consulDiscover) discoverImpl() {
 
 	services, err := consul.GetCatalogServices(dc.cfg.Address, dc.cfg.Tag)
@@ -128,6 +109,10 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for _, service := range services {
 		if service.ServiceName == dc.cfg.Name {
+			continue
+		}
+
+		if dc.InBlacklist(service.ServiceName) {
 			continue
 		}
 
