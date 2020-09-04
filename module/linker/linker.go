@@ -2,35 +2,44 @@ package linker
 
 import (
 	"strings"
+
+	"github.com/pojol/braid/module/elector"
+	"github.com/pojol/braid/module/pubsub"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(cfg interface{}) ILinker
+	Build(elector elector.IElection, pubsub pubsub.IPubsub) ILinker
 	Name() string
+	SetCfg(cfg interface{}) error
 }
 
-// ILinker 链接器 (保存链路信息
-// nodid 节点id
-// token 用户链接在节点上的身份id
-// target 节点的真实地址
+// ILinker The connector is a service that maintains the link relationship between multiple processes and users.
 //
-// 链接器是一个维护多个进程之间，用户链路关系的服务，
-// 通常相关的操作指令都需要投送到相关的父master节点上，通过消费消息进行信息的添加删除操作。
+// +---parent----------+
+// |                   |
+// |    +--child----+  |
+// |    |           |  |
+// |    | token ... |  |
+// |    |           |  |
+// |    +-----------+  |
+// |                   |
+// +-------------------+
 type ILinker interface {
-	// 提供正向查找功能，通过token检索到token原本指向的nod address
-	Target(token string) (target string, err error)
+	// Look for existing links from the cache
+	Target(child string, token string) (targetAddr string, err error)
 
 	// 将token绑定到nod
-	Link(token string, nodid string, target string) error
-	// 解除token在nod的绑定
+	Link(clild string, token string, targetAddr string) error
+
+	// unlink token
 	Unlink(token string) error
 
 	// 提供nod中token的数量
-	Num(nodid string) (int, error)
+	Num(clild string, targetAddr string) (int, error)
 
-	// 清空nod中的token
-	Offline(nodid string) error
+	// clean up the service
+	Down(targetAddr string) error
 }
 
 var (

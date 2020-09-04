@@ -5,9 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pojol/braid/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -21,6 +20,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestRedis(t *testing.T) {
+
 	c := New()
 	c.Init(Config{
 		Address:        mock.RedisAddr,
@@ -69,6 +69,7 @@ func TestRedis(t *testing.T) {
 	c.Ping()
 	c.DBSize()
 	c.flushDB()
+
 }
 
 // 722519 ns/op

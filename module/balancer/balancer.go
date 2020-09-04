@@ -27,7 +27,7 @@ func GetBuilder(name string) Builder {
 
 // Builder 构建器接口
 type Builder interface {
-	Build(pubsub pubsub.IPubsub) Balancer
+	Build(pubsub pubsub.IPubsub, serviceName string) Balancer
 	Name() string
 }
 

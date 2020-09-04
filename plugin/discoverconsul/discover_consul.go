@@ -9,6 +9,7 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
 )
@@ -67,36 +68,6 @@ func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub) discover.IDiscover {
 	return e
 }
 
-// Cfg discover config
-type Cfg struct {
-	Name string
-
-	// 同步节点信息间隔
-	Interval time.Duration
-
-	// 注册中心
-	Address string
-
-	Tag string
-}
-
-// Option consul discover config wrapper
-type Option func(*Cfg)
-
-// WithTag 修改config中的discover tag
-func WithTag(discoverTag string) Option {
-	return func(c *Cfg) {
-		c.Tag = discoverTag
-	}
-}
-
-// WithInterval 修改config中的interval
-func WithInterval(interval time.Duration) Option {
-	return func(c *Cfg) {
-		c.Interval = interval
-	}
-}
-
 // Discover 发现管理braid相关的节点
 type consulDiscover struct {
 	discoverTicker   *time.Ticker
@@ -118,6 +89,17 @@ type syncNode struct {
 	physWeight int
 }
 
+func (dc *consulDiscover) InBlacklist(name string) bool {
+
+	for _, v := range dc.cfg.Blacklist {
+		if v == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (dc *consulDiscover) discoverImpl() {
 
 	services, err := consul.GetCatalogServices(dc.cfg.Address, dc.cfg.Tag)
@@ -130,7 +112,14 @@ func (dc *consulDiscover) discoverImpl() {
 			continue
 		}
 
+		if dc.InBlacklist(service.ServiceName) {
+			continue
+		}
+
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
+			// regist service
+			balancer.Get(service.ServiceName)
+			log.Debugf("new service %s id %s", service.ServiceName, service.ID)
 
 			sn := syncNode{
 				service:    service.ServiceName,
@@ -142,7 +131,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.pubsub.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+			dc.pubsub.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -154,8 +143,9 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
+			log.Debugf("remove service %s id %s", services[k].ServiceName, services[k].ID)
 
-			dc.pubsub.Pub(discover.EventRmv, pubsub.NewMessage(discover.Node{
+			dc.pubsub.Pub(discover.EventRmv+"_"+services[k].ServiceName, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))

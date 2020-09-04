@@ -4,15 +4,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/plugin/electorconsul"
+	"github.com/pojol/braid/plugin/pubsubnsq"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTarget(t *testing.T) {
 
 	mock.Init()
+
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	r := redis.New()
 	r.Init(redis.Config{
@@ -25,22 +41,34 @@ func TestTarget(t *testing.T) {
 		MaxActive:      128,
 	})
 
+	ps, _ := pubsub.GetBuilder(pubsubnsq.PubsubName).Build()
+	eb := elector.GetBuilder(electorconsul.ElectionName)
+	eb.SetCfg(electorconsul.Cfg{
+		Address:           mock.ConsulAddr,
+		Name:              "test",
+		LockTick:          time.Second,
+		RefushSessionTick: time.Second,
+	})
+	e, _ := eb.Build()
+	defer e.Close()
+
 	b := linker.GetBuilder(LinkerName)
-	lk := b.Build(nil)
+	b.SetCfg(Config{
+		ServiceName: "base",
+	})
+	lk := b.Build(e, ps)
 
-	num, err := lk.Num("testnodid")
+	r.Del(LinkerRedisPrefix + "base_child_" + "127.0.0.1")
+	r.Del(LinkerRedisPrefix)
+
+	num, err := lk.Num("mail", "127.0.0.1")
 	assert.Equal(t, num, 0)
 	assert.Equal(t, err, nil)
 
-	err = lk.Link("testtoken1", "testnodid", "192.168.0.1:8000")
+	err = lk.Link("mail", "xxx", "127.0.0.1")
 	assert.Equal(t, err, nil)
 
-	target, err := lk.Target("testtoken1")
-	assert.Equal(t, target, "192.168.0.1:8000")
+	addr, err := lk.Target("mail", "xxx")
 	assert.Equal(t, err, nil)
-
-	lk.Offline("testnodid")
-	num, err = lk.Num("testnodid")
-	assert.Equal(t, num, 0)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, addr, "127.0.0.1")
 }

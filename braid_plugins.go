@@ -7,6 +7,7 @@ import (
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/plugin/balancerswrr"
@@ -16,6 +17,7 @@ import (
 	"github.com/pojol/braid/plugin/grpcclient"
 	"github.com/pojol/braid/plugin/grpcserver"
 	"github.com/pojol/braid/plugin/linkerredis"
+	"github.com/pojol/braid/plugin/pubsubnsq"
 )
 
 type config struct {
@@ -59,16 +61,26 @@ func BalancerBySwrr() Plugin {
 func LinkerByRedis() Plugin {
 	return func(b *Braid) {
 		b.linkerBuilder = linker.GetBuilder(linkerredis.LinkerName)
+		b.linkerBuilder.SetCfg(linkerredis.Config{
+			ServiceName: b.cfg.Name,
+		})
 	}
 }
 
 // ElectorByConsul 基于consul实现的elector
-func ElectorByConsul() Plugin {
+func ElectorByConsul(consulAddr string) Plugin {
 	return func(b *Braid) {
+
 		b.electorBuild = elector.GetBuilder(electorconsul.ElectionName)
+		if consulAddr == "" {
+			consulAddr = "http://127.0.0.1:8500"
+		}
+
 		b.electorBuild.SetCfg(electorconsul.Cfg{
-			Address: "http://127.0.0.1:8500",
-			Name:    b.cfg.Name,
+			Address:           consulAddr,
+			Name:              b.cfg.Name,
+			LockTick:          time.Second * 2,
+			RefushSessionTick: time.Second * 5,
 		})
 	}
 }
@@ -83,6 +95,23 @@ func ElectorByK8s(kubeconfig string, nodid string) Plugin {
 			Namespace:   "default",
 			RetryPeriod: time.Second * 2,
 		})
+	}
+}
+
+// PubsubByNsq 构建pubsub
+func PubsubByNsq(lookupAddres []string, addr []string, opts ...pubsubnsq.Option) Plugin {
+	return func(b *Braid) {
+		b.pubsubBuilder = pubsub.GetBuilder(pubsubnsq.PubsubName)
+		cfg := pubsubnsq.NsqConfig{
+			LookupAddres: lookupAddres,
+			Addres:       addr,
+		}
+
+		for _, opt := range opts {
+			opt(&cfg)
+		}
+
+		b.pubsubBuilder.SetCfg(cfg)
 	}
 }
 

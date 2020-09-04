@@ -21,9 +21,12 @@ func newSmoothWightRoundrobinBalancer() balancer.Builder {
 	return &smoothWeightRoundrobinBuilder{}
 }
 
-func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Balancer {
+func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub, serviceName string) balancer.Balancer {
+
 	swrr := &swrrBalancer{
-		pubsub: pubsub,
+		addSub: pubsub.Sub(discover.EventAdd + "_" + serviceName).AddCompetition(),
+		rmvSub: pubsub.Sub(discover.EventRmv + "_" + serviceName).AddCompetition(),
+		upSub:  pubsub.Sub(discover.EventUpdate + "_" + serviceName).AddCompetition(),
 	}
 
 	go swrr.watcher()
@@ -33,9 +36,7 @@ func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub) balancer.Bala
 
 func (wr *swrrBalancer) watcher() {
 
-	addSub := wr.pubsub.Sub(discover.EventAdd)
-	addSub.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
-
+	wr.addSub.OnArrived(func(msg *pubsub.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
@@ -43,16 +44,14 @@ func (wr *swrrBalancer) watcher() {
 		return nil
 	})
 
-	rmvSub := wr.pubsub.Sub(discover.EventRmv)
-	rmvSub.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
+	wr.rmvSub.OnArrived(func(msg *pubsub.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 		wr.rmv(nod)
 		return nil
 	})
 
-	upConsumer := wr.pubsub.Sub(discover.EventUpdate)
-	upConsumer.AddCompetition().OnArrived(func(msg *pubsub.Message) error {
+	wr.upSub.OnArrived(func(msg *pubsub.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 		wr.syncWeight(nod)
@@ -71,7 +70,9 @@ type weightedNod struct {
 
 // swrrBalancer 平滑加权轮询
 type swrrBalancer struct {
-	pubsub pubsub.IPubsub
+	addSub pubsub.IConsumer
+	rmvSub pubsub.IConsumer
+	upSub  pubsub.IConsumer
 
 	totalWeight int
 	nods        []weightedNod
