@@ -6,12 +6,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
+
+	l := log.New(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testNormal",
+		Suffex: ".log",
+	}, log.WithSys(log.Config{
+		Mode:   log.DebugMode,
+		Path:   "testSys",
+		Suffex: ".sys",
+	}))
+	defer l.Close()
 
 	mock.Init()
 	fmt.Println("nsqd addr", mock.NsqdAddr)
@@ -42,7 +54,6 @@ func TestNsq1V1(t *testing.T) {
 	}()
 
 	consumer.OnArrived(func(msg *pubsub.Message) error {
-		fmt.Println("test nsq 1v1 , msg arrived", string(msgByte))
 		onarrived = true
 		return nil
 	})
