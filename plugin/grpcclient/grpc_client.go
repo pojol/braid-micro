@@ -139,8 +139,8 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	default:
 	}
 
-	if c.linked() {
-		address, err = c.linker.Target(token)
+	if c.linked() && token != "" {
+		address, err = c.linker.Target(nodName, token)
 		if err != nil {
 			log.Debugf("linker.target warning %s", err.Error())
 			return
@@ -155,8 +155,11 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 		}
 
 		address = nod.Address
-		if c.linked() {
-			c.linker.Link(token, nod.Address)
+		if c.linked() && token != "" {
+			err = c.linker.Link(nod.Name, token, nod.Address)
+			if err != nil {
+				log.Debugf("link warning %s %s", token, err.Error())
+			}
 		}
 	}
 

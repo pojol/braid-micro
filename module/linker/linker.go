@@ -27,16 +27,16 @@ type Builder interface {
 // +-------------------+
 type ILinker interface {
 	// Look for existing links from the cache
-	Target(token string) (targetAddr string, err error)
+	Target(child string, token string) (targetAddr string, err error)
 
 	// 将token绑定到nod
-	Link(token string, targetAddr string) error
+	Link(clild string, token string, targetAddr string) error
 
 	// unlink token
 	Unlink(token string) error
 
 	// 提供nod中token的数量
-	Num(targetAddr string) (int, error)
+	Num(clild string, targetAddr string) (int, error)
 
 	// clean up the service
 	Down(targetAddr string) error

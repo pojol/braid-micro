@@ -2,7 +2,6 @@ package linkerredis
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
@@ -15,20 +14,32 @@ const (
 	// LinkerName 链接器名称
 	LinkerName = "RedisLinker"
 
-	// LinkerPrefix linker redis key prefix
-	LinkerPrefix = "braid_linker_"
+	// redis
 
-	// braid_linker_"base"_child_"addr" [ token ... ]
+	// LinkerRedisPrefix linker redis key prefix
+	LinkerRedisPrefix = "braid_linker_"
 
-	// LinkerTokenPool token pool
-	LinkerTokenPool = "braid_linker_token_pool"
-	// braid_linker_"base"_"token" : "targetAddr"
+	// Store the token list of the target server
+	// addr => [token ...] (list)
+	// braid_linker_"parent"_"chlid"_"addr" [ token ... ]
 
-	// LinkerDownTopic node offline topic
-	LinkerDownTopic = "braid_linker_service_down"
+	// LinkerReidsParentSet parent set
+	// parent => [childAddr ...] (set)
+	// braid_linker_set_"token"
 
-	// LinkerUnlinkTopic unlink token topic
-	LinkerUnlinkTopic = "braid_linker_unlink"
+	// LinkerRedisTokenPool token pool
+	// token => addr (hash)
+	// filed braid_linker_"parent"_"child"_"token"
+	// value targetAddr
+	LinkerRedisTokenPool = "braid_linker_token_pool"
+
+	// topic
+
+	// LinkerTopicDown node offline topic
+	LinkerTopicDown = "braid_linker_service_down"
+
+	// LinkerTopicUnlink unlink token topic
+	LinkerTopicUnlink = "braid_linker_unlink"
 )
 
 var (
@@ -66,7 +77,7 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		cfg:     rb.cfg,
 	}
 
-	downSub := ps.Sub(LinkerDownTopic)
+	downSub := ps.Sub(LinkerTopicDown)
 	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
 		// 本节点是master节点，才可以执行下面的操作.
@@ -77,7 +88,7 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		return nil
 	})
 
-	unlinkSub := ps.Sub(LinkerUnlinkTopic)
+	unlinkSub := ps.Sub(LinkerTopicUnlink)
 	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
 		if elector.IsMaster() {
@@ -103,18 +114,31 @@ type redisLinker struct {
 	cfg     Config
 }
 
-func (l *redisLinker) Target(token string) (target string, err error) {
+func (l *redisLinker) getTokenPoolField(child string, token string) string {
+	field := LinkerRedisPrefix + l.cfg.ServiceName + "_" + child + "_" + token
+	return field
+}
+
+func (l *redisLinker) getTokenListField(child string, addr string) string {
+	field := LinkerRedisPrefix + "lst_" + l.cfg.ServiceName + "_" + child + "_" + addr
+	return field
+}
+
+func (l *redisLinker) getParentSetField(token string) string {
+	field := LinkerRedisPrefix + "set_" + l.cfg.ServiceName + "_" + token
+	return field
+}
+
+func (l *redisLinker) Target(child string, token string) (target string, err error) {
 
 	if token == "" {
 		return "", nil
 	}
 
-	childField := LinkerPrefix + l.cfg.ServiceName + "_" + token
-
-	return redis.Get().HGet(LinkerTokenPool, childField)
+	return redis.Get().HGet(LinkerRedisTokenPool, l.getTokenPoolField(child, token))
 }
 
-func (l *redisLinker) Link(token string, targetAddr string) error {
+func (l *redisLinker) Link(child string, token string, targetAddr string) error {
 
 	conn := redis.Get().Conn()
 	defer conn.Close()
@@ -122,17 +146,16 @@ func (l *redisLinker) Link(token string, targetAddr string) error {
 	mu := redis.Mutex{
 		Token: token,
 	}
-	err := mu.Lock("Link")
+	err := mu.Lock("braid_linker")
 	if err != nil {
 		return err
 	}
 	defer mu.Unlock()
 
-	parent := l.cfg.ServiceName
-
 	conn.Send("MULTI")
-	conn.Send("HSET", LinkerTokenPool, LinkerPrefix+parent+"_"+token, targetAddr)
-	conn.Send("LPUSH", LinkerPrefix+parent+"_child_"+targetAddr, token)
+	conn.Send("HSET", LinkerRedisTokenPool, l.getTokenPoolField(child, token), targetAddr)
+	conn.Send("SADD", l.getParentSetField(token), child)
+	conn.Send("LPUSH", l.getTokenListField(child, targetAddr), token)
 	_, err = conn.Do("EXEC")
 	if err != nil {
 		return err
@@ -152,30 +175,50 @@ func (l *redisLinker) Unlink(token string) error {
 	conn := redis.Get().Conn()
 	defer conn.Close()
 
-	childField := LinkerPrefix + l.cfg.ServiceName + "_" + token
-
-	targetAddr, err := redis.ConnHGet(conn, LinkerTokenPool, childField)
+	log.Debugf("smembers %s", l.getParentSetField(token))
+	childs, err := redis.ConnSMembers(conn, l.getParentSetField(token))
 	if err != nil {
-		fmt.Println("unlink hget", err)
+		log.Debugf("unlink get parent members err %s", err.Error())
+		return err
 	}
 
-	addrField := LinkerPrefix + l.cfg.ServiceName + "_child_" + targetAddr
+	targets := []string{}
+
+	for _, child := range childs {
+
+		targetAddr, err := redis.ConnHGet(conn, LinkerRedisTokenPool, l.getTokenPoolField(child, token))
+		if err != nil {
+			log.Debugf("unlink hget %s", err.Error())
+			continue
+		}
+
+		targets = append(targets, targetAddr)
+	}
 
 	conn.Send("MULTI")
-	conn.Send("HDEL", LinkerTokenPool, childField)
-	conn.Send("LREM", addrField, 0, token)
-	_, err = conn.Do("EXEC")
-	if err != nil {
-		fmt.Println("unlink exec", err)
+
+	for i := 0; i < len(childs); i++ {
+		child := childs[i]
+		targetAddr := targets[i]
+
+		conn.Send("HDEL", LinkerRedisTokenPool, l.getTokenPoolField(child, token))
+		conn.Send("LREM", l.getTokenListField(child, targetAddr), 0, token)
+
+		log.Debugf("unlinked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
 	}
 
-	log.Debugf("unlinked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
+	conn.Send("DEL", l.getParentSetField(token))
+
+	_, err = conn.Do("EXEC")
+	if err != nil {
+		log.Debugf("unlink exec err %s", err.Error())
+	}
+
 	return nil
 }
 
-func (l *redisLinker) Num(targetAddr string) (int, error) {
-	linkField := LinkerPrefix + l.cfg.ServiceName + "_child_" + targetAddr
-	return redis.Get().LLen(linkField)
+func (l *redisLinker) Num(child string, targetAddr string) (int, error) {
+	return redis.Get().LLen(l.getTokenListField(child, targetAddr))
 }
 
 // Down 删除离线节点的链路缓存

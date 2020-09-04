@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nsqio/go-nsq"
+	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/internal/braidsync"
 	"github.com/pojol/braid/module/pubsub"
 )
@@ -32,7 +33,8 @@ func newNsqPubsub() pubsub.Builder {
 
 func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 
-	producers := make([]*nsq.Producer, len(pb.cfg.Addres))
+	fmt.Println("cfg len", len(pb.cfg.Addres))
+	producers := make([]*nsq.Producer, 0, len(pb.cfg.Addres))
 	for _, addr := range pb.cfg.Addres {
 		producer, err := nsq.NewProducer(addr, nsq.NewConfig())
 		if err != nil {
@@ -42,9 +44,12 @@ func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 		if err = producer.Ping(); err != nil {
 			return nil, err
 		}
+
+		log.Debugf("nsq producer build succ %s", addr)
 		producers = append(producers, producer)
 	}
 
+	fmt.Println("p", producers)
 	ps := &nsqPubsub{
 		producers: producers,
 		cfg:       pb.cfg,
@@ -231,7 +236,9 @@ func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 
 func (kps *nsqPubsub) Pub(topic string, msg *pubsub.Message) {
 
-	p := kps.producers[rand.Intn(len(kps.producers))]
+	idx := rand.Intn(len(kps.producers))
+	p := kps.producers[idx]
+	fmt.Println(p, idx, len(kps.producers))
 	p.Publish(topic, msg.Body)
 
 }

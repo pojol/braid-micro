@@ -180,6 +180,14 @@ func (rc *Client) Get(key string) (string, error) {
 	return val, err
 }
 
+// ------- set ----------
+
+// ConnSMembers 返回集合 key 中的所有成员。
+func ConnSMembers(conn redis.Conn, key string) ([]string, error) {
+	val, err := redis.Strings(conn.Do("SMEMBERS", key))
+	return val, err
+}
+
 // ---------------------- hash -------------------------------
 
 // HGet 返回哈希表 key 中给定域 field 的值
