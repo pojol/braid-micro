@@ -59,7 +59,9 @@ func TestTarget(t *testing.T) {
 	lk := b.Build(e, ps)
 
 	r.Del(LinkerRedisPrefix + "base_child_" + "127.0.0.1")
-	r.Del(LinkerRedisPrefix)
+	r.Del(LinkerRedisTokenPool)
+	r.Del("braid_linker_lst_base_mail_127.0.0.1")
+	r.Del("braid_linker_set_base_xxx")
 
 	num, err := lk.Num("mail", "127.0.0.1")
 	assert.Equal(t, num, 0)
@@ -71,4 +73,5 @@ func TestTarget(t *testing.T) {
 	addr, err := lk.Target("mail", "xxx")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1")
+
 }
