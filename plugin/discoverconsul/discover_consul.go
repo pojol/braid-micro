@@ -11,6 +11,7 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/pubsub"
 )
 
@@ -57,11 +58,12 @@ func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub) discover.IDiscover {
+func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub, linker linker.ILinker) discover.IDiscover {
 
 	e := &consulDiscover{
 		cfg:        b.cfg,
 		pubsub:     ps,
+		linker:     linker,
 		passingMap: make(map[string]*syncNode),
 	}
 
@@ -75,6 +77,7 @@ type consulDiscover struct {
 
 	cfg    Cfg
 	pubsub pubsub.IPubsub
+	linker linker.ILinker
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -155,16 +158,14 @@ func (dc *consulDiscover) discoverImpl() {
 	}
 }
 
-/*
-func (dc *consulDiscover) SyncWeight() {
-
-	for k := range dc.passingMap {
-		num, err := dc.linker.Num(dc.passingMap[k].id)
+func (dc *consulDiscover) syncWeight() {
+	for k, v := range dc.passingMap {
+		num, err := dc.linker.Num(v.service, v.address)
 		if err != nil || num == 0 {
 			continue
 		}
 
-		if num == dc.passingMap[k].dyncWeight {
+		if num == v.dyncWeight {
 			continue
 		}
 
@@ -176,36 +177,49 @@ func (dc *consulDiscover) SyncWeight() {
 			nweight = 1
 		}
 
-		balancer.Get(dc.passingMap[k].service).Update(balancer.Node{
-			ID:      dc.passingMap[k].id,
-			Name:    dc.passingMap[k].service,
-			Address: dc.passingMap[k].address,
-			Weight:  nweight,
-			OpTag:   balancer.OpUp,
-		})
+		dc.pubsub.Pub(discover.EventUpdate+"_"+v.service, pubsub.NewMessage(discover.Node{
+			ID:     v.id,
+			Name:   v.service,
+			Weight: nweight,
+		}))
 	}
-
 }
-*/
 
 func (dc *consulDiscover) runImpl() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("status", "sync", fmt.Errorf("%v", err).Error())
+				log.SysError("status", "sync service", fmt.Errorf("%v", err).Error())
 			}
 		}()
 		// todo ..
 		dc.discoverImpl()
 	}
 
+	syncWeight := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				log.SysError("status", "sync weight", fmt.Errorf("%v", err).Error())
+			}
+		}()
+
+		if dc.linker != nil {
+			dc.syncWeight()
+		}
+
+	}
+
 	dc.discoverTicker = time.NewTicker(dc.cfg.Interval)
+	dc.syncWeightTicker = time.NewTicker(time.Second * 10)
+
 	dc.discoverImpl()
 
 	for {
 		select {
 		case <-dc.discoverTicker.C:
 			syncService()
+		case <-dc.syncWeightTicker.C:
+			syncWeight()
 		}
 	}
 }

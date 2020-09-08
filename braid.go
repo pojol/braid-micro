@@ -68,13 +68,6 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	pb, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
 
 	// build
-	if b.discoverBuilder != nil {
-		if b.balancerBuilder == nil {
-			fmt.Println("discover need depend balancer")
-		}
-
-		b.discover = b.discoverBuilder.Build(pb)
-	}
 
 	if b.balancerBuilder != nil {
 		balancer.NewGroup(b.balancerBuilder, pb)
@@ -82,10 +75,6 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	if b.electorBuild != nil {
 		b.elector, _ = b.electorBuild.Build()
-	}
-
-	if b.serverBuilder != nil {
-		b.server = b.serverBuilder.Build()
 	}
 
 	if b.pubsubBuilder != nil {
@@ -101,6 +90,18 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		}
 
 		b.linker = b.linkerBuilder.Build(b.elector, b.pubsub)
+	}
+
+	if b.discoverBuilder != nil {
+		if b.balancerBuilder == nil {
+			fmt.Println("discover need depend balancer")
+		}
+
+		b.discover = b.discoverBuilder.Build(pb, b.linker)
+	}
+
+	if b.serverBuilder != nil {
+		b.server = b.serverBuilder.Build()
 	}
 
 	if b.clientBuilder != nil {

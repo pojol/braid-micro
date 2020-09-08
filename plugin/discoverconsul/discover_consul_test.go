@@ -55,7 +55,7 @@ func TestDiscover(t *testing.T) {
 	})
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	d := b.Build(ps)
+	d := b.Build(ps, nil)
 
 	d.Discover()
 

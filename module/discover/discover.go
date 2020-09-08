@@ -3,12 +3,13 @@ package discover
 import (
 	"strings"
 
+	"github.com/pojol/braid/module/linker"
 	"github.com/pojol/braid/module/pubsub"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(ps pubsub.IPubsub) IDiscover
+	Build(ps pubsub.IPubsub, linker linker.ILinker) IDiscover
 	Name() string
 	SetCfg(cfg interface{}) error
 }

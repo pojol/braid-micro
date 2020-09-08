@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	})
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	discv := db.Build(ps)
+	discv := db.Build(ps, nil)
 	discv.Discover()
 	defer discv.Close()
 
