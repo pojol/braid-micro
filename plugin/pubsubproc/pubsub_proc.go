@@ -138,7 +138,9 @@ func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
 
 		consumerLst := kps.subscriber[topic].GetConsumer("")
 		for _, v := range consumerLst {
-			v.PutMsg(msg)
+			if !v.IsExited() {
+				v.PutMsg(msg)
+			}
 		}
 	}
 

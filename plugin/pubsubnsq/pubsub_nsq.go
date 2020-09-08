@@ -48,7 +48,6 @@ func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 		producers = append(producers, producer)
 	}
 
-	fmt.Println("p", producers)
 	ps := &nsqPubsub{
 		producers: producers,
 		cfg:       pb.cfg,
