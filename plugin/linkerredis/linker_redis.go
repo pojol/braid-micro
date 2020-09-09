@@ -19,24 +19,18 @@ const (
 	// LinkerRedisPrefix linker redis key prefix
 	LinkerRedisPrefix = "braid_linker_"
 
-	// Store the token list of the target server
-	// addr => [token ...] (list)
-	// braid_linker_"parent"_"chlid"_"addr" [ token ... ]
+	// braid_linker_"parent"_"chlid"_"addr" `list` 本节点链路下的目标节点的token集合
+	// parent_child_addr => [token ...]
 
-	// LinkerReidsParentSet parent set
-	// parent => [childAddr ...] (set)
-	// braid_linker_set_"token"
+	// braid_linker_"parent"_"token"  `set` token在本节点下面进行链路的目标节点集合
+	// parent_token => ( targetNod ... )
 
 	// LinkerRedisTokenPool token pool
-	// token => addr (hash)
-	// filed braid_linker_"parent"_"child"_"token"
-	// value targetAddr
+	// braid_linker_"parent"_"child"_"token" `hash` 本节点下token指向的目标地址
+	// parent_chlid_token : "targetAddr"
 	LinkerRedisTokenPool = "braid_linker_token_pool"
 
 	// topic
-
-	// LinkerTopicDown node offline topic
-	LinkerTopicDown = "braid_linker_service_down"
 
 	// LinkerTopicUnlink unlink token topic
 	LinkerTopicUnlink = "braid_linker_unlink"
@@ -76,17 +70,6 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		pubsub:  ps,
 		cfg:     rb.cfg,
 	}
-
-	downSub := ps.Sub(LinkerTopicDown)
-	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
-
-		// 本节点是master节点，才可以执行下面的操作.
-		if elector.IsMaster() {
-			e.Down(string(msg.Body))
-		}
-
-		return nil
-	})
 
 	unlinkSub := ps.Sub(LinkerTopicUnlink)
 	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
@@ -175,7 +158,6 @@ func (l *redisLinker) Unlink(token string) error {
 	conn := redis.Get().Conn()
 	defer conn.Close()
 
-	log.Debugf("smembers %s", l.getParentSetField(token))
 	childs, err := redis.ConnSMembers(conn, l.getParentSetField(token))
 	if err != nil {
 		log.Debugf("unlink get parent members err %s", err.Error())
@@ -222,7 +204,32 @@ func (l *redisLinker) Num(child string, targetAddr string) (int, error) {
 }
 
 // Down 删除离线节点的链路缓存
-func (l *redisLinker) Down(targetAddr string) error {
+func (l *redisLinker) Down(child string, targetAddr string) error {
+
+	if !l.elector.IsMaster() {
+		return nil
+	}
+
+	conn := redis.Get().Conn()
+	defer conn.Close()
+
+	tokens, err := redis.ConnLRange(conn, l.getTokenListField(child, targetAddr), 0, -1)
+	if err != nil {
+		log.Debugf("linker down ConnLRange %s", err.Error())
+		return err
+	}
+
+	conn.Send("MULTI")
+	for _, token := range tokens {
+		conn.Send("HDEL", LinkerRedisTokenPool, l.getTokenPoolField(child, token))
+		conn.Send("DEL", l.getParentSetField(token))
+	}
+	conn.Send("DEL", l.getTokenListField(child, targetAddr))
+	_, err = conn.Do("EXEC")
+	if err != nil {
+		log.Debugf("linker down exec %s", err.Error())
+		return err
+	}
 
 	return nil
 }

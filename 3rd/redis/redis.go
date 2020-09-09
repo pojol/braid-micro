@@ -293,6 +293,12 @@ func (rc *Client) LRange(key string, start int, stop int) ([]string, error) {
 	return resp, err
 }
 
+// ConnLRange conn lrange
+func ConnLRange(conn redis.Conn, key string, start int, stop int) ([]string, error) {
+	resp, err := redis.Strings(conn.Do("LRANGE", key, start, stop))
+	return resp, err
+}
+
 // LRem 根据参数 count 的值，移除列表中与参数 value 相等的元素。
 func (rc *Client) LRem(key string, count int, value string) (int, error) {
 	conn := rc.pool.Get()

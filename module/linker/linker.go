@@ -39,7 +39,7 @@ type ILinker interface {
 	Num(clild string, targetAddr string) (int, error)
 
 	// clean up the service
-	Down(targetAddr string) error
+	Down(clild string, targetAddr string) error
 }
 
 var (

@@ -74,4 +74,6 @@ func TestTarget(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1")
 
+	err = lk.Down("mail", "127.0.0.1")
+	assert.Equal(t, err, nil)
 }

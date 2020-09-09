@@ -153,6 +153,10 @@ func (dc *consulDiscover) discoverImpl() {
 				Name: dc.passingMap[k].service,
 			}))
 
+			if dc.linker != nil {
+				dc.linker.Down(dc.passingMap[k].service, dc.passingMap[k].address)
+			}
+
 			delete(dc.passingMap, k)
 		}
 	}
