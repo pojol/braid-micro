@@ -15,8 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTarget(t *testing.T) {
-
+func TestMain(m *testing.M) {
 	mock.Init()
 
 	l := log.New(log.Config{
@@ -41,11 +40,74 @@ func TestTarget(t *testing.T) {
 		MaxActive:      128,
 	})
 
-	ps, _ := pubsub.GetBuilder(pubsubnsq.PubsubName).Build()
+	m.Run()
+}
+
+func TestLinkerTarget(t *testing.T) {
+	LinkerRedisPrefix = "testlinkertarget"
+
+	psb := pubsub.GetBuilder(pubsubnsq.PubsubName)
+	psb.SetCfg(pubsubnsq.NsqConfig{
+		Addres:       []string{mock.NsqdAddr},
+		LookupAddres: []string{mock.NSQLookupdAddr},
+	})
+	ps, _ := psb.Build()
 	eb := elector.GetBuilder(electorconsul.ElectionName)
 	eb.SetCfg(electorconsul.Cfg{
 		Address:           mock.ConsulAddr,
-		Name:              "test",
+		Name:              "testlinkertarget",
+		LockTick:          time.Second,
+		RefushSessionTick: time.Second,
+	})
+	e, _ := eb.Build()
+	defer e.Close()
+
+	b := linker.GetBuilder(LinkerName)
+	b.SetCfg(Config{
+		ServiceName: "base",
+	})
+	lk := b.Build(e, ps)
+	err := lk.Link("mail", "token01", "127.0.0.1")
+	assert.Equal(t, err, nil)
+	err = lk.Link("social", "token01", "127.0.0.2")
+	assert.Equal(t, err, nil)
+
+	addr, err := lk.Target("mail", "token01")
+	assert.Equal(t, err, nil)
+	assert.Equal(t, addr, "127.0.0.1")
+
+	addr, err = lk.Target("mail", "token02")
+	assert.Equal(t, addr, "")
+
+	num, err := lk.Num("mail", "127.0.0.1")
+	assert.Equal(t, err, nil)
+	assert.Equal(t, num, 1)
+
+	ps.Pub(LinkerTopicUnlink, &pubsub.Message{
+		Body: []byte("token01"),
+	})
+	ps.Pub(LinkerTopicUnlink, &pubsub.Message{
+		Body: []byte("token02"),
+	})
+	time.Sleep(time.Millisecond * 500)
+
+	num, err = lk.Num("mail", "127.0.0.1")
+	assert.Equal(t, num, 0)
+}
+
+func TestLinkerDown(t *testing.T) {
+	LinkerRedisPrefix = "testlinkerdown"
+
+	psb := pubsub.GetBuilder(pubsubnsq.PubsubName)
+	psb.SetCfg(pubsubnsq.NsqConfig{
+		Addres:       []string{mock.NsqdAddr},
+		LookupAddres: []string{mock.NSQLookupdAddr},
+	})
+	ps, _ := psb.Build()
+	eb := elector.GetBuilder(electorconsul.ElectionName)
+	eb.SetCfg(electorconsul.Cfg{
+		Address:           mock.ConsulAddr,
+		Name:              "testlinkerdown",
 		LockTick:          time.Second,
 		RefushSessionTick: time.Second,
 	})
@@ -58,22 +120,20 @@ func TestTarget(t *testing.T) {
 	})
 	lk := b.Build(e, ps)
 
-	r.Del(LinkerRedisPrefix + "base_child_" + "127.0.0.1")
-	r.Del(LinkerRedisTokenPool)
-	r.Del("braid_linker_lst_base_mail_127.0.0.1")
-	r.Del("braid_linker_set_base_xxx")
-
-	num, err := lk.Num("mail", "127.0.0.1")
-	assert.Equal(t, num, 0)
+	err := lk.Link("mail", "token01", "127.0.0.1")
 	assert.Equal(t, err, nil)
-
-	err = lk.Link("mail", "xxx", "127.0.0.1")
+	err = lk.Link("mail", "token02", "127.0.0.1")
 	assert.Equal(t, err, nil)
-
-	addr, err := lk.Target("mail", "xxx")
+	err = lk.Link("mail", "token03", "127.0.0.2")
 	assert.Equal(t, err, nil)
-	assert.Equal(t, addr, "127.0.0.1")
 
 	err = lk.Down("mail", "127.0.0.1")
 	assert.Equal(t, err, nil)
+
+	addr, _ := lk.Target("mail", "token01")
+	assert.Equal(t, addr, "")
+
+	lk.Unlink("token01")
+	lk.Unlink("token02")
+	lk.Unlink("token03")
 }
