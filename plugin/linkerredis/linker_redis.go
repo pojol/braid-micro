@@ -10,14 +10,16 @@ import (
 	"github.com/pojol/braid/module/pubsub"
 )
 
+var (
+	// LinkerRedisPrefix linker redis key prefix
+	LinkerRedisPrefix = "braid_linker_"
+)
+
 const (
 	// LinkerName 链接器名称
 	LinkerName = "RedisLinker"
 
 	// redis
-
-	// LinkerRedisPrefix linker redis key prefix
-	LinkerRedisPrefix = "braid_linker_"
 
 	// braid_linker_"parent"_"chlid"_"addr" `list` 本节点链路下的目标节点的token集合
 	// parent_child_addr => [token ...]
@@ -28,7 +30,7 @@ const (
 	// LinkerRedisTokenPool token pool
 	// braid_linker_"parent"_"child"_"token" `hash` 本节点下token指向的目标地址
 	// parent_chlid_token : "targetAddr"
-	LinkerRedisTokenPool = "braid_linker_token_pool"
+	LinkerRedisTokenPool = "token_pool"
 
 	// topic
 
@@ -102,6 +104,10 @@ func (l *redisLinker) getTokenPoolField(child string, token string) string {
 	return field
 }
 
+func getTokenPoolKey() string {
+	return LinkerRedisPrefix + LinkerRedisTokenPool
+}
+
 func (l *redisLinker) getTokenListField(child string, addr string) string {
 	field := LinkerRedisPrefix + "lst_" + l.cfg.ServiceName + "_" + child + "_" + addr
 	return field
@@ -118,7 +124,7 @@ func (l *redisLinker) Target(child string, token string) (target string, err err
 		return "", nil
 	}
 
-	return redis.Get().HGet(LinkerRedisTokenPool, l.getTokenPoolField(child, token))
+	return redis.Get().HGet(getTokenPoolKey(), l.getTokenPoolField(child, token))
 }
 
 func (l *redisLinker) Link(child string, token string, targetAddr string) error {
@@ -136,7 +142,7 @@ func (l *redisLinker) Link(child string, token string, targetAddr string) error 
 	defer mu.Unlock()
 
 	conn.Send("MULTI")
-	conn.Send("HSET", LinkerRedisTokenPool, l.getTokenPoolField(child, token), targetAddr)
+	conn.Send("HSET", getTokenPoolKey(), l.getTokenPoolField(child, token), targetAddr)
 	conn.Send("SADD", l.getParentSetField(token), child)
 	conn.Send("LPUSH", l.getTokenListField(child, targetAddr), token)
 	_, err = conn.Do("EXEC")
@@ -168,7 +174,7 @@ func (l *redisLinker) Unlink(token string) error {
 
 	for _, child := range childs {
 
-		targetAddr, err := redis.ConnHGet(conn, LinkerRedisTokenPool, l.getTokenPoolField(child, token))
+		targetAddr, err := redis.ConnHGet(conn, getTokenPoolKey(), l.getTokenPoolField(child, token))
 		if err != nil {
 			log.Debugf("unlink hget %s", err.Error())
 			continue
@@ -183,8 +189,10 @@ func (l *redisLinker) Unlink(token string) error {
 		child := childs[i]
 		targetAddr := targets[i]
 
-		conn.Send("HDEL", LinkerRedisTokenPool, l.getTokenPoolField(child, token))
-		conn.Send("LREM", l.getTokenListField(child, targetAddr), 0, token)
+		conn.Send("HDEL", getTokenPoolKey(), l.getTokenPoolField(child, token))
+		if targetAddr != "" {
+			conn.Send("LREM", l.getTokenListField(child, targetAddr), 0, token)
+		}
 
 		log.Debugf("unlinked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
 	}
@@ -221,8 +229,7 @@ func (l *redisLinker) Down(child string, targetAddr string) error {
 
 	conn.Send("MULTI")
 	for _, token := range tokens {
-		conn.Send("HDEL", LinkerRedisTokenPool, l.getTokenPoolField(child, token))
-		conn.Send("DEL", l.getParentSetField(token))
+		conn.Send("HDEL", getTokenPoolKey(), l.getTokenPoolField(child, token))
 	}
 	conn.Send("DEL", l.getTokenListField(child, targetAddr))
 	_, err = conn.Do("EXEC")
