@@ -42,7 +42,7 @@ type HandlerFunc func(message *Message) error
 type IConsumer interface {
 	OnArrived(handler HandlerFunc)
 
-	PutMsg(msg *Message)
+	PutMsg(msg *Message) error
 
 	Exit()
 	IsExited() bool

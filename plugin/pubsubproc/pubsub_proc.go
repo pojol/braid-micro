@@ -69,8 +69,9 @@ func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) PutMsg(msg *pubsub.Message) {
+func (c *procConsumer) PutMsg(msg *pubsub.Message) error {
 	c.buff.Put(msg)
+	return nil
 }
 
 type procSubscriber struct {

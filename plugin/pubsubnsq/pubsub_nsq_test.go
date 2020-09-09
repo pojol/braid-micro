@@ -81,10 +81,6 @@ func TestNsqShared(t *testing.T) {
 	consumer2 := pb.Sub(topic).AddShared()
 	defer consumer2.Exit()
 
-	go func() {
-		pb.Pub(topic, &pubsub.Message{Body: msgByte})
-	}()
-
 	consumer1.OnArrived(func(msg *pubsub.Message) error {
 		fmt.Println("TestNsqShared consumer 1 msg arrived", string(msgByte))
 
@@ -98,6 +94,10 @@ func TestNsqShared(t *testing.T) {
 		atomic.AddUint64(&onarrived, 1)
 		return nil
 	})
+
+	go func() {
+		pb.Pub(topic, &pubsub.Message{Body: msgByte})
+	}()
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, onarrived, uint64(2))
@@ -116,10 +116,6 @@ func TestNsqCompetition(t *testing.T) {
 	})
 	pb, err := psb.Build()
 	assert.Equal(t, err, nil)
-
-	go func() {
-		pb.Pub(topic, &pubsub.Message{Body: msgByte})
-	}()
 
 	consumer1 := pb.Sub(topic).AddCompetition()
 	defer consumer1.Exit()
@@ -140,6 +136,10 @@ func TestNsqCompetition(t *testing.T) {
 		atomic.AddUint64(&onarrived, 1)
 		return nil
 	})
+
+	go func() {
+		pb.Pub(topic, &pubsub.Message{Body: msgByte})
+	}()
 
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, onarrived, uint64(1))

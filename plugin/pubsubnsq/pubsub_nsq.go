@@ -82,10 +82,12 @@ type nsqPubsub struct {
 // Consumer 消费者
 type nsqConsumer struct {
 	consumer *nsq.Consumer
-	uuid     string
+	exitCh   *braidsync.Switch
 
-	buff   *braidsync.Unbounded
-	exitCh *braidsync.Switch
+	handle pubsub.HandlerFunc
+	uuid   string
+
+	sync.Mutex
 }
 
 type nsqSubscriber struct {
@@ -111,9 +113,13 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 
 		// 这里不能异步消费消息（因为不能表达出消费失败，将消息回退的逻辑）待修改。
 		// 如果消息执行到这里节点宕机，nsq可以将这个消息重新塞入到队列。
-		v.PutMsg(&pubsub.Message{
+
+		err := v.PutMsg(&pubsub.Message{
 			Body: msg.Body,
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -123,7 +129,6 @@ func (ns *nsqSubscriber) addImpl(channel string) *nsqConsumer {
 
 	config := nsq.NewConfig()
 	nc := &nsqConsumer{
-		buff:   braidsync.NewUnbounded(),
 		exitCh: braidsync.NewSwitch(),
 		uuid:   channel,
 	}
@@ -189,21 +194,7 @@ func (ns *nsqSubscriber) GetConsumer(cid string) []pubsub.IConsumer {
 }
 
 func (c *nsqConsumer) OnArrived(handler pubsub.HandlerFunc) {
-	go func() {
-		for {
-			select {
-			case msg := <-c.buff.Get():
-				handler(msg.(*pubsub.Message))
-				c.buff.Load()
-			case <-c.exitCh.Done():
-			}
-
-			if c.exitCh.HasOpend() {
-				c.consumer.Stop()
-				return
-			}
-		}
-	}()
+	c.handle = handler
 }
 
 func (c *nsqConsumer) Exit() {
@@ -214,8 +205,11 @@ func (c *nsqConsumer) IsExited() bool {
 	return false
 }
 
-func (c *nsqConsumer) PutMsg(msg *pubsub.Message) {
-	c.buff.Put(msg)
+func (c *nsqConsumer) PutMsg(msg *pubsub.Message) error {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.handle(msg)
 }
 
 func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
