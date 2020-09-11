@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -74,6 +75,8 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 		},
 	}
 
+	fmt.Println("new tracing", jaegerAddress)
+
 	for _, opt := range opts {
 		opt(tracer)
 	}
@@ -84,7 +87,7 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 			Param: 1,
 		},
 		Reporter: &jaegerCfg.ReporterConfig{
-			LogSpans:          false,
+			LogSpans:          true,
 			CollectorEndpoint: tracer.cfg.Endpoint,
 		},
 		ServiceName: tracer.cfg.Name,
@@ -92,6 +95,7 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 
 	sender, err := newTransport(jcfg.Reporter)
 	if err != nil {
+		fmt.Println("new transport err", err)
 		return nil, err
 	}
 
@@ -100,6 +104,7 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 
 	jtracing, closer, err := jcfg.NewTracer(r, m)
 	if err != nil {
+		fmt.Println("new tracer err", err)
 		return nil, err
 	}
 

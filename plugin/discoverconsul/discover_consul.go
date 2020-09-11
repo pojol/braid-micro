@@ -119,6 +119,10 @@ func (dc *consulDiscover) discoverImpl() {
 			continue
 		}
 
+		if service.ServiceName == "" || service.ServiceID == "" {
+			continue
+		}
+
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
 			// regist service
 			balancer.Get(service.ServiceName)

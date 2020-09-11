@@ -17,13 +17,12 @@ require (
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible
 	github.com/valyala/fasttemplate v1.1.0 // indirect
-	go.mongodb.org/mongo-driver v1.4.0
+	go.mongodb.org/mongo-driver v1.4.0 // indirect
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/grpc v1.27.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/apimachinery v0.18.4
 	k8s.io/client-go v0.18.4
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19 // indirect

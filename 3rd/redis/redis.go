@@ -180,6 +180,16 @@ func (rc *Client) Get(key string) (string, error) {
 	return val, err
 }
 
+// ConnGet get by conn
+func ConnGet(conn redis.Conn, key string) (string, error) {
+	reply, errDo := conn.Do("GET", key)
+	if errDo == nil && reply == nil {
+		return "", nil
+	}
+	val, err := redis.String(reply, errDo)
+	return val, err
+}
+
 // ------- set ----------
 
 // ConnSMembers 返回集合 key 中的所有成员。

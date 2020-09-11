@@ -10,6 +10,7 @@ import (
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
+	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
@@ -121,8 +122,8 @@ func GRPCClient(opts ...grpcclient.Option) Plugin {
 
 		cfg := grpcclient.Config{
 			PoolInitNum:  8,
-			PoolCapacity: 32,
-			PoolIdle:     120,
+			PoolCapacity: 128,
+			PoolIdle:     time.Second * 120,
 		}
 
 		for _, opt := range opts {
@@ -138,7 +139,6 @@ func GRPCClient(opts ...grpcclient.Option) Plugin {
 func GRPCServer(opts ...grpcserver.Option) Plugin {
 	return func(b *Braid) {
 		cfg := grpcserver.Config{
-			Tracing:       false,
 			Name:          b.cfg.Name,
 			ListenAddress: ":14222",
 		}
@@ -149,5 +149,17 @@ func GRPCServer(opts ...grpcserver.Option) Plugin {
 
 		b.serverBuilder = server.GetBuilder(grpcserver.ServerName)
 		b.serverBuilder.SetCfg(cfg)
+	}
+}
+
+// JaegerTracing jt
+func JaegerTracing(addr string) Plugin {
+	return func(b *Braid) {
+		t, err := tracer.New(b.cfg.Name, addr)
+		if err != nil {
+			panic(err)
+		}
+
+		b.tracer = t
 	}
 }

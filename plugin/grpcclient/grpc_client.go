@@ -47,6 +47,8 @@ func (b *grpcClientBuilder) Build(link linker.ILinker, tracing bool) client.ICli
 		isTracing: tracing,
 	}
 
+	log.Debugf("build grpc client tracing %v", c.isTracing)
+
 	return c
 }
 
@@ -114,10 +116,6 @@ func pick(nodName string) (discover.Node, error) {
 
 func (c *grpcClient) linked() bool {
 	return c.linker != nil
-}
-
-func (c *grpcClient) tracing() bool {
-	return (c.isTracing == true)
 }
 
 // Invoke 执行远程调用
@@ -190,7 +188,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if c.tracing() {
+		if c.isTracing {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {

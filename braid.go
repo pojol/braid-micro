@@ -47,6 +47,7 @@ var (
 
 // New 构建braid
 func New(name string) *Braid {
+
 	braidGlobal = &Braid{
 		cfg: config{
 			Name: name,
@@ -101,7 +102,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	}
 
 	if b.serverBuilder != nil {
-		b.server = b.serverBuilder.Build()
+		b.server = b.serverBuilder.Build(b.tracer != nil)
 	}
 
 	if b.clientBuilder != nil {
@@ -161,6 +162,10 @@ func (b *Braid) Close() {
 
 	if b.server != nil {
 		b.server.Close()
+	}
+
+	if b.tracer != nil {
+		b.tracer.Close()
 	}
 
 }

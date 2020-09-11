@@ -48,10 +48,9 @@ func TestNew(t *testing.T) {
 
 	b := server.GetBuilder(ServerName)
 	b.SetCfg(Config{
-		Tracing:       false,
 		ListenAddress: ":14111",
 	})
-	s := b.Build()
+	s := b.Build(false)
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 
@@ -82,16 +81,10 @@ func TestNew(t *testing.T) {
 func TestOpts(t *testing.T) {
 
 	cfg := Config{
-		Tracing:       false,
 		ListenAddress: ":14222",
 	}
 
-	op := WithTracing()
-	op(&cfg)
-
-	assert.Equal(t, cfg.Tracing, true)
-
-	op = WithListen(":1201")
+	op := WithListen(":1201")
 	op(&cfg)
 	assert.Equal(t, cfg.ListenAddress, ":1201")
 }

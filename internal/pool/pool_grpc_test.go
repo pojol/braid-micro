@@ -49,11 +49,10 @@ func TestMain(m *testing.M) {
 	sb := server.GetBuilder(grpcserver.ServerName)
 	sb.SetCfg(grpcserver.Config{
 		Name:          "test",
-		Tracing:       false,
 		ListenAddress: ":1205",
 	})
 
-	s := sb.Build()
+	s := sb.Build(false)
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	time.Sleep(time.Millisecond * 10)
