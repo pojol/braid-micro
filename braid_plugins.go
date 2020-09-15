@@ -153,10 +153,10 @@ func GRPCServer(opts ...grpcserver.Option) Plugin {
 }
 
 // JaegerTracing jt
-func JaegerTracing(addr string, opts ...tracer.Option) Plugin {
+func JaegerTracing(protoOpt tracer.Option, opts ...tracer.Option) Plugin {
 	return func(b *Braid) {
 
-		t, err := tracer.New(b.cfg.Name, addr, opts...)
+		t, err := tracer.New(b.cfg.Name, protoOpt, opts...)
 		if err != nil {
 			panic(err)
 		}

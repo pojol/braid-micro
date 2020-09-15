@@ -57,7 +57,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 }
 
 // New 创建 jaeger traing
-func New(name string, opts ...Option) (*Tracer, error) {
+func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	const (
 		defaultProbabilistic = 1
@@ -73,6 +73,8 @@ func New(name string, opts ...Option) (*Tracer, error) {
 			SlowSpan:      defaultSlowSpan,
 		},
 	}
+
+	protoOpt(tracer)
 
 	for _, opt := range opts {
 		opt(tracer)
