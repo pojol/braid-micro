@@ -65,8 +65,4 @@ func (t *HTTPTracer) End(ectx echo.Context) {
 	}
 
 	t.span.Finish()
-
-	tr := opentracing.GlobalTracer()
-	sp := tr.StartSpan("test-braid")
-	sp.Finish()
 }
