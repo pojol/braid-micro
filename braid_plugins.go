@@ -121,8 +121,8 @@ func GRPCClient(opts ...grpcclient.Option) Plugin {
 	return func(b *Braid) {
 
 		cfg := grpcclient.Config{
-			PoolInitNum:  8,
-			PoolCapacity: 128,
+			PoolInitNum:  128,
+			PoolCapacity: 1024,
 			PoolIdle:     time.Second * 120,
 		}
 
@@ -153,9 +153,10 @@ func GRPCServer(opts ...grpcserver.Option) Plugin {
 }
 
 // JaegerTracing jt
-func JaegerTracing(addr string) Plugin {
+func JaegerTracing(addr string, opts ...tracer.Option) Plugin {
 	return func(b *Braid) {
-		t, err := tracer.New(b.cfg.Name, addr)
+
+		t, err := tracer.New(b.cfg.Name, addr, opts...)
 		if err != nil {
 			panic(err)
 		}

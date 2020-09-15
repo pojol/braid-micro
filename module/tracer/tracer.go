@@ -57,7 +57,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 }
 
 // New 创建 jaeger traing
-func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
+func New(name string, opts ...Option) (*Tracer, error) {
 
 	const (
 		defaultProbabilistic = 1
@@ -67,15 +67,12 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 
 	tracer = &Tracer{
 		cfg: tconfig{
-			Endpoint:      jaegerAddress,
 			Probabilistic: defaultProbabilistic,
 			Name:          name,
 			SlowRequest:   defaultSlowRequest,
 			SlowSpan:      defaultSlowSpan,
 		},
 	}
-
-	fmt.Println("new tracing", jaegerAddress)
 
 	for _, opt := range opts {
 		opt(tracer)
@@ -87,8 +84,9 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 			Param: 1,
 		},
 		Reporter: &jaegerCfg.ReporterConfig{
-			LogSpans:          true,
-			CollectorEndpoint: tracer.cfg.Endpoint,
+			LogSpans:           true,
+			CollectorEndpoint:  tracer.cfg.CollectorEndpoint, //with http
+			LocalAgentHostPort: tracer.cfg.LocalAgentHostPort,
 		},
 		ServiceName: tracer.cfg.Name,
 	}
@@ -110,6 +108,7 @@ func New(name string, jaegerAddress string, opts ...Option) (*Tracer, error) {
 
 	tracer.tracing = jtracing
 	tracer.closer = closer
+	opentracing.SetGlobalTracer(tracer.tracing)
 
 	return tracer, nil
 }
