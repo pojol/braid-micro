@@ -118,6 +118,49 @@ func (c *grpcClient) linked() bool {
 	return c.linker != nil
 }
 
+func (c *grpcClient) findTarget(ctx context.Context, token string, target string) string {
+	var address string
+	var err error
+	var nod discover.Node
+
+	if c.linked() && token != "" {
+
+		trt := tracer.RedisTracer{
+			Cmd: "linker.target",
+		}
+		trt.Begin(ctx)
+		address, err = c.linker.Target(target, token)
+		trt.End()
+		if err != nil {
+			log.Debugf("linker.target warning %s", err.Error())
+			return ""
+		}
+	}
+
+	if address == "" {
+		nod, err = pick(target)
+		if err != nil {
+			log.Debugf("pick warning %s", err.Error())
+			return ""
+		}
+
+		address = nod.Address
+		if c.linked() && token != "" {
+			llt := tracer.RedisTracer{
+				Cmd: "linker.link",
+			}
+			llt.Begin(ctx)
+			err = c.linker.Link(nod.Name, token, nod.Address)
+			llt.End()
+			if err != nil {
+				log.Debugf("link warning %s %s", token, err.Error())
+			}
+		}
+	}
+
+	return address
+}
+
 // Invoke 执行远程调用
 // ctx 链路的上下文，主要用于tracing
 // nodName 逻辑节点名称, 用于查找目标节点地址
@@ -129,7 +172,6 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	var address string
 	var err error
-	var nod discover.Node
 
 	select {
 	case <-ctx.Done():
@@ -137,28 +179,9 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	default:
 	}
 
-	if c.linked() && token != "" {
-		address, err = c.linker.Target(nodName, token)
-		if err != nil {
-			log.Debugf("linker.target warning %s", err.Error())
-			return
-		}
-	}
-
+	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
-		nod, err = pick(nodName)
-		if err != nil {
-			log.Debugf("pick warning %s", err.Error())
-			return
-		}
-
-		address = nod.Address
-		if c.linked() && token != "" {
-			err = c.linker.Link(nod.Name, token, nod.Address)
-			if err != nil {
-				log.Debugf("link warning %s %s", token, err.Error())
-			}
-		}
+		return
 	}
 
 	conn, err := c.getConn(address)
