@@ -33,7 +33,8 @@
 #### rpc-client sample
 ```go
 b := New("test")
-b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr),
+b.RegistPlugin(
+  DiscoverByConsul(mock.ConsulAddr),
   BalancerBySwrr(),
   GRPCClient(grpcclient.WithPoolCapacity(128)))
 
