@@ -150,9 +150,9 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
-			log.Debugf("remove service %s id %s", services[k].ServiceName, services[k].ID)
+			log.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.pubsub.Pub(discover.EventRmv+"_"+services[k].ServiceName, pubsub.NewMessage(discover.Node{
+			dc.pubsub.Pub(discover.EventRmv+"_"+dc.passingMap[k].service, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))
