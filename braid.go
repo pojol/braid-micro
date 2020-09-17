@@ -6,7 +6,7 @@ import (
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
@@ -27,8 +27,8 @@ type Braid struct {
 	discoverBuilder discover.Builder
 	discover        discover.IDiscover
 
-	linkerBuilder linker.Builder
-	linker        linker.ILinker
+	linkerBuilder linkcache.Builder
+	linker        linkcache.ILinkCache
 
 	electorBuild elector.Builder
 	elector      elector.IElection

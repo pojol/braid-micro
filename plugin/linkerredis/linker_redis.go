@@ -6,7 +6,7 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 )
 
@@ -47,7 +47,7 @@ type redisLinkerBuilder struct {
 	cfg Config
 }
 
-func newRedisLinker() linker.Builder {
+func newRedisLinker() linkcache.Builder {
 	return &redisLinkerBuilder{}
 }
 
@@ -65,7 +65,7 @@ func (rb *redisLinkerBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub) linker.ILinker {
+func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub) linkcache.ILinkCache {
 
 	e := &redisLinker{
 		elector: elector,
@@ -242,5 +242,5 @@ func (l *redisLinker) Down(child string, targetAddr string) error {
 }
 
 func init() {
-	linker.Register(newRedisLinker())
+	linkcache.Register(newRedisLinker())
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
@@ -40,7 +40,7 @@ func (b *grpcClientBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *grpcClientBuilder) Build(link linker.ILinker, tracing bool) client.IClient {
+func (b *grpcClientBuilder) Build(link linkcache.ILinkCache, tracing bool) client.IClient {
 	c := &grpcClient{
 		cfg:       b.cfg,
 		linker:    link,
@@ -58,7 +58,7 @@ type grpcClient struct {
 
 	refushTick *time.Ticker
 
-	linker    linker.ILinker
+	linker    linkcache.ILinkCache
 	isTracing bool
 
 	poolMgr sync.Map

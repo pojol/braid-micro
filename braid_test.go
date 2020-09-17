@@ -28,6 +28,18 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func TestPlugin(t *testing.T) {
+	/*
+		b := New("testPlugin")
+		b.RegistPlugin(
+			Discover(name, opts...),
+			Linker(),
+			Elector(),
+			Tracing(),
+		)
+	*/
+}
+
 func TestWithClient(t *testing.T) {
 
 	b := New("test")

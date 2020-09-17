@@ -4,14 +4,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 )
 
 // Builder 构建器接口
 type Builder interface {
 	// linker 是否引入链路缓存
 	// bool 是否开启tracing
-	Build(linker linker.ILinker, tracing bool) IClient
+	Build(linker linkcache.ILinkCache, tracing bool) IClient
 	Name() string
 	SetCfg(cfg interface{}) error
 }
@@ -32,7 +32,7 @@ var (
 	m = make(map[string]Builder)
 )
 
-// Register 注册linker
+// Register regist rpc client
 func Register(b Builder) {
 	m[strings.ToLower(b.Name())] = b
 }

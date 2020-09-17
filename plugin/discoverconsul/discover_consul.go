@@ -11,7 +11,7 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 )
 
@@ -58,7 +58,7 @@ func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub, linker linker.ILinker) discover.IDiscover {
+func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub, linker linkcache.ILinkCache) discover.IDiscover {
 
 	e := &consulDiscover{
 		cfg:        b.cfg,
@@ -77,7 +77,7 @@ type consulDiscover struct {
 
 	cfg    Cfg
 	pubsub pubsub.IPubsub
-	linker linker.ILinker
+	linker linkcache.ILinkCache
 
 	// service id : service nod
 	passingMap map[string]*syncNode

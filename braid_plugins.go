@@ -6,7 +6,7 @@ import (
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
@@ -61,7 +61,7 @@ func BalancerBySwrr() Plugin {
 // LinkerByRedis 基于redis实现的链路缓存机制
 func LinkerByRedis() Plugin {
 	return func(b *Braid) {
-		b.linkerBuilder = linker.GetBuilder(linkerredis.LinkerName)
+		b.linkerBuilder = linkcache.GetBuilder(linkerredis.LinkerName)
 		b.linkerBuilder.SetCfg(linkerredis.Config{
 			ServiceName: b.cfg.Name,
 		})

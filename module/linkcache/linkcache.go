@@ -1,4 +1,4 @@
-package linker
+package linkcache
 
 import (
 	"strings"
@@ -9,12 +9,12 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(elector elector.IElection, pubsub pubsub.IPubsub) ILinker
+	Build(elector elector.IElection, pubsub pubsub.IPubsub) ILinkCache
 	Name() string
 	SetCfg(cfg interface{}) error
 }
 
-// ILinker The connector is a service that maintains the link relationship between multiple processes and users.
+// ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
 //
 // +---parent----------+
 // |                   |
@@ -25,7 +25,7 @@ type Builder interface {
 // |    +-----------+  |
 // |                   |
 // +-------------------+
-type ILinker interface {
+type ILinkCache interface {
 	// Look for existing links from the cache
 	Target(child string, token string) (targetAddr string, err error)
 

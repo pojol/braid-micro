@@ -8,7 +8,7 @@ import (
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/pubsubnsq"
@@ -62,7 +62,7 @@ func TestLinkerTarget(t *testing.T) {
 	e, _ := eb.Build()
 	defer e.Close()
 
-	b := linker.GetBuilder(LinkerName)
+	b := linkcache.GetBuilder(LinkerName)
 	b.SetCfg(Config{
 		ServiceName: "base",
 	})
@@ -114,7 +114,7 @@ func TestLinkerDown(t *testing.T) {
 	e, _ := eb.Build()
 	defer e.Close()
 
-	b := linker.GetBuilder(LinkerName)
+	b := linkcache.GetBuilder(LinkerName)
 	b.SetCfg(Config{
 		ServiceName: "base",
 	})
