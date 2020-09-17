@@ -4,20 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/plugin/linkerredis"
 )
 
 const (
-	// DiscoverName 发现器名称
-	DiscoverName = "ConsulDiscover"
+	// Name 发现器名称
+	Name = "ConsulDiscover"
 
 	// DiscoverTag 用于docker发现的tag， 所有希望被discover服务发现的节点，
 	// 都应该在Dockerfile中设置 ENV SERVICE_TAGS=braid
@@ -34,7 +33,7 @@ var (
 )
 
 type consulDiscoverBuilder struct {
-	cfg Cfg
+	opts []interface{}
 }
 
 func newConsulDiscover() discover.Builder {
@@ -42,32 +41,42 @@ func newConsulDiscover() discover.Builder {
 }
 
 func (b *consulDiscoverBuilder) Name() string {
-	return DiscoverName
+	return Name
 }
 
-func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Cfg)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	b.cfg = cecfg
-	if b.cfg.Tag == "" {
-		b.cfg.Tag = strings.ToLower(DiscoverTag)
-	}
-	return nil
+func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
 }
 
-func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub, linker linkcache.ILinkCache) discover.IDiscover {
+func (b *consulDiscoverBuilder) Build(serviceName string) (discover.IDiscover, error) {
+
+	p := Parm{
+		Tag:      "braid",
+		Name:     serviceName,
+		Interval: time.Second * 2,
+		Address:  "http://127.0.0.1:8500",
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
+	}
+
+	if p.procPB == nil {
+		return nil, errors.New("parm mismatch," + "not proc pubsub!")
+	}
+
+	// check address
+	_, err := consul.GetCatalogServices(p.Address, p.Tag)
+	fmt.Println(p.Address, err)
+	if err != nil {
+		return nil, err
+	}
 
 	e := &consulDiscover{
-		cfg:        b.cfg,
-		pubsub:     ps,
-		linker:     linker,
+		parm:       p,
 		passingMap: make(map[string]*syncNode),
 	}
 
-	return e
+	return e, nil
 }
 
 // Discover 发现管理braid相关的节点
@@ -75,9 +84,8 @@ type consulDiscover struct {
 	discoverTicker   *time.Ticker
 	syncWeightTicker *time.Ticker
 
-	cfg    Cfg
-	pubsub pubsub.IPubsub
-	linker linkcache.ILinkCache
+	// parm
+	parm Parm
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -94,7 +102,7 @@ type syncNode struct {
 
 func (dc *consulDiscover) InBlacklist(name string) bool {
 
-	for _, v := range dc.cfg.Blacklist {
+	for _, v := range dc.parm.Blacklist {
 		if v == name {
 			return true
 		}
@@ -105,13 +113,13 @@ func (dc *consulDiscover) InBlacklist(name string) bool {
 
 func (dc *consulDiscover) discoverImpl() {
 
-	services, err := consul.GetCatalogServices(dc.cfg.Address, dc.cfg.Tag)
+	services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
 	if err != nil {
 		return
 	}
 
 	for _, service := range services {
-		if service.ServiceName == dc.cfg.Name {
+		if service.ServiceName == dc.parm.Name {
 			continue
 		}
 
@@ -138,7 +146,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.pubsub.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
+			dc.parm.procPB.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -152,13 +160,16 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			log.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.pubsub.Pub(discover.EventRmv+"_"+dc.passingMap[k].service, pubsub.NewMessage(discover.Node{
+			dc.parm.procPB.Pub(discover.EventRmv+"_"+dc.passingMap[k].service, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))
 
-			if dc.linker != nil {
-				dc.linker.Down(dc.passingMap[k].service, dc.passingMap[k].address)
+			if dc.parm.clusterPB != nil {
+				dc.parm.clusterPB.Pub(linkerredis.LinkerTopicDown, linkerredis.NewDownMsg(
+					dc.passingMap[k].service,
+					dc.passingMap[k].address,
+				))
 			}
 
 			delete(dc.passingMap, k)
@@ -168,7 +179,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 func (dc *consulDiscover) syncWeight() {
 	for k, v := range dc.passingMap {
-		num, err := dc.linker.Num(v.service, v.address)
+		num, err := dc.parm.linkcache.Num(v.service, v.address)
 		if err != nil || num == 0 {
 			continue
 		}
@@ -185,7 +196,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.pubsub.Pub(discover.EventUpdate+"_"+v.service, pubsub.NewMessage(discover.Node{
+		dc.parm.procPB.Pub(discover.EventUpdate+"_"+v.service, pubsub.NewMessage(discover.Node{
 			ID:     v.id,
 			Name:   v.service,
 			Weight: nweight,
@@ -211,13 +222,13 @@ func (dc *consulDiscover) runImpl() {
 			}
 		}()
 
-		if dc.linker != nil {
+		if dc.parm.linkcache != nil {
 			dc.syncWeight()
 		}
 
 	}
 
-	dc.discoverTicker = time.NewTicker(dc.cfg.Interval)
+	dc.discoverTicker = time.NewTicker(dc.parm.Interval)
 	dc.syncWeightTicker = time.NewTicker(time.Second * 10)
 
 	dc.discoverImpl()
