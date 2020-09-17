@@ -11,6 +11,7 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
@@ -60,6 +61,7 @@ func New(name string) *Braid {
 func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	// install default
+	var err error
 
 	//
 	for _, plugin := range plugins {
@@ -98,7 +100,20 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 			fmt.Println("discover need depend balancer")
 		}
 
-		b.discover = b.discoverBuilder.Build(pb, b.linker)
+		b.discoverBuilder.AddOption(discoverconsul.WithProcPubsub(pb))
+
+		if b.linker != nil {
+			b.discoverBuilder.AddOption(discoverconsul.WithLinkCache(b.linker))
+		}
+
+		if b.pubsub != nil {
+			b.discoverBuilder.AddOption(discoverconsul.WithClusterPubsub(b.pubsub))
+		}
+
+		b.discover, err = b.discoverBuilder.Build(b.cfg.Name)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if b.serverBuilder != nil {

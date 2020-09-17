@@ -30,16 +30,17 @@ func TestMain(m *testing.M) {
 	}))
 	defer l.Close()
 
-	db := discover.GetBuilder(discoverconsul.DiscoverName)
-	db.SetCfg(discoverconsul.Cfg{
-		Name:     "test",
-		Tag:      "braid",
-		Interval: time.Second * 2,
-		Address:  mock.ConsulAddr,
-	})
+	db := discover.GetBuilder(discoverconsul.Name)
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	discv := db.Build(ps, nil)
+	db.AddOption(discoverconsul.WithProcPubsub(ps))
+	db.AddOption(discoverconsul.WithConsulAddress(mock.ConsulAddr))
+
+	discv, err := db.Build("test")
+	if err != nil {
+		panic(err)
+	}
+
 	discv.Discover()
 	defer discv.Close()
 

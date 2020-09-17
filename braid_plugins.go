@@ -12,7 +12,6 @@ import (
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/balancerswrr"
-	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/electork8s"
 	"github.com/pojol/braid/plugin/grpcclient"
@@ -28,25 +27,13 @@ type config struct {
 // Plugin wraps
 type Plugin func(*Braid)
 
-// DiscoverByConsul 使用consul作为发现器支持
-func DiscoverByConsul(address string, options ...discoverconsul.Option) Plugin {
+// Discover plugin
+func Discover(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
+		b.discoverBuilder = discover.GetBuilder(builderName)
 
-		cfg := discoverconsul.Cfg{
-			Name:     b.cfg.Name,
-			Tag:      "braid",
-			Interval: time.Second * 2,
-			Address:  address,
-		}
-
-		for _, opt := range options {
-			opt(&cfg)
-		}
-
-		b.discoverBuilder = discover.GetBuilder(discoverconsul.DiscoverName)
-		err := b.discoverBuilder.SetCfg(cfg)
-		if err != nil {
-			// Fatal log
+		for _, opt := range opts {
+			b.discoverBuilder.AddOption(opt)
 		}
 	}
 }

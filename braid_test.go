@@ -1,14 +1,11 @@
 package braid
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/plugin/discoverconsul"
-	"github.com/pojol/braid/plugin/grpcclient"
 )
 
 func TestMain(m *testing.M) {
@@ -29,26 +26,30 @@ func TestMain(m *testing.M) {
 }
 
 func TestPlugin(t *testing.T) {
-	/*
-		b := New("testPlugin")
-		b.RegistPlugin(
-			Discover(name, opts...),
-			Linker(),
-			Elector(),
-			Tracing(),
-		)
-	*/
-}
 
-func TestWithClient(t *testing.T) {
-
-	b := New("test")
-	b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
+	b := New("testPlugin")
+	b.RegistPlugin(
 		BalancerBySwrr(),
-		GRPCClient(grpcclient.WithPoolCapacity(128)))
+		Discover(
+			discoverconsul.Name,
+			discoverconsul.WithConsulAddress(mock.ConsulAddr),
+		),
+	)
 
 	b.Run()
 	defer b.Close()
+}
 
-	Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
+func TestWithClient(t *testing.T) {
+	/*
+		b := New("test")
+		b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
+			BalancerBySwrr(),
+			GRPCClient(grpcclient.WithPoolCapacity(128)))
+
+		b.Run()
+		defer b.Close()
+
+		Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
+	*/
 }

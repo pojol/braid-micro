@@ -1,6 +1,7 @@
 package linkerredis
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/pojol/braid/3rd/log"
@@ -36,7 +37,28 @@ const (
 
 	// LinkerTopicUnlink unlink token topic
 	LinkerTopicUnlink = "braid_linker_unlink"
+	// LinkerTopicDown service down
+	LinkerTopicDown = "braid_linker_down"
 )
+
+// DownMsg down msg
+type DownMsg struct {
+	Service string
+	Addr    string
+}
+
+// NewDownMsg new down msg
+func NewDownMsg(service string, addr string) *pubsub.Message {
+
+	byt, _ := json.Marshal(&DownMsg{
+		Service: service,
+		Addr:    addr,
+	})
+
+	return &pubsub.Message{
+		Body: byt,
+	}
+}
 
 var (
 	// ErrConfigConvert 配置转换失败
@@ -77,9 +99,21 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
 		if elector.IsMaster() {
-			e.Unlink(string(msg.Body))
+			return e.Unlink(string(msg.Body))
 		}
 
+		return nil
+	})
+
+	downSub := ps.Sub(LinkerTopicDown)
+	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
+
+		if elector.IsMaster() {
+			downMsg := &DownMsg{}
+			json.Unmarshal(msg.Body, downMsg)
+
+			return e.Down(downMsg.Service, downMsg.Addr)
+		}
 		return nil
 	})
 
@@ -202,6 +236,7 @@ func (l *redisLinker) Unlink(token string) error {
 	_, err = conn.Do("EXEC")
 	if err != nil {
 		log.Debugf("unlink exec err %s", err.Error())
+		return err
 	}
 
 	return nil
@@ -214,9 +249,7 @@ func (l *redisLinker) Num(child string, targetAddr string) (int, error) {
 // Down 删除离线节点的链路缓存
 func (l *redisLinker) Down(child string, targetAddr string) error {
 
-	if !l.elector.IsMaster() {
-		return nil
-	}
+	log.Debugf("redis linker down child %s, target %s", child, targetAddr)
 
 	conn := redis.Get().Conn()
 	defer conn.Close()

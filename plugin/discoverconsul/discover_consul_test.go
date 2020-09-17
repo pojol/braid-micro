@@ -12,6 +12,7 @@ import (
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/pubsubproc"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -47,18 +48,28 @@ func TestMain(m *testing.M) {
 
 func TestDiscover(t *testing.T) {
 
-	b := discover.GetBuilder(DiscoverName)
-	b.SetCfg(Cfg{
-		Name:     "test",
-		Interval: time.Second * 2,
-		Address:  mock.ConsulAddr,
-	})
+	b := discover.GetBuilder(Name)
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	d := b.Build(ps, nil)
+	b.AddOption(WithProcPubsub(ps))
+	b.AddOption(WithConsulAddress(mock.ConsulAddr))
+
+	d, err := b.Build("test")
+	assert.Equal(t, err, nil)
 
 	d.Discover()
 
 	time.Sleep(time.Second)
 	d.Close()
+}
+
+func TestParmAddress(t *testing.T) {
+	b := discover.GetBuilder(Name)
+
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	b.AddOption(WithProcPubsub(ps))
+	b.AddOption(WithConsulAddress("http://127.0.0.1:8500"))
+
+	_, err := b.Build("test")
+	assert.NotEqual(t, err, nil)
 }
