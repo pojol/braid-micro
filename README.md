@@ -35,8 +35,8 @@
 b := New("test")
 b.RegistPlugin(
   Discover(
-			discoverconsul.Name,
-			discoverconsul.WithConsulAddress(mock.ConsulAddr)),
+		discoverconsul.Name,
+		discoverconsul.WithConsulAddress(mock.ConsulAddr)),
   Balancer(balancerswrr.Name),
   GRPCClient(grpcclient.WithPoolCapacity(128)))
 
