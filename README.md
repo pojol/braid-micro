@@ -34,11 +34,11 @@
 ```go
 b := New("test")
 b.RegistPlugin(
-  Discover(
+	Discover(
 		discoverconsul.Name,
 		discoverconsul.WithConsulAddress(mock.ConsulAddr)),
-  Balancer(balancerswrr.Name),
-  GRPCClient(grpcclient.WithPoolCapacity(128)))
+	Balancer(balancerswrr.Name),
+	GRPCClient(grpcclient.WithPoolCapacity(128)))
 
 b.Run()
 defer b.Close()
