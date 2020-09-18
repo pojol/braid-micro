@@ -95,6 +95,7 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		cfg:     rb.cfg,
 	}
 
+	ps.Pub(LinkerTopicUnlink, &pubsub.Message{Body: []byte("nil")})
 	unlinkSub := ps.Sub(LinkerTopicUnlink)
 	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
@@ -105,12 +106,16 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		return nil
 	})
 
+	ps.Pub(LinkerTopicDown, &pubsub.Message{Body: []byte("nil")})
 	downSub := ps.Sub(LinkerTopicDown)
 	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
 		if elector.IsMaster() {
 			downMsg := &DownMsg{}
-			json.Unmarshal(msg.Body, downMsg)
+			err := json.Unmarshal(msg.Body, downMsg)
+			if err != nil {
+				return nil
+			}
 			return e.Down(downMsg.Service, downMsg.Addr)
 		}
 		return nil
