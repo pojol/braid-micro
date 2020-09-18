@@ -11,6 +11,7 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/pubsubproc"
 )
@@ -73,7 +74,8 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	// build
 
 	if b.balancerBuilder != nil {
-		balancer.NewGroup(b.balancerBuilder, pb)
+		b.balancerBuilder.AddOption(balancerswrr.WithProcPubsub(pb))
+		balancer.NewGroup(b.balancerBuilder)
 	}
 
 	if b.electorBuild != nil {

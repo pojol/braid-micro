@@ -2,6 +2,7 @@ package balancerswrr
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 
 	"github.com/pojol/braid/3rd/log"
@@ -11,22 +12,39 @@ import (
 )
 
 const (
-	// BalancerName 平滑加权负载均衡
-	BalancerName = "SmoothWeightedRoundrobin"
+	// Name 平滑加权负载均衡
+	Name = "SmoothWeightedRoundrobin"
 )
 
-type smoothWeightRoundrobinBuilder struct{}
+type smoothWeightRoundrobinBuilder struct {
+	opts []interface{}
+}
 
 func newSmoothWightRoundrobinBalancer() balancer.Builder {
 	return &smoothWeightRoundrobinBuilder{}
 }
 
-func (*smoothWeightRoundrobinBuilder) Build(pubsub pubsub.IPubsub, serviceName string) balancer.Balancer {
+func (b *smoothWeightRoundrobinBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
+}
+
+func (b *smoothWeightRoundrobinBuilder) Build(serviceName string) balancer.Balancer {
+
+	p := Parm{
+		Name: serviceName,
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
+	}
+
+	if p.procPB == nil {
+		panic(errors.New("parm mismatch," + "not proc pubsub!"))
+	}
 
 	swrr := &swrrBalancer{
-		addSub: pubsub.Sub(discover.EventAdd + "_" + serviceName).AddCompetition(),
-		rmvSub: pubsub.Sub(discover.EventRmv + "_" + serviceName).AddCompetition(),
-		upSub:  pubsub.Sub(discover.EventUpdate + "_" + serviceName).AddCompetition(),
+		addSub: p.procPB.Sub(discover.EventAdd + "_" + serviceName).AddCompetition(),
+		rmvSub: p.procPB.Sub(discover.EventRmv + "_" + serviceName).AddCompetition(),
+		upSub:  p.procPB.Sub(discover.EventUpdate + "_" + serviceName).AddCompetition(),
 	}
 
 	go swrr.watcher()
@@ -60,7 +78,7 @@ func (wr *swrrBalancer) watcher() {
 }
 
 func (*smoothWeightRoundrobinBuilder) Name() string {
-	return BalancerName
+	return Name
 }
 
 type weightedNod struct {

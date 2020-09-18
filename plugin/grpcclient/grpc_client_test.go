@@ -44,7 +44,9 @@ func TestMain(m *testing.M) {
 	discv.Discover()
 	defer discv.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName), ps)
+	bb := balancer.GetBuilder(balancerswrr.Name)
+	bb.AddOption(balancerswrr.WithProcPubsub(ps))
+	balancer.NewGroup(bb)
 
 	m.Run()
 }

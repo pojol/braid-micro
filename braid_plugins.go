@@ -11,7 +11,6 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/electork8s"
 	"github.com/pojol/braid/plugin/grpcclient"
@@ -38,10 +37,13 @@ func Discover(builderName string, opts ...interface{}) Plugin {
 	}
 }
 
-// BalancerBySwrr 基于平滑加权负载均衡
-func BalancerBySwrr() Plugin {
+// Balancer plugin
+func Balancer(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
-		b.balancerBuilder = balancer.GetBuilder(balancerswrr.BalancerName)
+		b.balancerBuilder = balancer.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.balancerBuilder.AddOption(opt)
+		}
 	}
 }
 

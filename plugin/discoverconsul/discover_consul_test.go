@@ -41,7 +41,9 @@ func TestMain(m *testing.M) {
 	defer r.Close()
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName), ps)
+	bb := balancer.GetBuilder(balancerswrr.Name)
+	bb.AddOption(balancerswrr.WithProcPubsub(ps))
+	balancer.NewGroup(bb)
 
 	m.Run()
 }

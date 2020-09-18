@@ -135,14 +135,15 @@ func (kps *procPubsub) Sub(topic string) pubsub.ISubscriber {
 
 func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
 
-	if _, ok := kps.subscriber[topic]; ok {
-
+	_, ok := kps.subscriber[topic]
+	if ok {
 		consumerLst := kps.subscriber[topic].GetConsumer("")
 		for _, v := range consumerLst {
 			if !v.IsExited() {
 				v.PutMsg(msg)
 			}
 		}
+
 	}
 
 }

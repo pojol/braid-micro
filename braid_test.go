@@ -5,6 +5,7 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 )
 
@@ -29,7 +30,7 @@ func TestPlugin(t *testing.T) {
 
 	b := New("testPlugin")
 	b.RegistPlugin(
-		BalancerBySwrr(),
+		Balancer(balancerswrr.Name),
 		Discover(
 			discoverconsul.Name,
 			discoverconsul.WithConsulAddress(mock.ConsulAddr),

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/pubsub"
 )
 
 var (
@@ -27,8 +26,9 @@ func GetBuilder(name string) Builder {
 
 // Builder 构建器接口
 type Builder interface {
-	Build(pubsub pubsub.IPubsub, serviceName string) Balancer
+	Build(serviceName string) Balancer
 	Name() string
+	AddOption(opt interface{})
 }
 
 // Balancer 负载均衡

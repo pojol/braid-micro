@@ -31,28 +31,32 @@ func TestMain(t *testing.M) {
 
 func TestWRR(t *testing.T) {
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
-	bw := balancer.Get("test")
+	bb := balancer.GetBuilder(Name)
+	bb.AddOption(WithProcPubsub(ps))
+	balancer.NewGroup(bb)
+	serviceName := "TestWRR"
+	addEvent := discover.EventAdd + "_" + serviceName
+	bw := balancer.Get(serviceName)
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
 	var tests = []struct {
@@ -61,7 +65,7 @@ func TestWRR(t *testing.T) {
 		{"A"}, {"B"}, {"A"}, {"C"}, {"A"}, {"B"}, {"A"},
 	}
 
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 1000)
 	for _, v := range tests {
 		nod, _ := bw.Pick()
 		assert.Equal(t, nod.Address, v.ID)
@@ -70,30 +74,36 @@ func TestWRR(t *testing.T) {
 }
 
 func TestWRRDymc(t *testing.T) {
+
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
-	bw := balancer.Get("test")
+	bb := balancer.GetBuilder(Name)
+	bb.AddOption(WithProcPubsub(ps))
+	balancer.NewGroup(bb)
+	serviceName := "TestWRR"
+	addEvent := discover.EventAdd + "_" + serviceName
+	upEvent := discover.EventUpdate + "_" + serviceName
+	bw := balancer.Get(serviceName)
 	pmap := make(map[string]int)
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  1000,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  1000,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1000,
-		Name:    "test",
+		Name:    serviceName,
 	}))
 
 	time.Sleep(time.Millisecond * 100)
@@ -105,7 +115,7 @@ func TestWRRDymc(t *testing.T) {
 
 	fmt.Println("step 1", pmap)
 
-	ps.Pub(discover.EventUpdate, pubsub.NewMessage(discover.Node{
+	ps.Pub(upEvent, pubsub.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
 	}))
@@ -117,49 +127,60 @@ func TestWRRDymc(t *testing.T) {
 	}
 
 	fmt.Println("step 2", pmap)
+
 }
 
 func TestWRROp(t *testing.T) {
 
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
-	bw := balancer.Get("test")
+	bb := balancer.GetBuilder(Name)
+	bb.AddOption(WithProcPubsub(ps))
+	balancer.NewGroup(bb)
+	serviceName := "TestWRR"
+	addEvent := discover.EventAdd + "_" + serviceName
+	rmvEvent := discover.EventRmv + "_" + serviceName
+	bw := balancer.Get(serviceName)
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:     "A",
-		Name:   "test",
+		Name:   serviceName,
 		Weight: 4,
 	}))
 
-	ps.Pub(discover.EventRmv, pubsub.NewMessage(discover.Node{
+	ps.Pub(rmvEvent, pubsub.NewMessage(discover.Node{
 		ID:   "A",
-		Name: "test",
+		Name: serviceName,
 	}))
 
-	ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+	ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 		ID:     "B",
-		Name:   "test",
+		Name:   serviceName,
 		Weight: 2,
 	}))
 
 	bw.Pick()
+
 }
 
 //20664206	        58.9 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
 	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	balancer.NewGroup(balancer.GetBuilder(BalancerName), ps)
-	bw := balancer.Get("test")
+	bb := balancer.GetBuilder(Name)
+	bb.AddOption(WithProcPubsub(ps))
+	balancer.NewGroup(bb)
+	serviceName := "BenchmarkWRR"
+	addEvent := discover.EventAdd + "_" + serviceName
+	bw := balancer.Get(serviceName)
 
 	for i := 0; i < 100; i++ {
-		ps.Pub(discover.EventAdd, pubsub.NewMessage(discover.Node{
+		ps.Pub(addEvent, pubsub.NewMessage(discover.Node{
 			ID:     strconv.Itoa(i),
-			Name:   "test",
+			Name:   serviceName,
 			Weight: i,
 		}))
 	}
 
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 1000)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		bw.Pick()
