@@ -198,6 +198,12 @@ func ConnSMembers(conn redis.Conn, key string) ([]string, error) {
 	return val, err
 }
 
+// ConnSIsMember is member
+func ConnSIsMember(conn redis.Conn, key string, member string) (bool, error) {
+	val, err := redis.Bool(conn.Do("SISMEMBER", key, member))
+	return val, err
+}
+
 // ---------------------- hash -------------------------------
 
 // HGet 返回哈希表 key 中给定域 field 的值

@@ -111,13 +111,12 @@ func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub
 		if elector.IsMaster() {
 			downMsg := &DownMsg{}
 			json.Unmarshal(msg.Body, downMsg)
-
 			return e.Down(downMsg.Service, downMsg.Addr)
 		}
 		return nil
 	})
 
-	log.Debugf("build redis linker")
+	log.Debugf("build link-cache by redis & nsq")
 	return e
 }
 
@@ -152,6 +151,11 @@ func (l *redisLinker) getParentSetField(token string) string {
 	return field
 }
 
+func (l *redisLinker) getParentSet() string {
+	field := LinkerRedisPrefix + "set_" + l.cfg.ServiceName
+	return field
+}
+
 func (l *redisLinker) Target(child string, token string) (target string, err error) {
 
 	if token == "" {
@@ -178,6 +182,7 @@ func (l *redisLinker) Link(child string, token string, targetAddr string) error 
 	conn.Send("MULTI")
 	conn.Send("HSET", getTokenPoolKey(), l.getTokenPoolField(child, token), targetAddr)
 	conn.Send("SADD", l.getParentSetField(token), child)
+	conn.Send("SADD", l.getParentSet(), child+"_"+targetAddr)
 	conn.Send("LPUSH", l.getTokenListField(child, targetAddr), token)
 	_, err = conn.Do("EXEC")
 	if err != nil {
@@ -248,11 +253,18 @@ func (l *redisLinker) Num(child string, targetAddr string) (int, error) {
 
 // Down 删除离线节点的链路缓存
 func (l *redisLinker) Down(child string, targetAddr string) error {
-
-	log.Debugf("redis linker down child %s, target %s", child, targetAddr)
-
 	conn := redis.Get().Conn()
 	defer conn.Close()
+
+	ismember, err := redis.ConnSIsMember(conn, l.getParentSet(), child+"_"+targetAddr)
+	if err != nil {
+		return err
+	}
+	if !ismember {
+		return nil
+	}
+
+	log.Debugf("redis linker down child %s, target %s", child, targetAddr)
 
 	tokens, err := redis.ConnLRange(conn, l.getTokenListField(child, targetAddr), 0, -1)
 	if err != nil {
@@ -264,6 +276,7 @@ func (l *redisLinker) Down(child string, targetAddr string) error {
 	for _, token := range tokens {
 		conn.Send("HDEL", getTokenPoolKey(), l.getTokenPoolField(child, token))
 	}
+	conn.Send("SREM", l.getParentSet(), child+"_"+targetAddr)
 	conn.Send("DEL", l.getTokenListField(child, targetAddr))
 	_, err = conn.Do("EXEC")
 	if err != nil {
