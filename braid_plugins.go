@@ -15,7 +15,6 @@ import (
 	"github.com/pojol/braid/plugin/electork8s"
 	"github.com/pojol/braid/plugin/grpcclient"
 	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/linkerredis"
 	"github.com/pojol/braid/plugin/pubsubnsq"
 )
 
@@ -47,14 +46,16 @@ func Balancer(builderName string, opts ...interface{}) Plugin {
 	}
 }
 
-// LinkerByRedis 基于redis实现的链路缓存机制
-func LinkerByRedis() Plugin {
+// LinkCache plugin
+func LinkCache(builderName string, opts ...interface{}) Plugin {
+
 	return func(b *Braid) {
-		b.linkerBuilder = linkcache.GetBuilder(linkerredis.LinkerName)
-		b.linkerBuilder.SetCfg(linkerredis.Config{
-			ServiceName: b.cfg.Name,
-		})
+		b.linkerBuilder = linkcache.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.linkerBuilder.AddOption(opt)
+		}
 	}
+
 }
 
 // ElectorByConsul 基于consul实现的elector

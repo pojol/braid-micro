@@ -62,12 +62,14 @@ func TestLinkerTarget(t *testing.T) {
 	e, _ := eb.Build()
 	defer e.Close()
 
-	b := linkcache.GetBuilder(LinkerName)
-	b.SetCfg(Config{
-		ServiceName: "base",
-	})
-	lk := b.Build(e, ps)
-	err := lk.Link("mail", "token01", "127.0.0.1")
+	b := linkcache.GetBuilder(Name)
+	b.AddOption(WithElector(e))
+	b.AddOption(WithClusterPubsub(ps))
+
+	lk, err := b.Build("base")
+	assert.Equal(t, err, nil)
+
+	err = lk.Link("mail", "token01", "127.0.0.1")
 	assert.Equal(t, err, nil)
 	err = lk.Link("social", "token01", "127.0.0.2")
 	assert.Equal(t, err, nil)
@@ -114,13 +116,12 @@ func TestLinkerDown(t *testing.T) {
 	e, _ := eb.Build()
 	defer e.Close()
 
-	b := linkcache.GetBuilder(LinkerName)
-	b.SetCfg(Config{
-		ServiceName: "base",
-	})
-	lk := b.Build(e, ps)
-
-	err := lk.Link("mail", "token01", "127.0.0.1")
+	b := linkcache.GetBuilder(Name)
+	b.AddOption(WithElector(e))
+	b.AddOption(WithClusterPubsub(ps))
+	lk, err := b.Build("base")
+	assert.Equal(t, err, nil)
+	err = lk.Link("mail", "token01", "127.0.0.1")
 	assert.Equal(t, err, nil)
 	err = lk.Link("mail", "token02", "127.0.0.1")
 	assert.Equal(t, err, nil)

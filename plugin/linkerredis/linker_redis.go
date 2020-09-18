@@ -6,7 +6,6 @@ import (
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 )
@@ -17,8 +16,8 @@ var (
 )
 
 const (
-	// LinkerName 链接器名称
-	LinkerName = "RedisLinker"
+	// Name 链接器名称
+	Name = "RedisLinker"
 
 	// redis
 
@@ -66,7 +65,7 @@ var (
 )
 
 type redisLinkerBuilder struct {
-	cfg Config
+	opts []interface{}
 }
 
 func newRedisLinker() linkcache.Builder {
@@ -74,71 +73,71 @@ func newRedisLinker() linkcache.Builder {
 }
 
 func (*redisLinkerBuilder) Name() string {
-	return LinkerName
+	return Name
 }
 
-func (rb *redisLinkerBuilder) SetCfg(cfg interface{}) error {
-	lcfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	rb.cfg = lcfg
-	return nil
+func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
+	rb.opts = append(rb.opts, opt)
 }
 
-func (rb *redisLinkerBuilder) Build(elector elector.IElection, ps pubsub.IPubsub) linkcache.ILinkCache {
+// Build build link-cache
+func (rb *redisLinkerBuilder) Build(serviceName string) (linkcache.ILinkCache, error) {
 
-	e := &redisLinker{
-		elector: elector,
-		pubsub:  ps,
-		cfg:     rb.cfg,
+	p := Parm{
+		ServiceName: serviceName,
+	}
+	for _, opt := range rb.opts {
+		opt.(Option)(&p)
 	}
 
-	ps.Pub(LinkerTopicUnlink, &pubsub.Message{Body: []byte("nil")})
-	unlinkSub := ps.Sub(LinkerTopicUnlink)
+	if p.elector == nil {
+		return nil, errors.New("linker_redis parm mismatch " + "no elector")
+	}
+	if p.clusterPB == nil {
+		return nil, errors.New("linker_redis parm mismatch " + "no cluster pubsub")
+	}
+
+	lc := &redisLinker{
+		parm: p,
+	}
+
+	lc.parm.clusterPB.Pub(LinkerTopicUnlink, &pubsub.Message{Body: []byte("nil")})
+	unlinkSub := lc.parm.clusterPB.Sub(LinkerTopicUnlink)
 	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
-		if elector.IsMaster() {
-			return e.Unlink(string(msg.Body))
+		if lc.parm.elector.IsMaster() {
+			return lc.Unlink(string(msg.Body))
 		}
 
 		return nil
 	})
 
-	ps.Pub(LinkerTopicDown, &pubsub.Message{Body: []byte("nil")})
-	downSub := ps.Sub(LinkerTopicDown)
+	lc.parm.clusterPB.Pub(LinkerTopicDown, &pubsub.Message{Body: []byte("nil")})
+	downSub := lc.parm.clusterPB.Sub(LinkerTopicDown)
 	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
-		if elector.IsMaster() {
+		if lc.parm.elector.IsMaster() {
 			downMsg := &DownMsg{}
 			err := json.Unmarshal(msg.Body, downMsg)
 			if err != nil {
 				return nil
 			}
-			return e.Down(downMsg.Service, downMsg.Addr)
+			return lc.Down(downMsg.Service, downMsg.Addr)
 		}
 		return nil
 	})
 
 	log.Debugf("build link-cache by redis & nsq")
-	return e
-}
-
-// Config linker config
-type Config struct {
-	ServiceName string
+	return lc, nil
 }
 
 // redisLinker 基于redis实现的链接器
 type redisLinker struct {
-	elector elector.IElection
-	pubsub  pubsub.IPubsub
-	cfg     Config
+	parm Parm
 }
 
 func (l *redisLinker) getTokenPoolField(child string, token string) string {
-	field := LinkerRedisPrefix + l.cfg.ServiceName + "_" + child + "_" + token
+	field := LinkerRedisPrefix + l.parm.ServiceName + "_" + child + "_" + token
 	return field
 }
 
@@ -147,17 +146,17 @@ func getTokenPoolKey() string {
 }
 
 func (l *redisLinker) getTokenListField(child string, addr string) string {
-	field := LinkerRedisPrefix + "lst_" + l.cfg.ServiceName + "_" + child + "_" + addr
+	field := LinkerRedisPrefix + "lst_" + l.parm.ServiceName + "_" + child + "_" + addr
 	return field
 }
 
 func (l *redisLinker) getParentSetField(token string) string {
-	field := LinkerRedisPrefix + "set_" + l.cfg.ServiceName + "_" + token
+	field := LinkerRedisPrefix + "set_" + l.parm.ServiceName + "_" + token
 	return field
 }
 
 func (l *redisLinker) getParentSet() string {
-	field := LinkerRedisPrefix + "set_" + l.cfg.ServiceName
+	field := LinkerRedisPrefix + "set_" + l.parm.ServiceName
 	return field
 }
 
@@ -194,7 +193,7 @@ func (l *redisLinker) Link(child string, token string, targetAddr string) error 
 		return err
 	}
 
-	log.Debugf("linked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
+	log.Debugf("linked parent %s, target %s, token %s", l.parm.ServiceName, targetAddr, token)
 	return nil
 }
 
@@ -238,7 +237,7 @@ func (l *redisLinker) Unlink(token string) error {
 			conn.Send("LREM", l.getTokenListField(child, targetAddr), 0, token)
 		}
 
-		log.Debugf("unlinked parent %s, target %s, token %s", l.cfg.ServiceName, targetAddr, token)
+		log.Debugf("unlinked parent %s, target %s, token %s", l.parm.ServiceName, targetAddr, token)
 	}
 
 	conn.Send("DEL", l.getParentSetField(token))

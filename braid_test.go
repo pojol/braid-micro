@@ -7,6 +7,7 @@ import (
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
+	"github.com/pojol/braid/plugin/linkerredis"
 )
 
 func TestMain(m *testing.M) {
@@ -35,6 +36,7 @@ func TestPlugin(t *testing.T) {
 			discoverconsul.Name,
 			discoverconsul.WithConsulAddress(mock.ConsulAddr),
 		),
+		LinkCache(linkerredis.Name),
 	)
 
 	b.Run()

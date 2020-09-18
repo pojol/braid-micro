@@ -13,6 +13,7 @@ import (
 	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
+	"github.com/pojol/braid/plugin/linkerredis"
 	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
@@ -94,7 +95,18 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 			fmt.Println("linker need depend pubsub")
 		}
 
-		b.linker = b.linkerBuilder.Build(b.elector, b.pubsub)
+		if b.elector != nil {
+			b.linkerBuilder.AddOption(linkerredis.WithElector(b.elector))
+		}
+
+		if b.pubsub != nil {
+			b.linkerBuilder.AddOption(linkerredis.WithClusterPubsub(b.pubsub))
+		}
+
+		b.linker, err = b.linkerBuilder.Build(b.cfg.Name)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if b.discoverBuilder != nil {

@@ -61,7 +61,7 @@ func (b *consulDiscoverBuilder) Build(serviceName string) (discover.IDiscover, e
 	}
 
 	if p.procPB == nil {
-		return nil, errors.New("parm mismatch," + "not proc pubsub!")
+		return nil, errors.New("discover_consul parm mismatch " + "no proc pubsub!")
 	}
 
 	// check address

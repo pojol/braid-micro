@@ -2,16 +2,13 @@ package linkcache
 
 import (
 	"strings"
-
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/pubsub"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(elector elector.IElection, pubsub pubsub.IPubsub) ILinkCache
+	Build(serviceName string) (ILinkCache, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
 // ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
