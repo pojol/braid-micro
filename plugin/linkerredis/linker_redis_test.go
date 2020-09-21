@@ -46,20 +46,13 @@ func TestMain(m *testing.M) {
 func TestLinkerTarget(t *testing.T) {
 	LinkerRedisPrefix = "testlinkertarget"
 
-	psb := pubsub.GetBuilder(pubsubnsq.PubsubName)
-	psb.SetCfg(pubsubnsq.NsqConfig{
-		Addres:       []string{mock.NsqdAddr},
-		LookupAddres: []string{mock.NSQLookupdAddr},
-	})
-	ps, _ := psb.Build()
-	eb := elector.GetBuilder(electorconsul.ElectionName)
-	eb.SetCfg(electorconsul.Cfg{
-		Address:           mock.ConsulAddr,
-		Name:              "testlinkertarget",
-		LockTick:          time.Second,
-		RefushSessionTick: time.Second,
-	})
-	e, _ := eb.Build()
+	psb := pubsub.GetBuilder(pubsubnsq.Name)
+	psb.AddOption(pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	psb.AddOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	ps, _ := psb.Build("TestLinkerTarget")
+	eb := elector.GetBuilder(electorconsul.Name)
+	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
+	e, _ := eb.Build("testlinkertarget")
 	defer e.Close()
 
 	b := linkcache.GetBuilder(Name)
@@ -100,20 +93,13 @@ func TestLinkerTarget(t *testing.T) {
 func TestLinkerDown(t *testing.T) {
 	LinkerRedisPrefix = "testlinkerdown"
 
-	psb := pubsub.GetBuilder(pubsubnsq.PubsubName)
-	psb.SetCfg(pubsubnsq.NsqConfig{
-		Addres:       []string{mock.NsqdAddr},
-		LookupAddres: []string{mock.NSQLookupdAddr},
-	})
-	ps, _ := psb.Build()
-	eb := elector.GetBuilder(electorconsul.ElectionName)
-	eb.SetCfg(electorconsul.Cfg{
-		Address:           mock.ConsulAddr,
-		Name:              "testlinkerdown",
-		LockTick:          time.Second,
-		RefushSessionTick: time.Second,
-	})
-	e, _ := eb.Build()
+	psb := pubsub.GetBuilder(pubsubnsq.Name)
+	psb.AddOption(pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	psb.AddOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	ps, _ := psb.Build("TestLinkerDown")
+	eb := elector.GetBuilder(electorconsul.Name)
+	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
+	e, _ := eb.Build("testlinkerdown")
 	defer e.Close()
 
 	b := linkcache.GetBuilder(Name)

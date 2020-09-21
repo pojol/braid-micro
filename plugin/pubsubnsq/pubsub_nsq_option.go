@@ -2,22 +2,44 @@ package pubsubnsq
 
 import "github.com/nsqio/go-nsq"
 
-// NsqConfig nsq config
-type NsqConfig struct {
-	nsqCfg *nsq.Config
+// Parm nsq config
+type Parm struct {
+	nsqCfg nsq.Config
 
 	LookupAddres []string
 	Addres       []string
 
-	Channel string
+	Channel     string
+	ServiceName string
 }
 
 // Option config wraps
-type Option func(*NsqConfig)
+type Option func(*Parm)
 
 // WithChannel 通过channel 构建
 func WithChannel(channel string) Option {
-	return func(c *NsqConfig) {
+	return func(c *Parm) {
 		c.Channel = channel
+	}
+}
+
+// WithNsqConfig nsq config
+func WithNsqConfig(cfg nsq.Config) Option {
+	return func(c *Parm) {
+		c.nsqCfg = cfg
+	}
+}
+
+// WithLookupAddr lookup addr
+func WithLookupAddr(addr []string) Option {
+	return func(c *Parm) {
+		c.LookupAddres = addr
+	}
+}
+
+// WithNsqdAddr nsqd addr
+func WithNsqdAddr(addr []string) Option {
+	return func(c *Parm) {
+		c.Addres = addr
 	}
 }

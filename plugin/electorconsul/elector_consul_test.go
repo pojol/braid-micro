@@ -24,14 +24,9 @@ func TestElection(t *testing.T) {
 	}))
 	defer l.Close()
 
-	eb := elector.GetBuilder(ElectionName)
-	eb.SetCfg(Cfg{
-		Address:           mock.ConsulAddr,
-		Name:              "test",
-		LockTick:          time.Second,
-		RefushSessionTick: time.Second,
-	})
-	e, _ := eb.Build()
+	eb := elector.GetBuilder(Name)
+	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
+	e, _ := eb.Build("test_elector_with_consul")
 
 	e.Run()
 	time.Sleep(time.Second)

@@ -6,9 +6,9 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build() (IElection, error)
+	Build(serviceName string) (IElection, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
 // IElection 选举器需要提供的接口

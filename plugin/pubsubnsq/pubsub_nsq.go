@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// PubsubName 进程内的消息通知
-	PubsubName = "NsqPubsub"
+	// Name 进程内的消息通知
+	Name = "NsqPubsub"
 )
 
 var (
@@ -24,17 +24,30 @@ var (
 )
 
 type nsqPubsubBuilder struct {
-	cfg NsqConfig
+	opts []interface{}
 }
 
 func newNsqPubsub() pubsub.Builder {
 	return &nsqPubsubBuilder{}
 }
 
-func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
+func (pb *nsqPubsubBuilder) AddOption(opt interface{}) {
+	pb.opts = append(pb.opts, opt)
+}
 
-	producers := make([]*nsq.Producer, 0, len(pb.cfg.Addres))
-	for _, addr := range pb.cfg.Addres {
+func (pb *nsqPubsubBuilder) Build(serviceName string) (pubsub.IPubsub, error) {
+
+	p := Parm{
+		ServiceName:  serviceName,
+		LookupAddres: []string{"127.0.0.1:4161"},
+		Addres:       []string{"127.0.0.1:4150"},
+	}
+	for _, opt := range pb.opts {
+		opt.(Option)(&p)
+	}
+
+	producers := make([]*nsq.Producer, 0, len(p.Addres))
+	for _, addr := range p.Addres {
 		producer, err := nsq.NewProducer(addr, nsq.NewConfig())
 		if err != nil {
 			return nil, err
@@ -50,33 +63,21 @@ func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 
 	ps := &nsqPubsub{
 		producers: producers,
-		cfg:       pb.cfg,
+		parm:      p,
 	}
 
 	return ps, nil
 }
 
 func (*nsqPubsubBuilder) Name() string {
-	return PubsubName
-}
-
-func (pb *nsqPubsubBuilder) SetCfg(cfg interface{}) error {
-
-	nsqCfg, ok := cfg.(NsqConfig)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	pb.cfg = nsqCfg
-
-	return nil
+	return Name
 }
 
 type nsqPubsub struct {
 	producers   []*nsq.Producer
 	subsrcibers []*nsqSubscriber
 
-	cfg NsqConfig
+	parm Parm
 }
 
 // Consumer 消费者
@@ -215,10 +216,10 @@ func (c *nsqConsumer) PutMsg(msg *pubsub.Message) error {
 func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 	s := &nsqSubscriber{
 		group:        make(map[string]pubsub.IConsumer),
-		Channel:      kps.cfg.Channel,
+		Channel:      kps.parm.Channel,
 		Topic:        topic,
-		lookupAddres: kps.cfg.LookupAddres,
-		addres:       kps.cfg.Addres,
+		lookupAddres: kps.parm.LookupAddres,
+		addres:       kps.parm.Addres,
 	}
 
 	kps.subsrcibers = append(kps.subsrcibers, s)

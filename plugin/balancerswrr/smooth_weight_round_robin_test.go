@@ -30,7 +30,7 @@ func TestMain(t *testing.M) {
 }
 
 func TestWRR(t *testing.T) {
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestWRR")
 	bb := balancer.GetBuilder(Name)
 	bb.AddOption(WithProcPubsub(ps))
 	balancer.NewGroup(bb)
@@ -75,7 +75,7 @@ func TestWRR(t *testing.T) {
 
 func TestWRRDymc(t *testing.T) {
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestWRRDymc")
 	bb := balancer.GetBuilder(Name)
 	bb.AddOption(WithProcPubsub(ps))
 	balancer.NewGroup(bb)
@@ -132,7 +132,7 @@ func TestWRRDymc(t *testing.T) {
 
 func TestWRROp(t *testing.T) {
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestWRROp")
 	bb := balancer.GetBuilder(Name)
 	bb.AddOption(WithProcPubsub(ps))
 	balancer.NewGroup(bb)
@@ -164,7 +164,7 @@ func TestWRROp(t *testing.T) {
 
 //20664206	        58.9 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("BenchmarkWRR")
 	bb := balancer.GetBuilder(Name)
 	bb.AddOption(WithProcPubsub(ps))
 	balancer.NewGroup(bb)

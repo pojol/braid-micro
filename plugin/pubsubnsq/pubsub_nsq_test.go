@@ -38,12 +38,10 @@ func TestNsq1V1(t *testing.T) {
 	msgByte := []byte("test msg 1")
 	onarrived := false
 
-	psb := pubsub.GetBuilder(PubsubName)
-	psb.SetCfg(NsqConfig{
-		Addres:       []string{mock.NsqdAddr},
-		LookupAddres: []string{mock.NSQLookupdAddr},
-	})
-	pb, err := psb.Build()
+	psb := pubsub.GetBuilder(Name)
+	psb.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	psb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+	pb, err := psb.Build("TestNsq1V1")
 	assert.Equal(t, err, nil)
 
 	consumer := pb.Sub(topic).AddShared()
@@ -67,12 +65,10 @@ func TestNsqShared(t *testing.T) {
 	msgByte := []byte("test msg 1")
 	var onarrived uint64
 
-	psb := pubsub.GetBuilder(PubsubName)
-	psb.SetCfg(NsqConfig{
-		Addres:       []string{mock.NsqdAddr},
-		LookupAddres: []string{mock.NSQLookupdAddr},
-	})
-	pb, err := psb.Build()
+	psb := pubsub.GetBuilder(Name)
+	psb.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	psb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+	pb, err := psb.Build("TestNsqShared")
 	assert.Equal(t, err, nil)
 
 	consumer1 := pb.Sub(topic).AddShared()
@@ -108,13 +104,12 @@ func TestNsqCompetition(t *testing.T) {
 	msgByte := []byte("test msg 1")
 	var onarrived uint64
 
-	psb := pubsub.GetBuilder(PubsubName)
-	psb.SetCfg(NsqConfig{
-		Channel:      "competition1",
-		Addres:       []string{mock.NsqdAddr},
-		LookupAddres: []string{mock.NSQLookupdAddr},
-	})
-	pb, err := psb.Build()
+	psb := pubsub.GetBuilder(Name)
+	psb.AddOption(WithChannel("competition1"))
+	psb.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	psb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+
+	pb, err := psb.Build("TestNsqCompetition")
 	assert.Equal(t, err, nil)
 
 	consumer1 := pb.Sub(topic).AddCompetition()

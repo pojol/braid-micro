@@ -13,13 +13,14 @@ const (
 )
 
 type procPubsubBuilder struct {
+	opts []interface{}
 }
 
 func newProcPubsub() pubsub.Builder {
 	return &procPubsubBuilder{}
 }
 
-func (*procPubsubBuilder) Build() (pubsub.IPubsub, error) {
+func (*procPubsubBuilder) Build(serviceName string) (pubsub.IPubsub, error) {
 
 	ps := &procPubsub{
 		subscriber: make(map[string]pubsub.ISubscriber),
@@ -32,8 +33,8 @@ func (*procPubsubBuilder) Name() string {
 	return PubsubName
 }
 
-func (*procPubsubBuilder) SetCfg(cfg interface{}) error {
-	return nil
+func (pb *procPubsubBuilder) AddOption(opt interface{}) {
+	pb.opts = append(pb.opts, opt)
 }
 
 // Consumer 消费者

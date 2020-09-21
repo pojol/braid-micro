@@ -70,7 +70,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		plugin(braidGlobal)
 	}
 
-	pb, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	pb, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build(b.cfg.Name)
 
 	// build
 
@@ -80,11 +80,11 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	}
 
 	if b.electorBuild != nil {
-		b.elector, _ = b.electorBuild.Build()
+		b.elector, _ = b.electorBuild.Build(b.cfg.Name)
 	}
 
 	if b.pubsubBuilder != nil {
-		b.pubsub, _ = b.pubsubBuilder.Build()
+		b.pubsub, _ = b.pubsubBuilder.Build(b.cfg.Name)
 	}
 
 	if b.linkerBuilder != nil {
@@ -173,8 +173,8 @@ func Server() server.ISserver {
 	return braidGlobal.server
 }
 
-// Pubsub pub-sub
-func Pubsub() pubsub.IPubsub {
+// GetPubsub pub-sub
+func GetPubsub() pubsub.IPubsub {
 	return braidGlobal.pubsub
 }
 

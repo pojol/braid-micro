@@ -32,9 +32,9 @@ func TestMain(m *testing.M) {
 
 	db := discover.GetBuilder(discoverconsul.Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestMain")
 	db.AddOption(discoverconsul.WithProcPubsub(ps))
-	db.AddOption(discoverconsul.WithConsulAddress(mock.ConsulAddr))
+	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
 
 	discv, err := db.Build("test")
 	if err != nil {

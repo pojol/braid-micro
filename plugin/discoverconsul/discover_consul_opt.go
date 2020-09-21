@@ -50,8 +50,8 @@ func WithInterval(interval time.Duration) Option {
 	}
 }
 
-// WithConsulAddress with consul address
-func WithConsulAddress(address string) Option {
+// WithConsulAddr with consul address
+func WithConsulAddr(address string) Option {
 	return func(c *Parm) {
 		c.Address = address
 	}

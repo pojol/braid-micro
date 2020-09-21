@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 	})
 	defer r.Close()
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("")
 	bb := balancer.GetBuilder(balancerswrr.Name)
 	bb.AddOption(balancerswrr.WithProcPubsub(ps))
 	balancer.NewGroup(bb)
@@ -52,9 +52,9 @@ func TestDiscover(t *testing.T) {
 
 	b := discover.GetBuilder(Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestDiscover")
 	b.AddOption(WithProcPubsub(ps))
-	b.AddOption(WithConsulAddress(mock.ConsulAddr))
+	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 
 	d, err := b.Build("test")
 	assert.Equal(t, err, nil)
@@ -68,9 +68,9 @@ func TestDiscover(t *testing.T) {
 func TestParmAddress(t *testing.T) {
 	b := discover.GetBuilder(Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestParmAddress")
 	b.AddOption(WithProcPubsub(ps))
-	b.AddOption(WithConsulAddress("http://127.0.0.1:8500"))
+	b.AddOption(WithConsulAddr("http://127.0.0.1:8500"))
 
 	_, err := b.Build("test")
 	assert.NotEqual(t, err, nil)

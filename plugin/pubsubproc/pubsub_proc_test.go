@@ -11,7 +11,7 @@ import (
 
 func TestConsumer(t *testing.T) {
 
-	pb, _ := pubsub.GetBuilder(PubsubName).Build()
+	pb, _ := pubsub.GetBuilder(PubsubName).Build("TestConsumer")
 	var testTick uint64
 
 	tsub := pb.Sub("TestConsumer")
