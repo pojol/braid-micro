@@ -63,7 +63,10 @@ go get github.com/pojol/braid@latest
 * Architecture based on k8s
   https://github.com/pojol/braid/wiki/quick-start-with-k8s
 
+#### Web
+> sankey chart
 
+<img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
 #### Wiki
 https://github.com/pojol/braid/wiki
