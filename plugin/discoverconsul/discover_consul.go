@@ -134,7 +134,6 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
 			// regist service
 			balancer.Get(service.ServiceName)
-			log.Debugf("new service %s id %s", service.ServiceName, service.ID)
 
 			sn := syncNode{
 				service:    service.ServiceName,
@@ -143,6 +142,7 @@ func (dc *consulDiscover) discoverImpl() {
 				dyncWeight: 0,
 				physWeight: defaultWeight,
 			}
+			log.Debugf("new service %s addr %s", service.ServiceName, sn.address)
 
 			dc.passingMap[service.ServiceID] = &sn
 

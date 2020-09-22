@@ -3,7 +3,9 @@ package balancerswrr
 import (
 	"encoding/json"
 	"errors"
+	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module/balancer"
@@ -45,6 +47,7 @@ func (b *smoothWeightRoundrobinBuilder) Build(serviceName string) balancer.Balan
 		addSub: p.procPB.Sub(discover.EventAdd + "_" + serviceName).AddCompetition(),
 		rmvSub: p.procPB.Sub(discover.EventRmv + "_" + serviceName).AddCompetition(),
 		upSub:  p.procPB.Sub(discover.EventUpdate + "_" + serviceName).AddCompetition(),
+		parm:   p,
 	}
 
 	go swrr.watcher()
@@ -93,6 +96,7 @@ type swrrBalancer struct {
 	upSub  pubsub.IConsumer
 
 	totalWeight int
+	parm        Parm
 	nods        []weightedNod
 	sync.Mutex
 }
@@ -142,6 +146,19 @@ func (wr *swrrBalancer) Pick() (discover.Node, error) {
 	}
 
 	return wr.nods[idx].orgNod, nil
+}
+
+// Randowm ..
+func (wr *swrrBalancer) Random() (discover.Node, error) {
+	wr.Lock()
+	defer wr.Unlock()
+
+	if len(wr.nods) <= 0 {
+		return discover.Node{}, balancer.ErrBalanceEmpty
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	return wr.nods[rand.Intn(len(wr.nods))].orgNod, nil
 }
 
 func (wr *swrrBalancer) add(nod discover.Node) {

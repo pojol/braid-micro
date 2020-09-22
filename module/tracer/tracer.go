@@ -61,8 +61,8 @@ func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	const (
 		defaultProbabilistic = 1
-		defaultSlowRequest   = time.Millisecond * 100
-		defaultSlowSpan      = time.Millisecond * 10
+		defaultSlowRequest   = time.Millisecond * 200
+		defaultSlowSpan      = time.Millisecond * 50
 	)
 
 	tracer = &Tracer{
