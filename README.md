@@ -64,9 +64,15 @@ go get github.com/pojol/braid@latest
   https://github.com/pojol/braid/wiki/quick-start-with-k8s
 
 #### Web
-> sankey chart
-
+> Observe the link situation in the braid cluster through the sankey chart (need register link-cache plug-in
+```shell
+cd /github.com/pojol/braid/sankey
+go build sankey.go
+./sankey
+localhost:8888/link
+```
 <img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
 #### Wiki
 https://github.com/pojol/braid/wiki
+
