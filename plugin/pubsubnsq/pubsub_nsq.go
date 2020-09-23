@@ -98,6 +98,9 @@ type nsqSubscriber struct {
 	lookupAddres []string
 	addres       []string
 
+	ephemeral   bool
+	serviceName string
+
 	group map[string]pubsub.IConsumer
 	sync.Mutex
 }
@@ -174,10 +177,17 @@ func (ns *nsqSubscriber) AddCompetition() pubsub.IConsumer {
 func (ns *nsqSubscriber) AddShared() pubsub.IConsumer {
 
 	ns.Lock()
-
 	defer ns.Unlock()
-	nc := ns.addImpl(uuid.New().String() + "#ephemeral")
 
+	var uid string
+
+	if ns.ephemeral {
+		uid = ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
+	} else {
+		uid = ns.serviceName
+	}
+
+	nc := ns.addImpl(uid)
 	ns.group[nc.uuid] = nc
 
 	return nc
@@ -220,6 +230,8 @@ func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 		Topic:        topic,
 		lookupAddres: kps.parm.LookupAddres,
 		addres:       kps.parm.Addres,
+		ephemeral:    kps.parm.Ephemeral,
+		serviceName:  kps.parm.ServiceName,
 	}
 
 	kps.subsrcibers = append(kps.subsrcibers, s)

@@ -3,6 +3,7 @@ package linkerredis
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
@@ -102,30 +103,47 @@ func (rb *redisLinkerBuilder) Build(serviceName string) (linkcache.ILinkCache, e
 	}
 
 	lc.parm.clusterPB.Pub(LinkerTopicUnlink, &pubsub.Message{Body: []byte("nil")})
-	unlinkSub := lc.parm.clusterPB.Sub(LinkerTopicUnlink)
-	unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
-
-		if lc.parm.elector.IsMaster() {
-			return lc.Unlink(string(msg.Body))
-		}
-
-		return nil
-	})
-
 	lc.parm.clusterPB.Pub(LinkerTopicDown, &pubsub.Message{Body: []byte("nil")})
-	downSub := lc.parm.clusterPB.Sub(LinkerTopicDown)
-	downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
 
-		if lc.parm.elector.IsMaster() {
-			downMsg := &DownMsg{}
-			err := json.Unmarshal(msg.Body, downMsg)
-			if err != nil {
-				return nil
+	go func() {
+
+		tick := time.NewTicker(time.Second)
+		for {
+			select {
+			case <-tick.C:
+				if lc.parm.elector.IsMaster() {
+
+					unlinkSub := lc.parm.clusterPB.Sub(LinkerTopicUnlink)
+					unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
+
+						if lc.parm.elector.IsMaster() {
+							return lc.Unlink(string(msg.Body))
+						}
+
+						return nil
+					})
+
+					downSub := lc.parm.clusterPB.Sub(LinkerTopicDown)
+					downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
+
+						if lc.parm.elector.IsMaster() {
+							downMsg := &DownMsg{}
+							err := json.Unmarshal(msg.Body, downMsg)
+							if err != nil {
+								return nil
+							}
+							return lc.Down(downMsg.Service, downMsg.Addr)
+						}
+						return nil
+					})
+
+					tick.Stop()
+					return
+				}
 			}
-			return lc.Down(downMsg.Service, downMsg.Addr)
 		}
-		return nil
-	})
+
+	}()
 
 	log.Debugf("build link-cache by redis & nsq")
 	return lc, nil
