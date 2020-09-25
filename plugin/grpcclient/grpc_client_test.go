@@ -30,20 +30,23 @@ func TestMain(m *testing.M) {
 	}))
 	defer l.Close()
 
-	db := discover.GetBuilder(discoverconsul.DiscoverName)
-	db.SetCfg(discoverconsul.Cfg{
-		Name:     "test",
-		Tag:      "braid",
-		Interval: time.Second * 2,
-		Address:  mock.ConsulAddr,
-	})
+	db := discover.GetBuilder(discoverconsul.Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
-	discv := db.Build(ps)
+	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestMain")
+	db.AddOption(discoverconsul.WithProcPubsub(ps))
+	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
+
+	discv, err := db.Build("test")
+	if err != nil {
+		panic(err)
+	}
+
 	discv.Discover()
 	defer discv.Close()
 
-	balancer.NewGroup(balancer.GetBuilder(balancerswrr.BalancerName), ps)
+	bb := balancer.GetBuilder(balancerswrr.Name)
+	bb.AddOption(balancerswrr.WithProcPubsub(ps))
+	balancer.NewGroup(bb)
 
 	m.Run()
 }

@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	// ElectionName 选举器名称
-	ElectionName = "ConsulElection"
+	// Name 选举器名称
+	Name = "ConsulElection"
 )
 
 var (
@@ -21,42 +21,46 @@ var (
 )
 
 type consulElectionBuilder struct {
-	cfg Cfg
+	opts []interface{}
 }
 
 func newConsulElection() elector.Builder {
 	return &consulElectionBuilder{}
 }
 
-func (eb *consulElectionBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Cfg)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	eb.cfg = cecfg
-	return nil
+func (eb *consulElectionBuilder) AddOption(opt interface{}) {
+	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *consulElectionBuilder) Build() (elector.IElection, error) {
+func (eb *consulElectionBuilder) Build(serviceName string) (elector.IElection, error) {
 
-	e := &consulElection{
-		cfg: eb.cfg,
+	p := Parm{
+		ConsulAddr:        "http://127.0.0.1:8500",
+		ServiceName:       serviceName,
+		LockTick:          time.Second * 2,
+		RefushSessionTick: time.Second * 5,
+	}
+	for _, opt := range eb.opts {
+		opt.(Option)(&p)
 	}
 
-	// verfiy
+	e := &consulElection{
+		parm: p,
+	}
 
-	sid, err := consul.CreateSession(e.cfg.Address, e.cfg.Name+"_lead")
+	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
 	if err != nil {
+		log.Debugf("create session with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
 		return nil, err
 	}
 
-	locked, err := consul.AcquireLock(e.cfg.Address, e.cfg.Name, sid)
+	locked, err := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, sid)
 	if err != nil {
+		log.Debugf("acquire lock with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
 		return nil, err
 	}
 	if locked {
-		log.SysElection(e.cfg.Name, sid)
+		log.SysElection(e.parm.ServiceName, sid)
 	}
 
 	e.sessionID = sid
@@ -66,15 +70,7 @@ func (eb *consulElectionBuilder) Build() (elector.IElection, error) {
 }
 
 func (*consulElectionBuilder) Name() string {
-	return ElectionName
-}
-
-// Cfg 选举器配置项
-type Cfg struct {
-	Address           string
-	Name              string
-	LockTick          time.Duration
-	RefushSessionTick time.Duration
+	return Name
 }
 
 type consulElection struct {
@@ -84,7 +80,7 @@ type consulElection struct {
 	sessionID string
 	locked    bool
 
-	cfg Cfg
+	parm Parm
 }
 
 // IsMaster 返回是否获取到锁
@@ -101,7 +97,7 @@ func (e *consulElection) runImpl() {
 			}
 		}()
 
-		consul.RefushSession(e.cfg.Address, e.sessionID)
+		consul.RefushSession(e.parm.ConsulAddr, e.sessionID)
 	}
 
 	watchLock := func() {
@@ -112,18 +108,18 @@ func (e *consulElection) runImpl() {
 		}()
 
 		if !e.locked {
-			succ, _ := consul.AcquireLock(e.cfg.Address, e.cfg.Name, e.sessionID)
+			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				log.SysElection(e.cfg.Name, e.sessionID)
+				log.SysElection(e.parm.ServiceName, e.sessionID)
 			}
 		}
 	}
 
 	// time.Millisecond * 1000 * 5
-	e.refushTicker = time.NewTicker(e.cfg.RefushSessionTick)
+	e.refushTicker = time.NewTicker(e.parm.RefushSessionTick)
 	// time.Millisecond * 2000
-	e.lockTicker = time.NewTicker(e.cfg.LockTick)
+	e.lockTicker = time.NewTicker(e.parm.LockTick)
 
 	for {
 		select {
@@ -144,8 +140,8 @@ func (e *consulElection) Run() {
 
 // Close 释放锁，删除session
 func (e *consulElection) Close() {
-	consul.ReleaseLock(e.cfg.Address, e.cfg.Name, e.sessionID)
-	consul.DeleteSession(e.cfg.Address, e.sessionID)
+	consul.ReleaseLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
+	consul.DeleteSession(e.parm.ConsulAddr, e.sessionID)
 }
 
 func init() {

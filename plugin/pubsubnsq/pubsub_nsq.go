@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// PubsubName 进程内的消息通知
-	PubsubName = "NsqPubsub"
+	// Name 进程内的消息通知
+	Name = "NsqPubsub"
 )
 
 var (
@@ -24,17 +24,30 @@ var (
 )
 
 type nsqPubsubBuilder struct {
-	cfg NsqConfig
+	opts []interface{}
 }
 
 func newNsqPubsub() pubsub.Builder {
 	return &nsqPubsubBuilder{}
 }
 
-func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
+func (pb *nsqPubsubBuilder) AddOption(opt interface{}) {
+	pb.opts = append(pb.opts, opt)
+}
 
-	producers := make([]*nsq.Producer, 0, len(pb.cfg.Addres))
-	for _, addr := range pb.cfg.Addres {
+func (pb *nsqPubsubBuilder) Build(serviceName string) (pubsub.IPubsub, error) {
+
+	p := Parm{
+		ServiceName:  serviceName,
+		LookupAddres: []string{"127.0.0.1:4161"},
+		Addres:       []string{"127.0.0.1:4150"},
+	}
+	for _, opt := range pb.opts {
+		opt.(Option)(&p)
+	}
+
+	producers := make([]*nsq.Producer, 0, len(p.Addres))
+	for _, addr := range p.Addres {
 		producer, err := nsq.NewProducer(addr, nsq.NewConfig())
 		if err != nil {
 			return nil, err
@@ -48,45 +61,34 @@ func (pb *nsqPubsubBuilder) Build() (pubsub.IPubsub, error) {
 		producers = append(producers, producer)
 	}
 
-	fmt.Println("p", producers)
 	ps := &nsqPubsub{
 		producers: producers,
-		cfg:       pb.cfg,
+		parm:      p,
 	}
 
 	return ps, nil
 }
 
 func (*nsqPubsubBuilder) Name() string {
-	return PubsubName
-}
-
-func (pb *nsqPubsubBuilder) SetCfg(cfg interface{}) error {
-
-	nsqCfg, ok := cfg.(NsqConfig)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	pb.cfg = nsqCfg
-
-	return nil
+	return Name
 }
 
 type nsqPubsub struct {
 	producers   []*nsq.Producer
 	subsrcibers []*nsqSubscriber
 
-	cfg NsqConfig
+	parm Parm
 }
 
 // Consumer 消费者
 type nsqConsumer struct {
 	consumer *nsq.Consumer
-	uuid     string
+	exitCh   *braidsync.Switch
 
-	buff   *braidsync.Unbounded
-	exitCh *braidsync.Switch
+	handle pubsub.HandlerFunc
+	uuid   string
+
+	sync.Mutex
 }
 
 type nsqSubscriber struct {
@@ -95,6 +97,9 @@ type nsqSubscriber struct {
 
 	lookupAddres []string
 	addres       []string
+
+	ephemeral   bool
+	serviceName string
 
 	group map[string]pubsub.IConsumer
 	sync.Mutex
@@ -112,9 +117,13 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 
 		// 这里不能异步消费消息（因为不能表达出消费失败，将消息回退的逻辑）待修改。
 		// 如果消息执行到这里节点宕机，nsq可以将这个消息重新塞入到队列。
-		v.PutMsg(&pubsub.Message{
+
+		err := v.PutMsg(&pubsub.Message{
 			Body: msg.Body,
 		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -124,7 +133,6 @@ func (ns *nsqSubscriber) addImpl(channel string) *nsqConsumer {
 
 	config := nsq.NewConfig()
 	nc := &nsqConsumer{
-		buff:   braidsync.NewUnbounded(),
 		exitCh: braidsync.NewSwitch(),
 		uuid:   channel,
 	}
@@ -169,10 +177,17 @@ func (ns *nsqSubscriber) AddCompetition() pubsub.IConsumer {
 func (ns *nsqSubscriber) AddShared() pubsub.IConsumer {
 
 	ns.Lock()
-
 	defer ns.Unlock()
-	nc := ns.addImpl(uuid.New().String() + "#ephemeral")
 
+	var uid string
+
+	if ns.ephemeral {
+		uid = ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
+	} else {
+		uid = ns.serviceName
+	}
+
+	nc := ns.addImpl(uid)
 	ns.group[nc.uuid] = nc
 
 	return nc
@@ -190,21 +205,7 @@ func (ns *nsqSubscriber) GetConsumer(cid string) []pubsub.IConsumer {
 }
 
 func (c *nsqConsumer) OnArrived(handler pubsub.HandlerFunc) {
-	go func() {
-		for {
-			select {
-			case msg := <-c.buff.Get():
-				handler(msg.(*pubsub.Message))
-				c.buff.Load()
-			case <-c.exitCh.Done():
-			}
-
-			if c.exitCh.HasOpend() {
-				c.consumer.Stop()
-				return
-			}
-		}
-	}()
+	c.handle = handler
 }
 
 func (c *nsqConsumer) Exit() {
@@ -215,17 +216,22 @@ func (c *nsqConsumer) IsExited() bool {
 	return false
 }
 
-func (c *nsqConsumer) PutMsg(msg *pubsub.Message) {
-	c.buff.Put(msg)
+func (c *nsqConsumer) PutMsg(msg *pubsub.Message) error {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.handle(msg)
 }
 
 func (kps *nsqPubsub) Sub(topic string) pubsub.ISubscriber {
 	s := &nsqSubscriber{
 		group:        make(map[string]pubsub.IConsumer),
-		Channel:      kps.cfg.Channel,
+		Channel:      kps.parm.Channel,
 		Topic:        topic,
-		lookupAddres: kps.cfg.LookupAddres,
-		addres:       kps.cfg.Addres,
+		lookupAddres: kps.parm.LookupAddres,
+		addres:       kps.parm.Addres,
+		ephemeral:    kps.parm.Ephemeral,
+		serviceName:  kps.parm.ServiceName,
 	}
 
 	kps.subsrcibers = append(kps.subsrcibers, s)

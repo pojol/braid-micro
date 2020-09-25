@@ -180,11 +180,27 @@ func (rc *Client) Get(key string) (string, error) {
 	return val, err
 }
 
+// ConnGet get by conn
+func ConnGet(conn redis.Conn, key string) (string, error) {
+	reply, errDo := conn.Do("GET", key)
+	if errDo == nil && reply == nil {
+		return "", nil
+	}
+	val, err := redis.String(reply, errDo)
+	return val, err
+}
+
 // ------- set ----------
 
 // ConnSMembers 返回集合 key 中的所有成员。
 func ConnSMembers(conn redis.Conn, key string) ([]string, error) {
 	val, err := redis.Strings(conn.Do("SMEMBERS", key))
+	return val, err
+}
+
+// ConnSIsMember is member
+func ConnSIsMember(conn redis.Conn, key string, member string) (bool, error) {
+	val, err := redis.Bool(conn.Do("SISMEMBER", key, member))
 	return val, err
 }
 
@@ -289,6 +305,12 @@ func (rc *Client) RPop(key string) (string, error) {
 func (rc *Client) LRange(key string, start int, stop int) ([]string, error) {
 	conn := rc.pool.Get()
 	defer conn.Close()
+	resp, err := redis.Strings(conn.Do("LRANGE", key, start, stop))
+	return resp, err
+}
+
+// ConnLRange conn lrange
+func ConnLRange(conn redis.Conn, key string, start int, stop int) ([]string, error) {
 	resp, err := redis.Strings(conn.Do("LRANGE", key, start, stop))
 	return resp, err
 }

@@ -2,15 +2,13 @@ package discover
 
 import (
 	"strings"
-
-	"github.com/pojol/braid/module/pubsub"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(ps pubsub.IPubsub) IDiscover
+	Build(serviceName string) (IDiscover, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
 // Node 发现节点结构

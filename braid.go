@@ -6,11 +6,14 @@ import (
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid/plugin/balancerswrr"
+	"github.com/pojol/braid/plugin/discoverconsul"
+	"github.com/pojol/braid/plugin/linkerredis"
 	"github.com/pojol/braid/plugin/pubsubproc"
 )
 
@@ -27,8 +30,8 @@ type Braid struct {
 	discoverBuilder discover.Builder
 	discover        discover.IDiscover
 
-	linkerBuilder linker.Builder
-	linker        linker.ILinker
+	linkerBuilder linkcache.Builder
+	linker        linkcache.ILinkCache
 
 	electorBuild elector.Builder
 	elector      elector.IElection
@@ -47,6 +50,7 @@ var (
 
 // New 构建braid
 func New(name string) *Braid {
+
 	braidGlobal = &Braid{
 		cfg: config{
 			Name: name,
@@ -59,37 +63,28 @@ func New(name string) *Braid {
 func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	// install default
+	var err error
 
 	//
 	for _, plugin := range plugins {
 		plugin(braidGlobal)
 	}
 
-	pb, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build()
+	pb, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build(b.cfg.Name)
 
 	// build
-	if b.discoverBuilder != nil {
-		if b.balancerBuilder == nil {
-			fmt.Println("discover need depend balancer")
-		}
-
-		b.discover = b.discoverBuilder.Build(pb)
-	}
 
 	if b.balancerBuilder != nil {
-		balancer.NewGroup(b.balancerBuilder, pb)
+		b.balancerBuilder.AddOption(balancerswrr.WithProcPubsub(pb))
+		balancer.NewGroup(b.balancerBuilder)
 	}
 
 	if b.electorBuild != nil {
-		b.elector, _ = b.electorBuild.Build()
-	}
-
-	if b.serverBuilder != nil {
-		b.server = b.serverBuilder.Build()
+		b.elector, _ = b.electorBuild.Build(b.cfg.Name)
 	}
 
 	if b.pubsubBuilder != nil {
-		b.pubsub, _ = b.pubsubBuilder.Build()
+		b.pubsub, _ = b.pubsubBuilder.Build(b.cfg.Name)
 	}
 
 	if b.linkerBuilder != nil {
@@ -100,7 +95,43 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 			fmt.Println("linker need depend pubsub")
 		}
 
-		b.linker = b.linkerBuilder.Build(b.elector, b.pubsub)
+		if b.elector != nil {
+			b.linkerBuilder.AddOption(linkerredis.WithElector(b.elector))
+		}
+
+		if b.pubsub != nil {
+			b.linkerBuilder.AddOption(linkerredis.WithClusterPubsub(b.pubsub))
+		}
+
+		b.linker, err = b.linkerBuilder.Build(b.cfg.Name)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if b.discoverBuilder != nil {
+		if b.balancerBuilder == nil {
+			fmt.Println("discover need depend balancer")
+		}
+
+		b.discoverBuilder.AddOption(discoverconsul.WithProcPubsub(pb))
+
+		if b.linker != nil {
+			b.discoverBuilder.AddOption(discoverconsul.WithLinkCache(b.linker))
+		}
+
+		if b.pubsub != nil {
+			b.discoverBuilder.AddOption(discoverconsul.WithClusterPubsub(b.pubsub))
+		}
+
+		b.discover, err = b.discoverBuilder.Build(b.cfg.Name)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if b.serverBuilder != nil {
+		b.server = b.serverBuilder.Build(b.tracer != nil)
 	}
 
 	if b.clientBuilder != nil {
@@ -142,8 +173,8 @@ func Server() server.ISserver {
 	return braidGlobal.server
 }
 
-// Pubsub pub-sub
-func Pubsub() pubsub.IPubsub {
+// GetPubsub pub-sub
+func GetPubsub() pubsub.IPubsub {
 	return braidGlobal.pubsub
 }
 
@@ -160,6 +191,10 @@ func (b *Braid) Close() {
 
 	if b.server != nil {
 		b.server.Close()
+	}
+
+	if b.tracer != nil {
+		b.tracer.Close()
 	}
 
 }

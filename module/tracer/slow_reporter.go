@@ -84,6 +84,7 @@ func NewSlowReporter(sender jaeger.Transport, metrics *jaeger.Metrics, probabili
 
 // Report implements Report() method of Reporter.
 func (r *slowReporter) Report(span *jaeger.Span) {
+
 	select {
 	// Need to retain the span otherwise it will be released
 	case r.queue <- reporterQueueItem{itemType: reporterQueueItemSpan, span: span.Retain()}:
@@ -134,10 +135,12 @@ func (r *slowReporter) processQueue() {
 			flush()
 		case item := <-r.queue:
 			atomic.AddInt64(&r.queueLength, -1)
+
 			switch item.itemType {
 			case reporterQueueItemSpan:
 				span := item.span
 				var sample bool
+
 				if span.Duration() > (time.Millisecond*tracer.cfg.SlowSpan) && span.OperationName() != optionHTTPRequest {
 					//log.SysSlow(span.OperationName(), span.SpanContext().TraceID().String(), int(span.Duration().Milliseconds()), "slow span")
 					sample = true

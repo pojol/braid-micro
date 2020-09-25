@@ -12,7 +12,7 @@ import (
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
@@ -40,12 +40,14 @@ func (b *grpcClientBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *grpcClientBuilder) Build(link linker.ILinker, tracing bool) client.IClient {
+func (b *grpcClientBuilder) Build(link linkcache.ILinkCache, tracing bool) client.IClient {
 	c := &grpcClient{
 		cfg:       b.cfg,
 		linker:    link,
 		isTracing: tracing,
 	}
+
+	log.Debugf("build grpc client tracing %v", c.isTracing)
 
 	return c
 }
@@ -56,7 +58,7 @@ type grpcClient struct {
 
 	refushTick *time.Ticker
 
-	linker    linker.ILinker
+	linker    linkcache.ILinkCache
 	isTracing bool
 
 	poolMgr sync.Map
@@ -97,8 +99,17 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	return caConn, nil
 }
 
-func pick(nodName string) (discover.Node, error) {
-	nod, err := balancer.Get(nodName).Pick()
+func pick(nodName string, token string) (discover.Node, error) {
+
+	var nod discover.Node
+	var err error
+
+	if token == "" {
+		nod, err = balancer.Get(nodName).Random()
+	} else {
+		nod, err = balancer.Get(nodName).Pick()
+	}
+
 	if err != nil {
 		// err log
 		return nod, err
@@ -116,8 +127,47 @@ func (c *grpcClient) linked() bool {
 	return c.linker != nil
 }
 
-func (c *grpcClient) tracing() bool {
-	return (c.isTracing == true)
+func (c *grpcClient) findTarget(ctx context.Context, token string, target string) string {
+	var address string
+	var err error
+	var nod discover.Node
+
+	if c.linked() && token != "" {
+
+		trt := tracer.RedisTracer{
+			Cmd: "linker.target",
+		}
+		trt.Begin(ctx)
+		address, err = c.linker.Target(token, target)
+		trt.End()
+		if err != nil {
+			log.Debugf("linker.target warning %s", err.Error())
+			return ""
+		}
+	}
+
+	if address == "" {
+		nod, err = pick(target, token)
+		if err != nil {
+			log.Debugf("pick warning %s", err.Error())
+			return ""
+		}
+
+		address = nod.Address
+		if c.linked() && token != "" {
+			llt := tracer.RedisTracer{
+				Cmd: "linker.link",
+			}
+			llt.Begin(ctx)
+			err = c.linker.Link(token, nod)
+			llt.End()
+			if err != nil {
+				log.Debugf("link warning %s %s", token, err.Error())
+			}
+		}
+	}
+
+	return address
 }
 
 // Invoke 执行远程调用
@@ -131,7 +181,6 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	var address string
 	var err error
-	var nod discover.Node
 
 	select {
 	case <-ctx.Done():
@@ -139,28 +188,9 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	default:
 	}
 
-	if c.linked() && token != "" {
-		address, err = c.linker.Target(nodName, token)
-		if err != nil {
-			log.Debugf("linker.target warning %s", err.Error())
-			return
-		}
-	}
-
+	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
-		nod, err = pick(nodName)
-		if err != nil {
-			log.Debugf("pick warning %s", err.Error())
-			return
-		}
-
-		address = nod.Address
-		if c.linked() && token != "" {
-			err = c.linker.Link(nod.Name, token, nod.Address)
-			if err != nil {
-				log.Debugf("link warning %s %s", token, err.Error())
-			}
-		}
+		return
 	}
 
 	conn, err := c.getConn(address)
@@ -190,7 +220,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if c.tracing() {
+		if c.isTracing {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {

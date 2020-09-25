@@ -33,9 +33,12 @@
 #### rpc-client sample
 ```go
 b := New("test")
-b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr),
-  BalancerBySwrr(),
-  GRPCClient(grpcclient.WithPoolCapacity(128)))
+b.RegistPlugin(
+	Discover(
+		discoverconsul.Name,
+		discoverconsul.WithConsulAddress(mock.ConsulAddr)),
+	Balancer(balancerswrr.Name),
+	GRPCClient(grpcclient.WithPoolCapacity(128)))
 
 b.Run()
 defer b.Close()
@@ -60,7 +63,16 @@ go get github.com/pojol/braid@latest
 * Architecture based on k8s
   https://github.com/pojol/braid/wiki/quick-start-with-k8s
 
-
+#### Web
+> Observe the link situation in the braid cluster through the sankey chart (need register link-cache plug-in
+```shell
+cd /github.com/pojol/braid/sankey
+go build sankey.go
+./sankey
+localhost:8888/link
+```
+<img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
 #### Wiki
 https://github.com/pojol/braid/wiki
+

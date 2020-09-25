@@ -33,12 +33,15 @@ func (b *grpcServerBuilder) SetCfg(cfg interface{}) error {
 	return nil
 }
 
-func (b *grpcServerBuilder) Build() server.ISserver {
+func (b *grpcServerBuilder) Build(tracing bool) server.ISserver {
 	s := &grpcServer{
-		cfg: b.cfg,
+		cfg:     b.cfg,
+		tracing: tracing,
 	}
 
-	if s.cfg.Tracing {
+	log.Debugf("build grpc server tracing %v", tracing)
+
+	if tracing {
 		s.rpc = grpc.NewServer(tracer.GetGRPCServerTracer())
 	} else {
 		s.rpc = grpc.NewServer()
@@ -50,6 +53,7 @@ func (b *grpcServerBuilder) Build() server.ISserver {
 // Server RPC 服务端
 type grpcServer struct {
 	rpc          *grpc.Server
+	tracing      bool
 	tracerCloser io.Closer
 
 	cfg Config

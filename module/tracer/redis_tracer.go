@@ -18,11 +18,9 @@ func (r *RedisTracer) Begin(ctx context.Context) {
 	gt := opentracing.GlobalTracer()
 	parentSpan := opentracing.SpanFromContext(ctx)
 	if parentSpan != nil {
-
 		r.span = gt.StartSpan(r.Cmd, opentracing.ChildOf(parentSpan.Context()))
 		ext.DBType.Set(r.span, "Redis")
 	}
-
 }
 
 // End 结束监听

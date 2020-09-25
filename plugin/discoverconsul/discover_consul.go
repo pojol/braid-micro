@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
@@ -12,11 +11,12 @@ import (
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/plugin/linkerredis"
 )
 
 const (
-	// DiscoverName 发现器名称
-	DiscoverName = "ConsulDiscover"
+	// Name 发现器名称
+	Name = "ConsulDiscover"
 
 	// DiscoverTag 用于docker发现的tag， 所有希望被discover服务发现的节点，
 	// 都应该在Dockerfile中设置 ENV SERVICE_TAGS=braid
@@ -33,7 +33,7 @@ var (
 )
 
 type consulDiscoverBuilder struct {
-	cfg Cfg
+	opts []interface{}
 }
 
 func newConsulDiscover() discover.Builder {
@@ -41,31 +41,42 @@ func newConsulDiscover() discover.Builder {
 }
 
 func (b *consulDiscoverBuilder) Name() string {
-	return DiscoverName
+	return Name
 }
 
-func (b *consulDiscoverBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Cfg)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	b.cfg = cecfg
-	if b.cfg.Tag == "" {
-		b.cfg.Tag = strings.ToLower(DiscoverTag)
-	}
-	return nil
+func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
 }
 
-func (b *consulDiscoverBuilder) Build(ps pubsub.IPubsub) discover.IDiscover {
+func (b *consulDiscoverBuilder) Build(serviceName string) (discover.IDiscover, error) {
+
+	p := Parm{
+		Tag:      "braid",
+		Name:     serviceName,
+		Interval: time.Second * 2,
+		Address:  "http://127.0.0.1:8500",
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
+	}
+
+	if p.procPB == nil {
+		return nil, errors.New("discover_consul parm mismatch " + "no proc pubsub!")
+	}
+
+	// check address
+	_, err := consul.GetCatalogServices(p.Address, p.Tag)
+	fmt.Println(p.Address, err)
+	if err != nil {
+		return nil, err
+	}
 
 	e := &consulDiscover{
-		cfg:        b.cfg,
-		pubsub:     ps,
+		parm:       p,
 		passingMap: make(map[string]*syncNode),
 	}
 
-	return e
+	return e, nil
 }
 
 // Discover 发现管理braid相关的节点
@@ -73,8 +84,8 @@ type consulDiscover struct {
 	discoverTicker   *time.Ticker
 	syncWeightTicker *time.Ticker
 
-	cfg    Cfg
-	pubsub pubsub.IPubsub
+	// parm
+	parm Parm
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -91,7 +102,7 @@ type syncNode struct {
 
 func (dc *consulDiscover) InBlacklist(name string) bool {
 
-	for _, v := range dc.cfg.Blacklist {
+	for _, v := range dc.parm.Blacklist {
 		if v == name {
 			return true
 		}
@@ -102,13 +113,13 @@ func (dc *consulDiscover) InBlacklist(name string) bool {
 
 func (dc *consulDiscover) discoverImpl() {
 
-	services, err := consul.GetCatalogServices(dc.cfg.Address, dc.cfg.Tag)
+	services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
 	if err != nil {
 		return
 	}
 
 	for _, service := range services {
-		if service.ServiceName == dc.cfg.Name {
+		if service.ServiceName == dc.parm.Name {
 			continue
 		}
 
@@ -116,10 +127,13 @@ func (dc *consulDiscover) discoverImpl() {
 			continue
 		}
 
+		if service.ServiceName == "" || service.ServiceID == "" {
+			continue
+		}
+
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
 			// regist service
 			balancer.Get(service.ServiceName)
-			log.Debugf("new service %s id %s", service.ServiceName, service.ID)
 
 			sn := syncNode{
 				service:    service.ServiceName,
@@ -128,10 +142,11 @@ func (dc *consulDiscover) discoverImpl() {
 				dyncWeight: 0,
 				physWeight: defaultWeight,
 			}
+			log.Debugf("new service %s addr %s", service.ServiceName, sn.address)
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.pubsub.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
+			dc.parm.procPB.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -143,28 +158,37 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
-			log.Debugf("remove service %s id %s", services[k].ServiceName, services[k].ID)
+			log.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.pubsub.Pub(discover.EventRmv+"_"+services[k].ServiceName, pubsub.NewMessage(discover.Node{
+			dc.parm.procPB.Pub(discover.EventRmv+"_"+dc.passingMap[k].service, pubsub.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))
+
+			if dc.parm.clusterPB != nil {
+				dc.parm.clusterPB.Pub(linkerredis.LinkerTopicDown, linkerredis.NewDownMsg(
+					dc.passingMap[k].service,
+					dc.passingMap[k].address,
+				))
+			}
 
 			delete(dc.passingMap, k)
 		}
 	}
 }
 
-/*
-func (dc *consulDiscover) SyncWeight() {
-
-	for k := range dc.passingMap {
-		num, err := dc.linker.Num(dc.passingMap[k].id)
+func (dc *consulDiscover) syncWeight() {
+	for k, v := range dc.passingMap {
+		num, err := dc.parm.linkcache.Num(discover.Node{
+			ID:      v.id,
+			Name:    v.service,
+			Address: v.address,
+		})
 		if err != nil || num == 0 {
 			continue
 		}
 
-		if num == dc.passingMap[k].dyncWeight {
+		if num == v.dyncWeight {
 			continue
 		}
 
@@ -176,36 +200,49 @@ func (dc *consulDiscover) SyncWeight() {
 			nweight = 1
 		}
 
-		balancer.Get(dc.passingMap[k].service).Update(balancer.Node{
-			ID:      dc.passingMap[k].id,
-			Name:    dc.passingMap[k].service,
-			Address: dc.passingMap[k].address,
-			Weight:  nweight,
-			OpTag:   balancer.OpUp,
-		})
+		dc.parm.procPB.Pub(discover.EventUpdate+"_"+v.service, pubsub.NewMessage(discover.Node{
+			ID:     v.id,
+			Name:   v.service,
+			Weight: nweight,
+		}))
 	}
-
 }
-*/
 
 func (dc *consulDiscover) runImpl() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("status", "sync", fmt.Errorf("%v", err).Error())
+				log.SysError("status", "sync service", fmt.Errorf("%v", err).Error())
 			}
 		}()
 		// todo ..
 		dc.discoverImpl()
 	}
 
-	dc.discoverTicker = time.NewTicker(dc.cfg.Interval)
+	syncWeight := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				log.SysError("status", "sync weight", fmt.Errorf("%v", err).Error())
+			}
+		}()
+
+		if dc.parm.linkcache != nil {
+			dc.syncWeight()
+		}
+
+	}
+
+	dc.discoverTicker = time.NewTicker(dc.parm.Interval)
+	dc.syncWeightTicker = time.NewTicker(time.Second * 10)
+
 	dc.discoverImpl()
 
 	for {
 		select {
 		case <-dc.discoverTicker.C:
 			syncService()
+		case <-dc.syncWeightTicker.C:
+			syncWeight()
 		}
 	}
 }

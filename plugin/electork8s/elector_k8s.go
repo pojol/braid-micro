@@ -26,7 +26,7 @@ var (
 )
 
 type k8sElectorBuilder struct {
-	cfg Cfg
+	opts []interface{}
 }
 
 func newK8sElector() elector.Builder {
@@ -60,19 +60,19 @@ func (*k8sElectorBuilder) Name() string {
 	return ElectionName
 }
 
-func (eb *k8sElectorBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Cfg)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	eb.cfg = cecfg
-	return nil
+func (eb *k8sElectorBuilder) AddOption(opt interface{}) {
+	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *k8sElectorBuilder) Build() (elector.IElection, error) {
+func (eb *k8sElectorBuilder) Build(serviceName string) (elector.IElection, error) {
 
-	clientset, err := newClientset(eb.cfg.KubeCfg)
+	p := Parm{
+		ServiceName: serviceName,
+		Namespace:   "default",
+		RetryPeriod: time.Second * 2,
+	}
+
+	clientset, err := newClientset(p.KubeCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -80,26 +80,26 @@ func (eb *k8sElectorBuilder) Build() (elector.IElection, error) {
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      "braid-lock",
-			Namespace: eb.cfg.Namespace,
+			Namespace: p.Namespace,
 		},
 		Client: clientset.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: eb.cfg.NodID,
+			Identity: p.NodID,
 		},
 	}
 
 	elector, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
-		LeaseDuration:   30 * time.Second,   // 租约时间
-		RenewDeadline:   10 * time.Second,   // 更新租约时间
-		RetryPeriod:     eb.cfg.RetryPeriod, // 非master节点的重试时间
+		LeaseDuration:   30 * time.Second, // 租约时间
+		RenewDeadline:   10 * time.Second, // 更新租约时间
+		RetryPeriod:     p.RetryPeriod,    // 非master节点的重试时间
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {},
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
-				if identity == eb.cfg.NodID {
-					log.SysElection(eb.cfg.NodID, identity)
+				if identity == p.NodID {
+					log.SysElection(p.NodID, identity)
 				}
 			},
 		},
@@ -109,23 +109,15 @@ func (eb *k8sElectorBuilder) Build() (elector.IElection, error) {
 	}
 
 	el := &k8sElector{
-		cfg:     eb.cfg,
+		parm:    p,
 		elector: elector,
 	}
 
 	return el, nil
 }
 
-// Cfg k8s elector config
-type Cfg struct {
-	KubeCfg     string
-	NodID       string
-	Namespace   string
-	RetryPeriod time.Duration
-}
-
 type k8sElector struct {
-	cfg     Cfg
+	parm    Parm
 	lock    *resourcelock.LeaseLock
 	elector *leaderelection.LeaderElector
 }

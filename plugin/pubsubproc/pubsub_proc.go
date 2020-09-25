@@ -13,13 +13,14 @@ const (
 )
 
 type procPubsubBuilder struct {
+	opts []interface{}
 }
 
 func newProcPubsub() pubsub.Builder {
 	return &procPubsubBuilder{}
 }
 
-func (*procPubsubBuilder) Build() (pubsub.IPubsub, error) {
+func (*procPubsubBuilder) Build(serviceName string) (pubsub.IPubsub, error) {
 
 	ps := &procPubsub{
 		subscriber: make(map[string]pubsub.ISubscriber),
@@ -32,8 +33,8 @@ func (*procPubsubBuilder) Name() string {
 	return PubsubName
 }
 
-func (*procPubsubBuilder) SetCfg(cfg interface{}) error {
-	return nil
+func (pb *procPubsubBuilder) AddOption(opt interface{}) {
+	pb.opts = append(pb.opts, opt)
 }
 
 // Consumer 消费者
@@ -69,8 +70,9 @@ func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) PutMsg(msg *pubsub.Message) {
+func (c *procConsumer) PutMsg(msg *pubsub.Message) error {
 	c.buff.Put(msg)
+	return nil
 }
 
 type procSubscriber struct {
@@ -134,12 +136,15 @@ func (kps *procPubsub) Sub(topic string) pubsub.ISubscriber {
 
 func (kps *procPubsub) Pub(topic string, msg *pubsub.Message) {
 
-	if _, ok := kps.subscriber[topic]; ok {
-
+	_, ok := kps.subscriber[topic]
+	if ok {
 		consumerLst := kps.subscriber[topic].GetConsumer("")
 		for _, v := range consumerLst {
-			v.PutMsg(msg)
+			if !v.IsExited() {
+				v.PutMsg(msg)
+			}
 		}
+
 	}
 
 }

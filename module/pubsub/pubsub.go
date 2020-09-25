@@ -8,9 +8,9 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build() (IPubsub, error)
+	Build(serviceName string) (IPubsub, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
 // Message 消息体
@@ -42,7 +42,7 @@ type HandlerFunc func(message *Message) error
 type IConsumer interface {
 	OnArrived(handler HandlerFunc)
 
-	PutMsg(msg *Message)
+	PutMsg(msg *Message) error
 
 	Exit()
 	IsExited() bool

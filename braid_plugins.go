@@ -6,18 +6,13 @@ import (
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linker"
+	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/plugin/balancerswrr"
-	"github.com/pojol/braid/plugin/discoverconsul"
-	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/electork8s"
+	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/plugin/grpcclient"
 	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/linkerredis"
-	"github.com/pojol/braid/plugin/pubsubnsq"
 )
 
 type config struct {
@@ -27,65 +22,51 @@ type config struct {
 // Plugin wraps
 type Plugin func(*Braid)
 
-// DiscoverByConsul 使用consul作为发现器支持
-func DiscoverByConsul(address string, options ...discoverconsul.Option) Plugin {
+// Discover plugin
+func Discover(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
+		b.discoverBuilder = discover.GetBuilder(builderName)
 
-		cfg := discoverconsul.Cfg{
-			Name:     b.cfg.Name,
-			Tag:      "braid",
-			Interval: time.Second * 2,
-			Address:  address,
-		}
-
-		for _, opt := range options {
-			opt(&cfg)
-		}
-
-		b.discoverBuilder = discover.GetBuilder(discoverconsul.DiscoverName)
-		err := b.discoverBuilder.SetCfg(cfg)
-		if err != nil {
-			// Fatal log
+		for _, opt := range opts {
+			b.discoverBuilder.AddOption(opt)
 		}
 	}
 }
 
-// BalancerBySwrr 基于平滑加权负载均衡
-func BalancerBySwrr() Plugin {
+// Balancer plugin
+func Balancer(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
-		b.balancerBuilder = balancer.GetBuilder(balancerswrr.BalancerName)
-	}
-}
-
-// LinkerByRedis 基于redis实现的链路缓存机制
-func LinkerByRedis() Plugin {
-	return func(b *Braid) {
-		b.linkerBuilder = linker.GetBuilder(linkerredis.LinkerName)
-		b.linkerBuilder.SetCfg(linkerredis.Config{
-			ServiceName: b.cfg.Name,
-		})
-	}
-}
-
-// ElectorByConsul 基于consul实现的elector
-func ElectorByConsul(consulAddr string) Plugin {
-	return func(b *Braid) {
-
-		b.electorBuild = elector.GetBuilder(electorconsul.ElectionName)
-		if consulAddr == "" {
-			consulAddr = "http://127.0.0.1:8500"
+		b.balancerBuilder = balancer.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.balancerBuilder.AddOption(opt)
 		}
+	}
+}
 
-		b.electorBuild.SetCfg(electorconsul.Cfg{
-			Address:           consulAddr,
-			Name:              b.cfg.Name,
-			LockTick:          time.Second * 2,
-			RefushSessionTick: time.Second * 5,
-		})
+// LinkCache plugin
+func LinkCache(builderName string, opts ...interface{}) Plugin {
+
+	return func(b *Braid) {
+		b.linkerBuilder = linkcache.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.linkerBuilder.AddOption(opt)
+		}
+	}
+
+}
+
+// Elector plugin
+func Elector(builderName string, opts ...interface{}) Plugin {
+	return func(b *Braid) {
+		b.electorBuild = elector.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.electorBuild.AddOption(opt)
+		}
 	}
 }
 
 // ElectorByK8s 基于k8s实现的elector
+/*
 func ElectorByK8s(kubeconfig string, nodid string) Plugin {
 	return func(b *Braid) {
 		b.electorBuild = elector.GetBuilder(electork8s.ElectionName)
@@ -97,8 +78,22 @@ func ElectorByK8s(kubeconfig string, nodid string) Plugin {
 		})
 	}
 }
+*/
+
+// Pubsub plugin
+func Pubsub(builderName string, opts ...interface{}) Plugin {
+
+	return func(b *Braid) {
+		b.pubsubBuilder = pubsub.GetBuilder(builderName)
+		for _, opt := range opts {
+			b.pubsubBuilder.AddOption(opt)
+		}
+	}
+
+}
 
 // PubsubByNsq 构建pubsub
+/*
 func PubsubByNsq(lookupAddres []string, addr []string, opts ...pubsubnsq.Option) Plugin {
 	return func(b *Braid) {
 		b.pubsubBuilder = pubsub.GetBuilder(pubsubnsq.PubsubName)
@@ -114,15 +109,16 @@ func PubsubByNsq(lookupAddres []string, addr []string, opts ...pubsubnsq.Option)
 		b.pubsubBuilder.SetCfg(cfg)
 	}
 }
+*/
 
 // GRPCClient rpc-client
 func GRPCClient(opts ...grpcclient.Option) Plugin {
 	return func(b *Braid) {
 
 		cfg := grpcclient.Config{
-			PoolInitNum:  8,
-			PoolCapacity: 32,
-			PoolIdle:     120,
+			PoolInitNum:  128,
+			PoolCapacity: 1024,
+			PoolIdle:     time.Second * 120,
 		}
 
 		for _, opt := range opts {
@@ -138,7 +134,6 @@ func GRPCClient(opts ...grpcclient.Option) Plugin {
 func GRPCServer(opts ...grpcserver.Option) Plugin {
 	return func(b *Braid) {
 		cfg := grpcserver.Config{
-			Tracing:       false,
 			Name:          b.cfg.Name,
 			ListenAddress: ":14222",
 		}
@@ -149,5 +144,18 @@ func GRPCServer(opts ...grpcserver.Option) Plugin {
 
 		b.serverBuilder = server.GetBuilder(grpcserver.ServerName)
 		b.serverBuilder.SetCfg(cfg)
+	}
+}
+
+// JaegerTracing jt
+func JaegerTracing(protoOpt tracer.Option, opts ...tracer.Option) Plugin {
+	return func(b *Braid) {
+
+		t, err := tracer.New(b.cfg.Name, protoOpt, opts...)
+		if err != nil {
+			panic(err)
+		}
+
+		b.tracer = t
 	}
 }

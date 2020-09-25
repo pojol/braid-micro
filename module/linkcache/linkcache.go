@@ -1,20 +1,19 @@
-package linker
+package linkcache
 
 import (
 	"strings"
 
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/module/discover"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(elector elector.IElection, pubsub pubsub.IPubsub) ILinker
+	Build(serviceName string) (ILinkCache, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
-// ILinker The connector is a service that maintains the link relationship between multiple processes and users.
+// ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
 //
 // +---parent----------+
 // |                   |
@@ -25,21 +24,21 @@ type Builder interface {
 // |    +-----------+  |
 // |                   |
 // +-------------------+
-type ILinker interface {
+type ILinkCache interface {
 	// Look for existing links from the cache
-	Target(child string, token string) (targetAddr string, err error)
+	Target(token string, serviceName string) (targetAddr string, err error)
 
 	// 将token绑定到nod
-	Link(clild string, token string, targetAddr string) error
+	Link(token string, target discover.Node) error
 
 	// unlink token
 	Unlink(token string) error
 
 	// 提供nod中token的数量
-	Num(clild string, targetAddr string) (int, error)
+	Num(target discover.Node) (int, error)
 
 	// clean up the service
-	Down(targetAddr string) error
+	Down(target discover.Node) error
 }
 
 var (

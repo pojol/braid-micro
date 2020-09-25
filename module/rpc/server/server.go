@@ -6,7 +6,7 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build() ISserver
+	Build(tracing bool) ISserver
 	Name() string
 	SetCfg(cfg interface{}) error
 }
