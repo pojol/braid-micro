@@ -3,35 +3,24 @@ package linkerredis
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
+	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/pubsub"
 )
 
 var (
 	// LinkerRedisPrefix linker redis key prefix
-	LinkerRedisPrefix = "braid_linker_"
+	LinkerRedisPrefix = "braid_linker-"
 )
 
 const (
 	// Name 链接器名称
 	Name = "RedisLinker"
-
-	// redis
-
-	// braid_linker_"parent"_"chlid"_"addr" `list` 本节点链路下的目标节点的token集合
-	// parent_child_addr => [token ...]
-
-	// braid_linker_"parent"_"token"  `set` token在本节点下面进行链路的目标节点集合
-	// parent_token => ( targetNod ... )
-
-	// LinkerRedisTokenPool token pool
-	// braid_linker_"parent"_"child"_"token" `hash` 本节点下token指向的目标地址
-	// parent_chlid_token : "targetAddr"
-	LinkerRedisTokenPool = "token_pool"
 
 	// topic
 
@@ -45,6 +34,10 @@ const (
 type DownMsg struct {
 	Service string
 	Addr    string
+}
+
+type tokenRelation struct {
+	targets []discover.Node
 }
 
 // NewDownMsg new down msg
@@ -132,7 +125,10 @@ func (rb *redisLinkerBuilder) Build(serviceName string) (linkcache.ILinkCache, e
 							if err != nil {
 								return nil
 							}
-							return lc.Down(downMsg.Service, downMsg.Addr)
+							return lc.Down(discover.Node{
+								Name:    downMsg.Service,
+								Address: downMsg.Addr,
+							})
 						}
 						return nil
 					})
@@ -154,40 +150,33 @@ type redisLinker struct {
 	parm Parm
 }
 
-func (l *redisLinker) getTokenPoolField(child string, token string) string {
-	field := LinkerRedisPrefix + l.parm.ServiceName + "_" + child + "_" + token
-	return field
-}
+func (l *redisLinker) Target(token string, serviceName string) (target string, err error) {
 
-func getTokenPoolKey() string {
-	return LinkerRedisPrefix + LinkerRedisTokenPool
-}
+	val, err := redis.Get().HGet(LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
+	if err != nil {
+		return "", err
+	}
 
-func (l *redisLinker) getTokenListField(child string, addr string) string {
-	field := LinkerRedisPrefix + "lst_" + l.parm.ServiceName + "_" + child + "_" + addr
-	return field
-}
-
-func (l *redisLinker) getParentSetField(token string) string {
-	field := LinkerRedisPrefix + "set_" + l.parm.ServiceName + "_" + token
-	return field
-}
-
-func (l *redisLinker) getParentSet() string {
-	field := LinkerRedisPrefix + "set_" + l.parm.ServiceName
-	return field
-}
-
-func (l *redisLinker) Target(child string, token string) (target string, err error) {
-
-	if token == "" {
+	if val == "" {
 		return "", nil
 	}
 
-	return redis.Get().HGet(getTokenPoolKey(), l.getTokenPoolField(child, token))
+	tr := tokenRelation{}
+	err = json.Unmarshal([]byte(val), &tr.targets)
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range tr.targets {
+		if v.Name == serviceName {
+			return v.Address, nil
+		}
+	}
+
+	return "", nil
 }
 
-func (l *redisLinker) Link(child string, token string, targetAddr string) error {
+func (l *redisLinker) Link(token string, target discover.Node) error {
 
 	conn := redis.Get().Conn()
 	defer conn.Close()
@@ -195,23 +184,44 @@ func (l *redisLinker) Link(child string, token string, targetAddr string) error 
 	mu := redis.Mutex{
 		Token: token,
 	}
-	err := mu.Lock("braid_linker")
+	err := mu.Lock("braid_link_token")
 	if err != nil {
 		return err
 	}
 	defer mu.Unlock()
 
+	val, err := redis.ConnHGet(conn, LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
+	if err != nil {
+		return err
+	}
+
+	tr := tokenRelation{}
+	var dat []byte
+	if val != "" {
+		err = json.Unmarshal([]byte(val), &tr.targets)
+		if err != nil {
+			return err
+		}
+	}
+
+	tr.targets = append(tr.targets, target)
+	dat, err = json.Marshal(&tr.targets)
+	if err != nil {
+		return err
+	}
+
+	cia := target.Name + "-" + target.ID + "-" + target.Address
 	conn.Send("MULTI")
-	conn.Send("HSET", getTokenPoolKey(), l.getTokenPoolField(child, token), targetAddr)
-	conn.Send("SADD", l.getParentSetField(token), child)
-	conn.Send("SADD", l.getParentSet(), child+"_"+targetAddr)
-	conn.Send("LPUSH", l.getTokenListField(child, targetAddr), token)
+	conn.Send("SADD", LinkerRedisPrefix+"relation-"+l.parm.ServiceName, cia)
+	conn.Send("LPUSH", LinkerRedisPrefix+"lst-"+l.parm.ServiceName+"-"+cia, token)
+	conn.Send("HSET", LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token, string(dat))
+
 	_, err = conn.Do("EXEC")
 	if err != nil {
 		return err
 	}
 
-	log.Debugf("linked parent %s, target %s, token %s", l.parm.ServiceName, targetAddr, token)
+	log.Debugf("linked parent %s, target %s, token %s", l.parm.ServiceName, target.Address, token)
 	return nil
 }
 
@@ -225,40 +235,27 @@ func (l *redisLinker) Unlink(token string) error {
 	conn := redis.Get().Conn()
 	defer conn.Close()
 
-	childs, err := redis.ConnSMembers(conn, l.getParentSetField(token))
+	val, err := redis.ConnHGet(conn, LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
 	if err != nil {
-		log.Debugf("unlink get parent members err %s", err.Error())
+		return err
+	}
+	if val == "" {
+		return nil
+	}
+
+	tr := tokenRelation{}
+	err = json.Unmarshal([]byte(val), &tr.targets)
+	if err != nil {
+		fmt.Println(string(val), err, "field", LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
 		return err
 	}
 
-	targets := []string{}
-
-	for _, child := range childs {
-
-		targetAddr, err := redis.ConnHGet(conn, getTokenPoolKey(), l.getTokenPoolField(child, token))
-		if err != nil {
-			log.Debugf("unlink hget %s", err.Error())
-			continue
-		}
-
-		targets = append(targets, targetAddr)
-	}
-
 	conn.Send("MULTI")
-
-	for i := 0; i < len(childs); i++ {
-		child := childs[i]
-		targetAddr := targets[i]
-
-		conn.Send("HDEL", getTokenPoolKey(), l.getTokenPoolField(child, token))
-		if targetAddr != "" {
-			conn.Send("LREM", l.getTokenListField(child, targetAddr), 0, token)
-		}
-
-		log.Debugf("unlinked parent %s, target %s, token %s", l.parm.ServiceName, targetAddr, token)
+	for _, t := range tr.targets {
+		cia := t.Name + "-" + t.ID + "-" + t.Address
+		conn.Send("LREM", LinkerRedisPrefix+"lst-"+l.parm.ServiceName+"-"+cia, 0, token)
 	}
-
-	conn.Send("DEL", l.getParentSetField(token))
+	conn.Send("HDEL", LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
 
 	_, err = conn.Do("EXEC")
 	if err != nil {
@@ -269,16 +266,19 @@ func (l *redisLinker) Unlink(token string) error {
 	return nil
 }
 
-func (l *redisLinker) Num(child string, targetAddr string) (int, error) {
-	return redis.Get().LLen(l.getTokenListField(child, targetAddr))
+func (l *redisLinker) Num(target discover.Node) (int, error) {
+	field := LinkerRedisPrefix + "lst-" + l.parm.ServiceName + "-" + target.Name + "-" + target.ID + "_" + target.Address
+	return redis.Get().LLen(field)
 }
 
 // Down 删除离线节点的链路缓存
-func (l *redisLinker) Down(child string, targetAddr string) error {
+func (l *redisLinker) Down(target discover.Node) error {
+
 	conn := redis.Get().Conn()
 	defer conn.Close()
 
-	ismember, err := redis.ConnSIsMember(conn, l.getParentSet(), child+"_"+targetAddr)
+	cia := target.Name + "-" + target.ID + "-" + target.Address
+	ismember, err := redis.ConnSIsMember(conn, LinkerRedisPrefix+"relation-"+l.parm.ServiceName, cia)
 	if err != nil {
 		return err
 	}
@@ -286,9 +286,9 @@ func (l *redisLinker) Down(child string, targetAddr string) error {
 		return nil
 	}
 
-	log.Debugf("redis linker down child %s, target %s", child, targetAddr)
+	log.Debugf("redis linker down child %s, target %s", target.Name, target.Address)
 
-	tokens, err := redis.ConnLRange(conn, l.getTokenListField(child, targetAddr), 0, -1)
+	tokens, err := redis.ConnLRange(conn, LinkerRedisPrefix+"lst-"+l.parm.ServiceName+"-"+cia, 0, -1)
 	if err != nil {
 		log.Debugf("linker down ConnLRange %s", err.Error())
 		return err
@@ -296,10 +296,10 @@ func (l *redisLinker) Down(child string, targetAddr string) error {
 
 	conn.Send("MULTI")
 	for _, token := range tokens {
-		conn.Send("HDEL", getTokenPoolKey(), l.getTokenPoolField(child, token))
+		conn.Send("HDEL", LinkerRedisPrefix+"hash", l.parm.ServiceName+"-"+token)
 	}
-	conn.Send("SREM", l.getParentSet(), child+"_"+targetAddr)
-	conn.Send("DEL", l.getTokenListField(child, targetAddr))
+	conn.Send("DEL", LinkerRedisPrefix+"lst-"+l.parm.ServiceName+"-"+cia)
+	conn.Send("SREM", LinkerRedisPrefix+"relation-"+l.parm.ServiceName, cia)
 	_, err = conn.Do("EXEC")
 	if err != nil {
 		log.Debugf("linker down exec %s", err.Error())

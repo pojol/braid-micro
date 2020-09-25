@@ -179,7 +179,11 @@ func (dc *consulDiscover) discoverImpl() {
 
 func (dc *consulDiscover) syncWeight() {
 	for k, v := range dc.passingMap {
-		num, err := dc.parm.linkcache.Num(v.service, v.address)
+		num, err := dc.parm.linkcache.Num(discover.Node{
+			ID:      v.id,
+			Name:    v.service,
+			Address: v.address,
+		})
 		if err != nil || num == 0 {
 			continue
 		}

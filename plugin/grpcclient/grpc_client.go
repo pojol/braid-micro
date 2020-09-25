@@ -138,7 +138,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 			Cmd: "linker.target",
 		}
 		trt.Begin(ctx)
-		address, err = c.linker.Target(target, token)
+		address, err = c.linker.Target(token, target)
 		trt.End()
 		if err != nil {
 			log.Debugf("linker.target warning %s", err.Error())
@@ -159,7 +159,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 				Cmd: "linker.link",
 			}
 			llt.Begin(ctx)
-			err = c.linker.Link(nod.Name, token, nod.Address)
+			err = c.linker.Link(token, nod)
 			llt.End()
 			if err != nil {
 				log.Debugf("link warning %s %s", token, err.Error())
