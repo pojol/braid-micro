@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,14 +15,25 @@ import (
 	"github.com/go-echarts/go-echarts/charts"
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/plugin/linkerredis"
 )
 
-const (
-	host   = "http://127.0.0.1:8888"
-	maxNum = 50
+var (
+	help       bool
+	host       string
+	tag        string
+	redisAddr  string
+	consulAddr string
 )
+
+func initFlag() {
+	flag.BoolVar(&help, "h", false, "this help")
+
+	flag.StringVar(&tag, "tag", "braid", "set discover tag")
+	flag.StringVar(&host, "host", ":8888", "set http listen address")
+	flag.StringVar(&redisAddr, "redis", "redis://127.0.0.1:6379/0", "set redis address")
+	flag.StringVar(&consulAddr, "consul", "http://127.0.0.1:8900", "set consul address")
+}
 
 var redisclient *redis.Client
 
@@ -29,7 +41,7 @@ func linkInfo() *charts.Sankey {
 	sankey := charts.NewSankey()
 	sankey.SetGlobalOptions(charts.TitleOpts{Title: "连接分布图"})
 
-	services, err := consul.GetCatalogServices(mock.ConsulAddr, "braid")
+	services, err := consul.GetCatalogServices(consulAddr, tag)
 	if err != nil {
 		return nil
 	}
@@ -98,11 +110,17 @@ func logTracing(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	mock.Init()
+	initFlag()
+
+	flag.Parse()
+	if help {
+		flag.Usage()
+		return
+	}
 
 	redisclient = redis.New()
 	redisclient.Init(redis.Config{
-		Address:        mock.RedisAddr,
+		Address:        redisAddr,
 		ReadTimeOut:    time.Millisecond * time.Duration(5000),
 		WriteTimeOut:   time.Millisecond * time.Duration(5000),
 		ConnectTimeOut: time.Millisecond * time.Duration(2000),
@@ -115,7 +133,7 @@ func main() {
 	http.HandleFunc("/link", logTracing(linkHandler))
 	//http.HandleFunc("/stream", logTracing(streamHandler))
 	log.Println("Run server at " + host)
-	http.ListenAndServe(":8888", nil)
+	http.ListenAndServe(host, nil)
 
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
