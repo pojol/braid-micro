@@ -98,48 +98,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string) (linkcache.ILinkCache, e
 	lc.parm.clusterPB.Pub(LinkerTopicUnlink, &pubsub.Message{Body: []byte("nil")})
 	lc.parm.clusterPB.Pub(LinkerTopicDown, &pubsub.Message{Body: []byte("nil")})
 
-	go func() {
-
-		tick := time.NewTicker(time.Second)
-		for {
-			select {
-			case <-tick.C:
-				if lc.parm.elector.IsMaster() {
-
-					unlinkSub := lc.parm.clusterPB.Sub(LinkerTopicUnlink)
-					unlinkSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
-
-						if lc.parm.elector.IsMaster() {
-							return lc.Unlink(string(msg.Body))
-						}
-
-						return nil
-					})
-
-					downSub := lc.parm.clusterPB.Sub(LinkerTopicDown)
-					downSub.AddShared().OnArrived(func(msg *pubsub.Message) error {
-
-						if lc.parm.elector.IsMaster() {
-							downMsg := &DownMsg{}
-							err := json.Unmarshal(msg.Body, downMsg)
-							if err != nil {
-								return nil
-							}
-							return lc.Down(discover.Node{
-								Name:    downMsg.Service,
-								Address: downMsg.Addr,
-							})
-						}
-						return nil
-					})
-
-					tick.Stop()
-					return
-				}
-			}
-		}
-
-	}()
+	go lc.watcher()
 
 	log.Debugf("build link-cache by redis & nsq")
 	return lc, nil
@@ -147,7 +106,52 @@ func (rb *redisLinkerBuilder) Build(serviceName string) (linkcache.ILinkCache, e
 
 // redisLinker 基于redis实现的链接器
 type redisLinker struct {
-	parm Parm
+	parm   Parm
+	unlink pubsub.IConsumer
+	down   pubsub.IConsumer
+}
+
+func (l *redisLinker) watcher() {
+	tick := time.NewTicker(time.Second)
+
+	for {
+		select {
+		case <-tick.C:
+			if l.parm.elector.IsMaster() {
+
+				l.unlink = l.parm.clusterPB.Sub(LinkerTopicUnlink).AddShared()
+				l.unlink.OnArrived(func(msg *pubsub.Message) error {
+
+					if l.parm.elector.IsMaster() {
+						return l.Unlink(string(msg.Body))
+					}
+
+					return nil
+				})
+
+				l.down = l.parm.clusterPB.Sub(LinkerTopicDown).AddShared()
+				l.down.OnArrived(func(msg *pubsub.Message) error {
+
+					if l.parm.elector.IsMaster() {
+						downMsg := &DownMsg{}
+						err := json.Unmarshal(msg.Body, downMsg)
+						if err != nil {
+							return nil
+						}
+						return l.Down(discover.Node{
+							Name:    downMsg.Service,
+							Address: downMsg.Addr,
+						})
+					}
+					return nil
+				})
+
+				tick.Stop()
+				return
+			}
+		}
+	}
+
 }
 
 func (l *redisLinker) Target(token string, serviceName string) (target string, err error) {
