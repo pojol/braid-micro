@@ -7,7 +7,9 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/elector"
+	"github.com/pojol/braid/module/mailbox"
 )
 
 const (
@@ -24,7 +26,7 @@ type consulElectionBuilder struct {
 	opts []interface{}
 }
 
-func newConsulElection() elector.Builder {
+func newConsulElection() module.Builder {
 	return &consulElectionBuilder{}
 }
 
@@ -32,7 +34,7 @@ func (eb *consulElectionBuilder) AddOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *consulElectionBuilder) Build(serviceName string) (elector.IElection, error) {
+func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
 
 	p := Parm{
 		ConsulAddr:        "http://127.0.0.1:8500",
@@ -46,6 +48,7 @@ func (eb *consulElectionBuilder) Build(serviceName string) (elector.IElection, e
 
 	e := &consulElection{
 		parm: p,
+		mb:   mb,
 	}
 
 	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
@@ -73,6 +76,10 @@ func (*consulElectionBuilder) Name() string {
 	return Name
 }
 
+func (*consulElectionBuilder) Type() string {
+	return module.TyElector
+}
+
 type consulElection struct {
 	lockTicker   *time.Ticker
 	refushTicker *time.Ticker
@@ -80,12 +87,8 @@ type consulElection struct {
 	sessionID string
 	locked    bool
 
+	mb   mailbox.IMailbox
 	parm Parm
-}
-
-// IsMaster 返回是否获取到锁
-func (e *consulElection) IsMaster() bool {
-	return e.locked
 }
 
 func (e *consulElection) runImpl() {
@@ -111,6 +114,7 @@ func (e *consulElection) runImpl() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
+				e.mb.ProcPub(elector.BecomeMaster, &mailbox.Message{})
 				log.SysElection(e.parm.ServiceName, e.sessionID)
 			}
 		}
@@ -131,6 +135,10 @@ func (e *consulElection) runImpl() {
 	}
 }
 
+func (e *consulElection) Init() {
+
+}
+
 // Run session 状态检查
 func (e *consulElection) Run() {
 	go func() {
@@ -145,5 +153,5 @@ func (e *consulElection) Close() {
 }
 
 func init() {
-	elector.Register(newConsulElection())
+	module.Register(newConsulElection())
 }

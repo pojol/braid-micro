@@ -47,10 +47,8 @@ func TestNew(t *testing.T) {
 	defer l.Close()
 
 	b := server.GetBuilder(ServerName)
-	b.SetCfg(Config{
-		ListenAddress: ":14111",
-	})
-	s := b.Build(false)
+	b.AddOption(WithListen(":14111"))
+	s, _ := b.Build("TestNew")
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 
@@ -58,7 +56,7 @@ func TestNew(t *testing.T) {
 	defer s.Close()
 	time.Sleep(time.Millisecond * 10)
 
-	conn, err := grpc.Dial("localhost:14111", grpc.WithInsecure())
+	conn, err := grpc.Dial(":14111", grpc.WithInsecure())
 	if err != nil {
 		t.Error(err)
 	}
@@ -80,11 +78,11 @@ func TestNew(t *testing.T) {
 
 func TestOpts(t *testing.T) {
 
-	cfg := Config{
-		ListenAddress: ":14222",
+	cfg := Parm{
+		ListenAddr: ":14222",
 	}
 
 	op := WithListen(":1201")
 	op(&cfg)
-	assert.Equal(t, cfg.ListenAddress, ":1201")
+	assert.Equal(t, cfg.ListenAddr, ":1201")
 }

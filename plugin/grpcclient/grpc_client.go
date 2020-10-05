@@ -12,14 +12,13 @@ import (
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
 )
 
 type grpcClientBuilder struct {
-	cfg Config
+	opts []interface{}
 }
 
 func newGRPCClient() client.Builder {
@@ -30,39 +29,34 @@ func (b *grpcClientBuilder) Name() string {
 	return ClientName
 }
 
-func (b *grpcClientBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	b.cfg = cecfg
-	return nil
+func (b *grpcClientBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
 }
 
-func (b *grpcClientBuilder) Build(link linkcache.ILinkCache, tracing bool) client.IClient {
-	c := &grpcClient{
-		cfg:       b.cfg,
-		linker:    link,
-		isTracing: tracing,
+func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
+
+	p := Parm{
+		PoolInitNum:  128,
+		PoolCapacity: 1024,
+		PoolIdle:     time.Second * 120,
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
 	}
 
-	log.Debugf("build grpc client tracing %v", c.isTracing)
+	c := &grpcClient{
+		serviceName: serviceName,
+	}
 
-	return c
+	return c, nil
 }
 
 // Client 调用器
 type grpcClient struct {
-	cfg Config
-
-	refushTick *time.Ticker
-
-	linker    linkcache.ILinkCache
-	isTracing bool
+	serviceName string
+	parm        Parm
 
 	poolMgr sync.Map
-	sync.Mutex
 }
 
 var (
@@ -79,6 +73,14 @@ var (
 	// ErrCantFindNode 在注册中心找不到对应的服务节点
 	ErrCantFindNode = errors.New("Can't find service node in center")
 )
+
+func (c *grpcClient) Init() {
+
+}
+
+func (c *grpcClient) Run() {
+
+}
 
 func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
@@ -123,22 +125,18 @@ func pick(nodName string, token string) (discover.Node, error) {
 	return nod, nil
 }
 
-func (c *grpcClient) linked() bool {
-	return c.linker != nil
-}
-
 func (c *grpcClient) findTarget(ctx context.Context, token string, target string) string {
 	var address string
 	var err error
 	var nod discover.Node
 
-	if c.linked() && token != "" {
+	if c.parm.byLink && token != "" {
 
 		trt := tracer.RedisTracer{
 			Cmd: "linker.target",
 		}
 		trt.Begin(ctx)
-		address, err = c.linker.Target(token, target)
+		address, err = c.parm.linker.Target(token, target)
 		trt.End()
 		if err != nil {
 			log.Debugf("linker.target warning %s", err.Error())
@@ -154,12 +152,12 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 		}
 
 		address = nod.Address
-		if c.linked() && token != "" {
+		if c.parm.byLink && token != "" {
 			llt := tracer.RedisTracer{
 				Cmd: "linker.link",
 			}
 			llt.Begin(ctx)
-			err = c.linker.Link(token, nod)
+			err = c.parm.linker.Link(token, nod)
 			llt.End()
 			if err != nil {
 				log.Debugf("link warning %s %s", token, err.Error())
@@ -204,8 +202,8 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
 	if err != nil {
 		log.Debugf("client invoke warning %s", err.Error())
-		if c.linked() {
-			c.linker.Unlink(token)
+		if c.parm.byLink {
+			c.parm.linker.Unlink(token)
 		}
 
 		conn.Unhealthy()
@@ -220,7 +218,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if c.isTracing {
+		if c.parm.isTracing {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {
@@ -236,7 +234,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 
 	pi, ok := c.poolMgr.Load(address)
 	if !ok {
-		p, err = pool.NewGRPCPool(factory, c.cfg.PoolInitNum, c.cfg.PoolCapacity, c.cfg.PoolIdle)
+		p, err = pool.NewGRPCPool(factory, c.parm.PoolInitNum, c.parm.PoolCapacity, c.parm.PoolIdle)
 		if err != nil {
 			goto EXT
 		}
@@ -253,6 +251,10 @@ EXT:
 	}
 
 	return p, err
+}
+
+func (c *grpcClient) Close() {
+
 }
 
 func init() {

@@ -1,4 +1,4 @@
-package braidsync
+package buffer
 
 import "sync"
 

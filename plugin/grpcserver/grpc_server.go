@@ -2,7 +2,6 @@ package grpcserver
 
 import (
 	"errors"
-	"io"
 	"net"
 
 	"github.com/pojol/braid/3rd/log"
@@ -12,51 +11,49 @@ import (
 )
 
 type grpcServerBuilder struct {
-	cfg Config
+	opts []interface{}
 }
 
 func newGRPCServer() server.Builder {
 	return &grpcServerBuilder{}
 }
 
+func (b *grpcServerBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
+}
+
 func (b *grpcServerBuilder) Name() string {
 	return ServerName
 }
 
-func (b *grpcServerBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
+func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
+	p := Parm{
+		ListenAddr: ":14222",
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
 	}
 
-	b.cfg = cecfg
-	return nil
-}
-
-func (b *grpcServerBuilder) Build(tracing bool) server.ISserver {
 	s := &grpcServer{
-		cfg:     b.cfg,
-		tracing: tracing,
+		parm:        p,
+		serviceName: serviceName,
 	}
 
-	log.Debugf("build grpc server tracing %v", tracing)
-
-	if tracing {
+	if p.isTracing {
 		s.rpc = grpc.NewServer(tracer.GetGRPCServerTracer())
 	} else {
 		s.rpc = grpc.NewServer()
 	}
 
-	return s
+	return s, nil
 }
 
 // Server RPC 服务端
 type grpcServer struct {
-	rpc          *grpc.Server
-	tracing      bool
-	tracerCloser io.Closer
+	rpc         *grpc.Server
+	serviceName string
 
-	cfg Config
+	parm Parm
 }
 
 var (
@@ -77,9 +74,9 @@ func (s *grpcServer) Server() interface{} {
 // Run 运行
 func (s *grpcServer) Run() {
 
-	rpcListen, err := net.Listen("tcp", s.cfg.ListenAddress)
+	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
 	if err != nil {
-		log.SysError("register", "run listen "+s.cfg.ListenAddress, err.Error())
+		log.SysError("register", "run listen "+s.parm.ListenAddr, err.Error())
 	}
 
 	go func() {

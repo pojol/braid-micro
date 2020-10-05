@@ -7,11 +7,11 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/balancerswrr"
-	"github.com/pojol/braid/plugin/pubsubproc"
+	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,38 +40,35 @@ func TestMain(m *testing.M) {
 	})
 	defer r.Close()
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("")
-	bb := balancer.GetBuilder(balancerswrr.Name)
-	bb.AddOption(balancerswrr.WithProcPubsub(ps))
-	balancer.NewGroup(bb)
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	bb := module.GetBuilder(balancerswrr.Name)
+	balancer.NewGroup(bb, mb)
 
 	m.Run()
 }
 
 func TestDiscover(t *testing.T) {
 
-	b := discover.GetBuilder(Name)
+	b := module.GetBuilder(Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestDiscover")
-	b.AddOption(WithProcPubsub(ps))
+	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 
-	d, err := b.Build("test")
+	d, err := b.Build("test", mb)
 	assert.Equal(t, err, nil)
 
-	d.Discover()
+	d.Run()
 
 	time.Sleep(time.Second)
 	d.Close()
 }
 
 func TestParmAddress(t *testing.T) {
-	b := discover.GetBuilder(Name)
+	b := module.GetBuilder(Name)
 
-	ps, _ := pubsub.GetBuilder(pubsubproc.PubsubName).Build("TestParmAddress")
-	b.AddOption(WithProcPubsub(ps))
+	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr("http://127.0.0.1:8500"))
 
-	_, err := b.Build("test")
+	_, err = b.Build("test", mb)
 	assert.NotEqual(t, err, nil)
 }

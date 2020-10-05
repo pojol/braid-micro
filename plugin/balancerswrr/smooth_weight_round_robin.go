@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/module/balancer"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/module/mailbox"
 )
 
 const (
@@ -22,7 +22,7 @@ type smoothWeightRoundrobinBuilder struct {
 	opts []interface{}
 }
 
-func newSmoothWightRoundrobinBalancer() balancer.Builder {
+func newSmoothWightRoundrobinBalancer() module.Builder {
 	return &smoothWeightRoundrobinBuilder{}
 }
 
@@ -30,34 +30,37 @@ func (b *smoothWeightRoundrobinBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *smoothWeightRoundrobinBuilder) Build(serviceName string) balancer.Balancer {
-
-	p := Parm{
-		Name: serviceName,
-	}
-	for _, opt := range b.opts {
-		opt.(Option)(&p)
-	}
-
-	if p.procPB == nil {
-		panic(errors.New("parm mismatch," + "not proc pubsub!"))
-	}
+func (b *smoothWeightRoundrobinBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
 
 	swrr := &swrrBalancer{
-		addSub: p.procPB.Sub(discover.EventAdd + "_" + serviceName).AddCompetition(),
-		rmvSub: p.procPB.Sub(discover.EventRmv + "_" + serviceName).AddCompetition(),
-		upSub:  p.procPB.Sub(discover.EventUpdate + "_" + serviceName).AddCompetition(),
-		parm:   p,
+		serviceName: serviceName,
+		mb:          mb,
 	}
+
+	swrr.addSub, _ = mb.ProcSub(discover.AddService + "_" + serviceName).AddCompetition()
+	swrr.rmvSub, _ = mb.ProcSub(discover.RmvService + "_" + serviceName).AddCompetition()
+	swrr.upSub, _ = mb.ProcSub(discover.UpdateService + "_" + serviceName).AddCompetition()
 
 	go swrr.watcher()
 
-	return swrr
+	return swrr, nil
+}
+
+func (wr *swrrBalancer) Init() {
+
+}
+
+func (wr *swrrBalancer) Run() {
+
+}
+
+func (wr *swrrBalancer) Close() {
+
 }
 
 func (wr *swrrBalancer) watcher() {
 
-	wr.addSub.OnArrived(func(msg *pubsub.Message) error {
+	wr.addSub.OnArrived(func(msg *mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
@@ -65,14 +68,14 @@ func (wr *swrrBalancer) watcher() {
 		return nil
 	})
 
-	wr.rmvSub.OnArrived(func(msg *pubsub.Message) error {
+	wr.rmvSub.OnArrived(func(msg *mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 		wr.rmv(nod)
 		return nil
 	})
 
-	wr.upSub.OnArrived(func(msg *pubsub.Message) error {
+	wr.upSub.OnArrived(func(msg *mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 		wr.syncWeight(nod)
@@ -84,6 +87,10 @@ func (*smoothWeightRoundrobinBuilder) Name() string {
 	return Name
 }
 
+func (*smoothWeightRoundrobinBuilder) Type() string {
+	return module.TyBalancer
+}
+
 type weightedNod struct {
 	orgNod    discover.Node
 	curWeight int
@@ -91,12 +98,14 @@ type weightedNod struct {
 
 // swrrBalancer 平滑加权轮询
 type swrrBalancer struct {
-	addSub pubsub.IConsumer
-	rmvSub pubsub.IConsumer
-	upSub  pubsub.IConsumer
+	addSub mailbox.IConsumer
+	rmvSub mailbox.IConsumer
+	upSub  mailbox.IConsumer
+
+	serviceName string
+	mb          mailbox.IMailbox
 
 	totalWeight int
-	parm        Parm
 	nods        []weightedNod
 	sync.Mutex
 }
@@ -127,7 +136,7 @@ func (wr *swrrBalancer) Pick() (discover.Node, error) {
 	defer wr.Unlock()
 
 	if len(wr.nods) <= 0 {
-		return discover.Node{}, balancer.ErrBalanceEmpty
+		return discover.Node{}, errors.New("empty")
 	}
 
 	for k, v := range wr.nods {
@@ -154,7 +163,7 @@ func (wr *swrrBalancer) Random() (discover.Node, error) {
 	defer wr.Unlock()
 
 	if len(wr.nods) <= 0 {
-		return discover.Node{}, balancer.ErrBalanceEmpty
+		return discover.Node{}, errors.New("empty")
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -210,5 +219,5 @@ func (wr *swrrBalancer) syncWeight(nod discover.Node) {
 }
 
 func init() {
-	balancer.Register(newSmoothWightRoundrobinBalancer())
+	module.Register(newSmoothWightRoundrobinBalancer())
 }

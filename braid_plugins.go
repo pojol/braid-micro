@@ -1,17 +1,11 @@
 package braid
 
 import (
-	"time"
-
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/pubsub"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/grpcclient"
 	"github.com/pojol/braid/plugin/grpcserver"
 )
 
@@ -25,21 +19,25 @@ type Plugin func(*Braid)
 // Discover plugin
 func Discover(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
-		b.discoverBuilder = discover.GetBuilder(builderName)
 
+		builder := module.GetBuilder(builderName)
 		for _, opt := range opts {
-			b.discoverBuilder.AddOption(opt)
+			builder.AddOption(opt)
 		}
+		b.builders = append(b.builders, builder)
 	}
 }
 
 // Balancer plugin
 func Balancer(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
-		b.balancerBuilder = balancer.GetBuilder(builderName)
+		builder := module.GetBuilder(builderName)
 		for _, opt := range opts {
-			b.balancerBuilder.AddOption(opt)
+			builder.AddOption(opt)
 		}
+
+		balancer.NewGroup(builder, b.mailbox)
+		b.builders = append(b.builders, builder)
 	}
 }
 
@@ -47,10 +45,11 @@ func Balancer(builderName string, opts ...interface{}) Plugin {
 func LinkCache(builderName string, opts ...interface{}) Plugin {
 
 	return func(b *Braid) {
-		b.linkerBuilder = linkcache.GetBuilder(builderName)
+		builder := module.GetBuilder(builderName)
 		for _, opt := range opts {
-			b.linkerBuilder.AddOption(opt)
+			builder.AddOption(opt)
 		}
+		b.builders = append(b.builders, builder)
 	}
 
 }
@@ -58,10 +57,12 @@ func LinkCache(builderName string, opts ...interface{}) Plugin {
 // Elector plugin
 func Elector(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
-		b.electorBuild = elector.GetBuilder(builderName)
+
+		builder := module.GetBuilder(builderName)
 		for _, opt := range opts {
-			b.electorBuild.AddOption(opt)
+			builder.AddOption(opt)
 		}
+		b.builders = append(b.builders, builder)
 	}
 }
 
@@ -79,18 +80,6 @@ func ElectorByK8s(kubeconfig string, nodid string) Plugin {
 	}
 }
 */
-
-// Pubsub plugin
-func Pubsub(builderName string, opts ...interface{}) Plugin {
-
-	return func(b *Braid) {
-		b.pubsubBuilder = pubsub.GetBuilder(builderName)
-		for _, opt := range opts {
-			b.pubsubBuilder.AddOption(opt)
-		}
-	}
-
-}
 
 // PubsubByNsq 构建pubsub
 /*
@@ -112,38 +101,28 @@ func PubsubByNsq(lookupAddres []string, addr []string, opts ...pubsubnsq.Option)
 */
 
 // GRPCClient rpc-client
-func GRPCClient(opts ...grpcclient.Option) Plugin {
+func GRPCClient(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
 
-		cfg := grpcclient.Config{
-			PoolInitNum:  128,
-			PoolCapacity: 1024,
-			PoolIdle:     time.Second * 120,
-		}
-
+		builder := client.GetBuilder(builderName)
 		for _, opt := range opts {
-			opt(&cfg)
+			builder.AddOption(opt)
 		}
 
-		b.clientBuilder = client.GetBuilder(grpcclient.ClientName)
-		b.clientBuilder.SetCfg(cfg)
+		b.clientBuilder = builder
 	}
 }
 
 // GRPCServer rpc-server
 func GRPCServer(opts ...grpcserver.Option) Plugin {
 	return func(b *Braid) {
-		cfg := grpcserver.Config{
-			Name:          b.cfg.Name,
-			ListenAddress: ":14222",
-		}
 
+		builder := server.GetBuilder(grpcserver.ServerName)
 		for _, opt := range opts {
-			opt(&cfg)
+			builder.AddOption(opt)
 		}
 
-		b.serverBuilder = server.GetBuilder(grpcserver.ServerName)
-		b.serverBuilder.SetCfg(cfg)
+		b.serverBuilder = builder
 	}
 }
 

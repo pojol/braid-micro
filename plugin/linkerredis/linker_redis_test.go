@@ -9,12 +9,12 @@ import (
 	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/pubsubnsq"
+	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,20 +49,20 @@ func TestMain(m *testing.M) {
 func TestLinkerTarget(t *testing.T) {
 	LinkerRedisPrefix = "testlinkertarget_"
 
-	psb := pubsub.GetBuilder(pubsubnsq.Name)
-	psb.AddOption(pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	psb.AddOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	ps, _ := psb.Build("gate")
-	eb := elector.GetBuilder(electorconsul.Name)
+	mbb := mailbox.GetBuilder(mailboxnsq.Name)
+	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mb, _ := mbb.Build("testlinkertarget")
+
+	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget")
+	e, _ := eb.Build("testlinkertarget", mb)
 	defer e.Close()
 
-	b := linkcache.GetBuilder(Name)
-	b.AddOption(WithElector(e))
-	b.AddOption(WithClusterPubsub(ps))
+	b := module.GetBuilder(Name)
 
-	lk, err := b.Build("gate")
+	lk, err := b.Build("gate", mb)
+	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(t, err, nil)
 
 	nods := []discover.Node{
@@ -78,50 +78,52 @@ func TestLinkerTarget(t *testing.T) {
 		},
 	}
 
-	err = lk.Link("token01", nods[0])
+	err = lc.Link("token01", nods[0])
 	assert.Equal(t, err, nil)
 
-	err = lk.Link("token01", nods[1])
+	err = lc.Link("token01", nods[1])
 	assert.Equal(t, err, nil)
 
-	err = lk.Link("token02", nods[0])
+	err = lc.Link("token02", nods[0])
 	assert.Equal(t, err, nil)
 
-	addr, err := lk.Target("token01", "base")
+	addr, err := lc.Target("token01", "base")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1:12001")
 
-	num, err := lk.Num(nods[0])
-	assert.Equal(t, err, nil)
-	assert.Equal(t, num, 2)
-
-	lk.Unlink("token01")
-	lk.Unlink("token02")
+	lc.Unlink("token01")
+	lc.Unlink("token02")
 
 	for _, v := range nods {
-		lk.Down(v)
+		lc.Down(v)
 	}
 
 	time.Sleep(time.Millisecond * 500)
 }
 
+func TestDispatch(t *testing.T) {
+
+	LinkerRedisPrefix = "braid_linker-"
+
+}
+
 func BenchmarkLink(b *testing.B) {
 	LinkerRedisPrefix = "benchmarklink"
 
-	psb := pubsub.GetBuilder(pubsubnsq.Name)
-	psb.AddOption(pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	psb.AddOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	ps, _ := psb.Build("TestLinkerTarget")
-	eb := elector.GetBuilder(electorconsul.Name)
+	mbb := mailbox.GetBuilder(mailboxnsq.Name)
+	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mb, _ := mbb.Build("benchmarklink")
+
+	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget")
+	e, _ := eb.Build("testlinkertarget", mb)
 	defer e.Close()
 
-	lb := linkcache.GetBuilder(Name)
-	lb.AddOption(WithElector(e))
-	lb.AddOption(WithClusterPubsub(ps))
+	lb := module.GetBuilder(Name)
 
-	lk, err := lb.Build("gate")
+	lk, err := lb.Build("gate", mb)
+	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(b, err, nil)
 	rand.Seed(time.Now().UnixNano())
 
@@ -158,7 +160,7 @@ func BenchmarkLink(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		lk.Link("token"+strconv.Itoa(i), baseTargets[rand.Intn(len(baseTargets))])
-		lk.Link("token"+strconv.Itoa(i), loginTargets[rand.Intn(len(loginTargets))])
+		lc.Link("token"+strconv.Itoa(i), baseTargets[rand.Intn(len(baseTargets))])
+		lc.Link("token"+strconv.Itoa(i), loginTargets[rand.Intn(len(loginTargets))])
 	}
 }

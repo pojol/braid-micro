@@ -1,4 +1,4 @@
-package pubsubnsq
+package mailboxnsq
 
 import "github.com/nsqio/go-nsq"
 
