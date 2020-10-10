@@ -84,11 +84,11 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 	if b.clientBuilder != nil {
 		if b.tracer != nil {
-			b.clientBuilder.AddOption(grpcclient.WithTracing())
+			b.clientBuilder.AddOption(grpcclient.Tracing())
 		}
 
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
-			b.clientBuilder.AddOption(grpcclient.WithLinkCache(lc.(linkcache.ILinkCache)))
+			b.clientBuilder.AddOption(grpcclient.LinkCache(lc.(linkcache.ILinkCache)))
 		}
 		b.client, _ = b.clientBuilder.Build(b.cfg.Name)
 	}
@@ -99,6 +99,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		}
 
 		b.server, _ = b.serverBuilder.Build(b.cfg.Name)
+		b.modules = append(b.modules, b.server)
 	}
 
 	return nil

@@ -46,7 +46,7 @@ func TestNew(t *testing.T) {
 	}))
 	defer l.Close()
 
-	b := server.GetBuilder(ServerName)
+	b := server.GetBuilder(Name)
 	b.AddOption(WithListen(":14111"))
 	s, _ := b.Build("TestNew")
 

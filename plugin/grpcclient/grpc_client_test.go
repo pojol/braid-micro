@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCaller(t *testing.T) {
-	b := client.GetBuilder(ClientName)
+	b := client.GetBuilder(Name)
 	cb, _ := b.Build("TestCaller")
 
 	time.Sleep(time.Millisecond * 200)

@@ -37,9 +37,9 @@ func (b *smoothWeightRoundrobinBuilder) Build(serviceName string, mb mailbox.IMa
 		mb:          mb,
 	}
 
-	swrr.addSub, _ = mb.ProcSub(discover.AddService + "_" + serviceName).AddCompetition()
-	swrr.rmvSub, _ = mb.ProcSub(discover.RmvService + "_" + serviceName).AddCompetition()
-	swrr.upSub, _ = mb.ProcSub(discover.UpdateService + "_" + serviceName).AddCompetition()
+	swrr.addSub, _ = mb.ProcSub(discover.AddService).AddShared()
+	swrr.rmvSub, _ = mb.ProcSub(discover.RmvService).AddShared()
+	swrr.upSub, _ = mb.ProcSub(discover.UpdateService).AddShared()
 
 	go swrr.watcher()
 
@@ -64,21 +64,32 @@ func (wr *swrrBalancer) watcher() {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
-		wr.add(nod)
+		if nod.Name == wr.serviceName {
+			wr.add(nod)
+		}
+
 		return nil
 	})
 
 	wr.rmvSub.OnArrived(func(msg *mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
-		wr.rmv(nod)
+
+		if nod.Name == wr.serviceName {
+			wr.rmv(nod)
+		}
+
 		return nil
 	})
 
 	wr.upSub.OnArrived(func(msg *mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
-		wr.syncWeight(nod)
+
+		if nod.Name == wr.serviceName {
+			wr.syncWeight(nod)
+		}
+
 		return nil
 	})
 }

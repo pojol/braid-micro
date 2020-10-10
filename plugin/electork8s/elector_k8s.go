@@ -105,8 +105,10 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (mod
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == p.NodID {
-					mb.ProcPub(elector.BecomeMaster, &mailbox.Message{})
+					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 					log.SysElection(p.NodID, identity)
+				} else {
+					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},

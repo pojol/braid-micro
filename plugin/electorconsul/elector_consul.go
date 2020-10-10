@@ -57,18 +57,7 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox) 
 		return nil, err
 	}
 
-	locked, err := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, sid)
-	if err != nil {
-		log.Debugf("acquire lock with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
-		return nil, err
-	}
-	if locked {
-		log.SysElection(e.parm.ServiceName, sid)
-	}
-
 	e.sessionID = sid
-	e.locked = locked
-
 	return e, nil
 }
 
@@ -114,12 +103,15 @@ func (e *consulElection) runImpl() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.mb.ProcPub(elector.BecomeMaster, &mailbox.Message{})
+				e.mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 				log.SysElection(e.parm.ServiceName, e.sessionID)
+			} else {
+				e.mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}
 
+	watchLock()
 	// time.Millisecond * 1000 * 5
 	e.refushTicker = time.NewTicker(e.parm.RefushSessionTick)
 	// time.Millisecond * 2000

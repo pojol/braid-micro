@@ -44,15 +44,15 @@ func WithPoolIdle(second int) Option {
 	}
 }
 
-// WithTracing open tracing
-func WithTracing() Option {
+// Tracing open tracing (auto register)
+func Tracing() Option {
 	return func(c *Parm) {
 		c.isTracing = true
 	}
 }
 
-// WithLinkCache with link-cache
-func WithLinkCache(cache linkcache.ILinkCache) Option {
+// LinkCache with link-cache (auto register)
+func LinkCache(cache linkcache.ILinkCache) Option {
 	return func(c *Parm) {
 		c.byLink = true
 		c.linker = cache

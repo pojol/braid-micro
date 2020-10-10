@@ -1,12 +1,45 @@
 package elector
 
 import (
+	"encoding/json"
+
 	"github.com/pojol/braid/module"
+	"github.com/pojol/braid/module/mailbox"
 )
 
 const (
-	// BecomeMaster topic_become_master
-	BecomeMaster = "topic_become_master"
+	// StateChange topic_elector_state
+	StateChange = "topic_elector_state"
+)
+
+// StateChangeMsg become master msg
+type StateChangeMsg struct {
+	State string
+}
+
+// EncodeStateChangeMsg encode
+func EncodeStateChangeMsg(state string) *mailbox.Message {
+	byt, _ := json.Marshal(&StateChangeMsg{
+		State: state,
+	})
+
+	return &mailbox.Message{
+		Body: byt,
+	}
+}
+
+// DecodeStateChangeMsg decode
+func DecodeStateChangeMsg(msg *mailbox.Message) StateChangeMsg {
+	bmmsg := StateChangeMsg{}
+	json.Unmarshal(msg.Body, &bmmsg)
+	return bmmsg
+}
+
+// state
+const (
+	EWait   = "elector_wait"
+	ESlave  = "elector_slave"
+	EMaster = "elector_master"
 )
 
 // IElection election interface

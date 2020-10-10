@@ -10,6 +10,16 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	// Name grpc plugin name
+	Name = "GRPCServer"
+
+	// ErrServiceUnavailiable 没有可用的服务
+	ErrServiceUnavailiable = errors.New("service not registered")
+	// ErrConfigConvert 配置转换失败
+	ErrConfigConvert = errors.New("Convert linker config")
+)
+
 type grpcServerBuilder struct {
 	opts []interface{}
 }
@@ -23,7 +33,7 @@ func (b *grpcServerBuilder) AddOption(opt interface{}) {
 }
 
 func (b *grpcServerBuilder) Name() string {
-	return ServerName
+	return Name
 }
 
 func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
@@ -45,6 +55,7 @@ func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
 		s.rpc = grpc.NewServer()
 	}
 
+	log.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, p.isTracing)
 	return s, nil
 }
 
@@ -56,15 +67,9 @@ type grpcServer struct {
 	parm Parm
 }
 
-var (
-	// ServerName grpc plugin name
-	ServerName = "GRPCServer"
+func (s *grpcServer) Init() {
 
-	// ErrServiceUnavailiable 没有可用的服务
-	ErrServiceUnavailiable = errors.New("service not registered")
-	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
-)
+}
 
 // Get 获取rpc 服务器
 func (s *grpcServer) Server() interface{} {
@@ -88,6 +93,7 @@ func (s *grpcServer) Run() {
 
 // Close 退出处理
 func (s *grpcServer) Close() {
+	log.Debugf("grpc-server closed")
 	s.rpc.Stop()
 }
 

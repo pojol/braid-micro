@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	}))
 	defer l.Close()
 
-	sb := server.GetBuilder(grpcserver.ServerName)
+	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1205"))
 	s, _ := sb.Build("test")
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})

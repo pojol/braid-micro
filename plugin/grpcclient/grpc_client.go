@@ -17,6 +17,21 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+
+	// Name client plugin name
+	Name = "GRPCClient"
+
+	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(coordinate)
+	ErrServiceNotAvailable = errors.New("caller service not available")
+
+	// ErrConfigConvert 配置转换失败
+	ErrConfigConvert = errors.New("Convert linker config")
+
+	// ErrCantFindNode 在注册中心找不到对应的服务节点
+	ErrCantFindNode = errors.New("Can't find service node in center")
+)
+
 type grpcClientBuilder struct {
 	opts []interface{}
 }
@@ -26,7 +41,7 @@ func newGRPCClient() client.Builder {
 }
 
 func (b *grpcClientBuilder) Name() string {
-	return ClientName
+	return Name
 }
 
 func (b *grpcClientBuilder) AddOption(opt interface{}) {
@@ -46,6 +61,7 @@ func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
 
 	c := &grpcClient{
 		serviceName: serviceName,
+		parm:        p,
 	}
 
 	return c, nil
@@ -58,21 +74,6 @@ type grpcClient struct {
 
 	poolMgr sync.Map
 }
-
-var (
-
-	// ClientName client plugin name
-	ClientName = "GRPCClient"
-
-	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(coordinate)
-	ErrServiceNotAvailable = errors.New("caller service not available")
-
-	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
-
-	// ErrCantFindNode 在注册中心找不到对应的服务节点
-	ErrCantFindNode = errors.New("Can't find service node in center")
-)
 
 func (c *grpcClient) Init() {
 
@@ -88,6 +89,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 
 	caPool, err := c.pool(address)
 	if err != nil {
+		log.Debugf("get rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -95,6 +97,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	defer connCancel()
 	caConn, err = caPool.Get(connCtx)
 	if err != nil {
+		log.Debugf("get conn by rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -113,12 +116,12 @@ func pick(nodName string, token string) (discover.Node, error) {
 	}
 
 	if err != nil {
-		// err log
+		log.Debugf("pick err %s", err.Error())
 		return nod, err
 	}
 
 	if nod.Address == "" {
-		// err log
+		log.Debugf("pick err target address is nil")
 		return nod, errors.New("address is not available")
 	}
 
@@ -188,6 +191,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
+		log.Debugf("find target warning %s %s", token, nodName)
 		return
 	}
 
@@ -226,6 +230,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		}
 
 		if err != nil {
+			log.Debugf("rpc pool factory err %s", err.Error())
 			return nil, err
 		}
 
@@ -236,6 +241,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 	if !ok {
 		p, err = pool.NewGRPCPool(factory, c.parm.PoolInitNum, c.parm.PoolCapacity, c.parm.PoolIdle)
 		if err != nil {
+			log.Debugf("new grpc pool err %s", err.Error())
 			goto EXT
 		}
 

@@ -39,6 +39,33 @@ func DecodeLinkNumMsg(msg *mailbox.Message) LinkNumMsg {
 	return lnmsg
 }
 
+// DownMsg down msg
+type DownMsg struct {
+	ID      string
+	Service string
+	Addr    string
+}
+
+// EncodeDownMsg encode down msg
+func EncodeDownMsg(id string, service string, addr string) *mailbox.Message {
+	byt, _ := json.Marshal(&DownMsg{
+		ID:      id,
+		Service: service,
+		Addr:    addr,
+	})
+
+	return &mailbox.Message{
+		Body: byt,
+	}
+}
+
+// DecodeDownMsg decode down msg
+func DecodeDownMsg(msg *mailbox.Message) DownMsg {
+	dmsg := DownMsg{}
+	json.Unmarshal(msg.Body, &dmsg)
+	return dmsg
+}
+
 // ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
 //
 // +---parent----------+

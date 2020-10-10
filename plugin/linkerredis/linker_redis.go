@@ -33,27 +33,8 @@ const (
 	LinkerTopicDown = "braid_linker_down"
 )
 
-// DownMsg down msg
-type DownMsg struct {
-	Service string
-	Addr    string
-}
-
 type tokenRelation struct {
 	targets []discover.Node
-}
-
-// NewDownMsg new down msg
-func NewDownMsg(service string, addr string) *mailbox.Message {
-
-	byt, _ := json.Marshal(&DownMsg{
-		Service: service,
-		Addr:    addr,
-	})
-
-	return &mailbox.Message{
-		Body: byt,
-	}
 }
 
 var (
@@ -85,12 +66,13 @@ func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
 func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
 
 	lc := &redisLinker{
-		serviceName: serviceName,
-		mb:          mb,
+		serviceName:  serviceName,
+		mb:           mb,
+		electorState: elector.EWait,
 	}
 
 	lc.mb.ClusterPub(LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
-	lc.mb.ClusterPub(LinkerTopicDown, &mailbox.Message{Body: []byte("nil")})
+	lc.mb.ClusterPub(LinkerTopicDown, linkcache.EncodeDownMsg("", "", ""))
 
 	go lc.watcher()
 	go lc.dispatch()
@@ -101,12 +83,11 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (mo
 
 // redisLinker 基于redis实现的链接器
 type redisLinker struct {
-	serviceName string
-	ismaster    bool
-	mb          mailbox.IMailbox
-	unlink      mailbox.IConsumer
-	down        mailbox.IConsumer
-	master      mailbox.IConsumer
+	serviceName  string
+	electorState string
+	mb           mailbox.IMailbox
+	unlink       mailbox.IConsumer
+	down         mailbox.IConsumer
 }
 
 func (l *redisLinker) Init() {
@@ -118,44 +99,28 @@ func (l *redisLinker) Run() {
 }
 
 func (l *redisLinker) watcher() {
-	tick := time.NewTicker(time.Second)
 
-	l.master, _ = l.mb.ProcSub(elector.BecomeMaster).AddShared()
-	l.master.OnArrived(func(msg *mailbox.Message) error {
-		l.ismaster = true
-		l.master.Exit()
+	l.unlink, _ = l.mb.ClusterSub(LinkerTopicUnlink).AddCompetition()
+	l.unlink.OnArrived(func(msg *mailbox.Message) error {
+		l.Unlink(string(msg.Body))
 		return nil
 	})
 
-	for {
-		select {
-		case <-tick.C:
-			if l.ismaster {
+	l.down, _ = l.mb.ClusterSub(LinkerTopicDown).AddCompetition()
+	l.down.OnArrived(func(msg *mailbox.Message) error {
 
-				l.unlink, _ = l.mb.ClusterSub(LinkerTopicUnlink).AddShared()
-				l.unlink.OnArrived(func(msg *mailbox.Message) error {
-					return l.Unlink(string(msg.Body))
-				})
-
-				l.down, _ = l.mb.ClusterSub(LinkerTopicDown).AddShared()
-				l.down.OnArrived(func(msg *mailbox.Message) error {
-
-					downMsg := &DownMsg{}
-					err := json.Unmarshal(msg.Body, downMsg)
-					if err != nil {
-						return nil
-					}
-					return l.Down(discover.Node{
-						Name:    downMsg.Service,
-						Address: downMsg.Addr,
-					})
-				})
-
-				tick.Stop()
-				return
-			}
+		dmsg := linkcache.DecodeDownMsg(msg)
+		if dmsg.Service == "" {
+			return nil
 		}
-	}
+
+		return l.Down(discover.Node{
+			ID:      dmsg.ID,
+			Name:    dmsg.Service,
+			Address: dmsg.Addr,
+		})
+
+	})
 
 }
 
@@ -170,6 +135,7 @@ func (l *redisLinker) dispatchLinkinfo() {
 		id := nod[4]
 
 		if l.serviceName == parent {
+			//fmt.Println("parent", parent, "child", child, "id", id, "num", num)
 			l.mb.ProcPub(linkcache.ServiceLinkNum, linkcache.EncodeLinkNumMsg(id, num))
 		}
 
@@ -265,18 +231,22 @@ func (l *redisLinker) Link(token string, target discover.Node) error {
 // Unlink 当前节点所属的用户离线
 func (l *redisLinker) Unlink(token string) error {
 
-	if token == "" {
+	if token == "" || token == "nil" {
 		return nil
 	}
 
 	conn := redis.Get().Conn()
 	defer conn.Close()
 
+	fmt.Println("before unlink token", l.serviceName+"-"+token)
+
 	val, err := redis.ConnHGet(conn, LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
 	if err != nil {
+		fmt.Println(err.Error())
 		return err
 	}
 	if val == "" {
+		fmt.Println("nil value")
 		return nil
 	}
 
@@ -300,6 +270,7 @@ func (l *redisLinker) Unlink(token string) error {
 		return err
 	}
 
+	log.Debugf("unlink token %s", token)
 	return nil
 }
 
@@ -308,8 +279,8 @@ func (l *redisLinker) Down(target discover.Node) error {
 
 	conn := redis.Get().Conn()
 	defer conn.Close()
-
 	cia := target.Name + "-" + target.ID + "-" + target.Address
+
 	ismember, err := redis.ConnSIsMember(conn, LinkerRedisPrefix+"relation-"+l.serviceName, cia)
 	if err != nil {
 		return err
@@ -342,6 +313,10 @@ func (l *redisLinker) Down(target discover.Node) error {
 }
 
 func (l *redisLinker) Close() {
+
+}
+
+func createTopic(topic string) {
 
 }
 

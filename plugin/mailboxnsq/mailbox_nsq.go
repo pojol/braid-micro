@@ -123,12 +123,13 @@ func (ns *nsqSubscriber) subImpl(channel string) *nsqConsumer {
 	return nc
 }
 
+// AddCompetition 从固定的管道中竞争消息
 func (ns *nsqSubscriber) AddCompetition() (mailbox.IConsumer, error) {
 	ns.Lock()
 	defer ns.Unlock()
 
 	if ns.Channel == "" {
-		return nil, nil
+		ns.Channel = ns.serviceName + "-" + "competition"
 	}
 
 	nc := ns.subImpl(ns.Channel)
@@ -137,17 +138,12 @@ func (ns *nsqSubscriber) AddCompetition() (mailbox.IConsumer, error) {
 	return nc, nil
 }
 
+// AddShared 从管道副本中一起消费消息，因为共享需要不同的管道，所以这里默认设置为ephemeral
 func (ns *nsqSubscriber) AddShared() (mailbox.IConsumer, error) {
 	ns.Lock()
 	defer ns.Unlock()
 
-	var uid string
-
-	if ns.ephemeral {
-		uid = ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
-	} else {
-		uid = ns.serviceName
-	}
+	uid := ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
 
 	nc := ns.subImpl(uid)
 	ns.group[nc.uuid] = nc
@@ -163,7 +159,6 @@ func (nmb *nsqMailbox) ClusterSub(topic string) mailbox.ISubscriber {
 		Topic:        topic,
 		lookupAddres: nmb.parm.LookupAddres,
 		addres:       nmb.parm.Addres,
-		ephemeral:    nmb.parm.Ephemeral,
 		serviceName:  nmb.parm.ServiceName,
 	}
 

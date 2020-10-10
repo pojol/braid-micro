@@ -35,24 +35,23 @@ func TestWRR(t *testing.T) {
 	bb := module.GetBuilder(Name)
 	balancer.NewGroup(bb, mb)
 	serviceName := "TestWRR"
-	addEvent := discover.AddService + "_" + serviceName
 	bw := balancer.Get(serviceName)
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
@@ -79,26 +78,24 @@ func TestWRRDymc(t *testing.T) {
 	bb := module.GetBuilder(Name)
 	balancer.NewGroup(bb, mb)
 	serviceName := "TestWRR"
-	addEvent := discover.AddService + "_" + serviceName
-	upEvent := discover.UpdateService + "_" + serviceName
 	bw := balancer.Get(serviceName)
 	pmap := make(map[string]int)
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  1000,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  1000,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1000,
@@ -114,7 +111,7 @@ func TestWRRDymc(t *testing.T) {
 
 	fmt.Println("step 1", pmap)
 
-	mb.ProcPub(upEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.UpdateService, mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
 	}))
@@ -135,22 +132,20 @@ func TestWRROp(t *testing.T) {
 	bb := module.GetBuilder(Name)
 	balancer.NewGroup(bb, mb)
 	serviceName := "TestWRR"
-	addEvent := discover.AddService + "_" + serviceName
-	rmvEvent := discover.RmvService + "_" + serviceName
 	bw := balancer.Get(serviceName)
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Name:   serviceName,
 		Weight: 4,
 	}))
 
-	mb.ProcPub(rmvEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.RmvService, mailbox.NewMessage(discover.Node{
 		ID:   "A",
 		Name: serviceName,
 	}))
 
-	mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:     "B",
 		Name:   serviceName,
 		Weight: 2,
@@ -166,11 +161,10 @@ func BenchmarkWRR(b *testing.B) {
 	bb := module.GetBuilder(Name)
 	balancer.NewGroup(bb, mb)
 	serviceName := "BenchmarkWRR"
-	addEvent := discover.AddService + "_" + serviceName
 	bw := balancer.Get(serviceName)
 
 	for i := 0; i < 100; i++ {
-		mb.ProcPub(addEvent, mailbox.NewMessage(discover.Node{
+		mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 			ID:     strconv.Itoa(i),
 			Name:   serviceName,
 			Weight: i,

@@ -6,7 +6,6 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/grpcserver"
 )
 
 type config struct {
@@ -114,10 +113,10 @@ func GRPCClient(builderName string, opts ...interface{}) Plugin {
 }
 
 // GRPCServer rpc-server
-func GRPCServer(opts ...grpcserver.Option) Plugin {
+func GRPCServer(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
 
-		builder := server.GetBuilder(grpcserver.ServerName)
+		builder := server.GetBuilder(builderName)
 		for _, opt := range opts {
 			builder.AddOption(opt)
 		}

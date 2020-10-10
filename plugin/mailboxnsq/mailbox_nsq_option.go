@@ -9,8 +9,6 @@ type Parm struct {
 	LookupAddres []string
 	Addres       []string
 
-	Ephemeral bool
-
 	Channel     string
 	ServiceName string
 }
@@ -43,12 +41,5 @@ func WithLookupAddr(addr []string) Option {
 func WithNsqdAddr(addr []string) Option {
 	return func(c *Parm) {
 		c.Addres = addr
-	}
-}
-
-// WithEphemeral open ephemeral
-func WithEphemeral() Option {
-	return func(c *Parm) {
-		c.Ephemeral = true
 	}
 }
