@@ -1,41 +1,48 @@
 package elector
 
 import (
-	"strings"
+	"encoding/json"
+
+	"github.com/pojol/braid/module"
+	"github.com/pojol/braid/module/mailbox"
 )
 
-// Builder 构建器接口
-type Builder interface {
-	Build(serviceName string) (IElection, error)
-	Name() string
-	AddOption(opt interface{})
-}
-
-// IElection 选举器需要提供的接口
-type IElection interface {
-	// 当前节点是否为Master节点
-	// 适用于一些只能在单个进程内处理的业务
-	IsMaster() bool
-
-	// 侦听
-	Run()
-	// 关闭
-	Close()
-}
-
-var (
-	m = make(map[string]Builder)
+const (
+	// StateChange topic_elector_state
+	StateChange = "topic_elector_state"
 )
 
-// Register 注册balancer
-func Register(b Builder) {
-	m[strings.ToLower(b.Name())] = b
+// StateChangeMsg become master msg
+type StateChangeMsg struct {
+	State string
 }
 
-// GetBuilder 获取balancer构建器
-func GetBuilder(name string) Builder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
+// EncodeStateChangeMsg encode
+func EncodeStateChangeMsg(state string) *mailbox.Message {
+	byt, _ := json.Marshal(&StateChangeMsg{
+		State: state,
+	})
+
+	return &mailbox.Message{
+		Body: byt,
 	}
-	return nil
+}
+
+// DecodeStateChangeMsg decode
+func DecodeStateChangeMsg(msg *mailbox.Message) StateChangeMsg {
+	bmmsg := StateChangeMsg{}
+	json.Unmarshal(msg.Body, &bmmsg)
+	return bmmsg
+}
+
+// state
+const (
+	EWait   = "elector_wait"
+	ESlave  = "elector_slave"
+	EMaster = "elector_master"
+)
+
+// IElection election interface
+type IElection interface {
+	module.IModule
 }

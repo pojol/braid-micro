@@ -46,13 +46,9 @@ func TestMain(m *testing.M) {
 	}))
 	defer l.Close()
 
-	sb := server.GetBuilder(grpcserver.ServerName)
-	sb.SetCfg(grpcserver.Config{
-		Name:          "test",
-		ListenAddress: ":1205",
-	})
-
-	s := sb.Build(false)
+	sb := server.GetBuilder(grpcserver.Name)
+	sb.AddOption(grpcserver.WithListen(":1205"))
+	s, _ := sb.Build("test")
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	time.Sleep(time.Millisecond * 10)

@@ -2,9 +2,6 @@ package discoverconsul
 
 import (
 	"time"
-
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/pubsub"
 )
 
 // Parm discover config
@@ -20,10 +17,6 @@ type Parm struct {
 	Tag string
 
 	Blacklist []string
-
-	procPB    pubsub.IPubsub
-	clusterPB pubsub.IPubsub
-	linkcache linkcache.ILinkCache
 }
 
 // Option consul discover config wrapper
@@ -54,26 +47,5 @@ func WithInterval(interval time.Duration) Option {
 func WithConsulAddr(address string) Option {
 	return func(c *Parm) {
 		c.Address = address
-	}
-}
-
-// WithProcPubsub with proc
-func WithProcPubsub(pb pubsub.IPubsub) Option {
-	return func(c *Parm) {
-		c.procPB = pb
-	}
-}
-
-// WithClusterPubsub with cluster
-func WithClusterPubsub(pb pubsub.IPubsub) Option {
-	return func(c *Parm) {
-		c.clusterPB = pb
-	}
-}
-
-// WithLinkCache with link cache
-func WithLinkCache(cache linkcache.ILinkCache) Option {
-	return func(c *Parm) {
-		c.linkcache = cache
 	}
 }

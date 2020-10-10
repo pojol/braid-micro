@@ -3,6 +3,7 @@ module github.com/pojol/braid
 go 1.13
 
 require (
+	cloud.google.com/go v0.38.0
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/go-echarts/go-echarts v1.0.0
 	github.com/gobuffalo/packr v1.30.1

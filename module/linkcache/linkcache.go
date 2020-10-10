@@ -1,16 +1,69 @@
 package linkcache
 
 import (
-	"strings"
+	"encoding/json"
 
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/mailbox"
 )
 
-// Builder 构建器接口
-type Builder interface {
-	Build(serviceName string) (ILinkCache, error)
-	Name() string
-	AddOption(opt interface{})
+const (
+	// ServiceLinkNum topic service link num
+	ServiceLinkNum = "topic_service_link_num"
+)
+
+// LinkNumMsg msg struct
+type LinkNumMsg struct {
+	ID  string
+	Num int
+}
+
+// EncodeLinkNumMsg encode linknum msg
+func EncodeLinkNumMsg(id string, num int) *mailbox.Message {
+	byt, _ := json.Marshal(&LinkNumMsg{
+		ID:  id,
+		Num: num,
+	})
+
+	return &mailbox.Message{
+		ID:   "",
+		Body: byt,
+	}
+}
+
+// DecodeLinkNumMsg decode linknum msg
+func DecodeLinkNumMsg(msg *mailbox.Message) LinkNumMsg {
+	lnmsg := LinkNumMsg{}
+	json.Unmarshal(msg.Body, &lnmsg)
+	return lnmsg
+}
+
+// DownMsg down msg
+type DownMsg struct {
+	ID      string
+	Service string
+	Addr    string
+}
+
+// EncodeDownMsg encode down msg
+func EncodeDownMsg(id string, service string, addr string) *mailbox.Message {
+	byt, _ := json.Marshal(&DownMsg{
+		ID:      id,
+		Service: service,
+		Addr:    addr,
+	})
+
+	return &mailbox.Message{
+		Body: byt,
+	}
+}
+
+// DecodeDownMsg decode down msg
+func DecodeDownMsg(msg *mailbox.Message) DownMsg {
+	dmsg := DownMsg{}
+	json.Unmarshal(msg.Body, &dmsg)
+	return dmsg
 }
 
 // ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
@@ -25,6 +78,8 @@ type Builder interface {
 // |                   |
 // +-------------------+
 type ILinkCache interface {
+	module.IModule
+
 	// Look for existing links from the cache
 	Target(token string, serviceName string) (targetAddr string, err error)
 
@@ -34,26 +89,6 @@ type ILinkCache interface {
 	// unlink token
 	Unlink(token string) error
 
-	// 提供nod中token的数量
-	Num(target discover.Node) (int, error)
-
 	// clean up the service
 	Down(target discover.Node) error
-}
-
-var (
-	m = make(map[string]Builder)
-)
-
-// Register 注册linker
-func Register(b Builder) {
-	m[strings.ToLower(b.Name())] = b
-}
-
-// GetBuilder 获取构建器
-func GetBuilder(name string) Builder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
-	}
-	return nil
 }

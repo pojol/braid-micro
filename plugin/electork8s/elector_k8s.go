@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/elector"
+	"github.com/pojol/braid/module/mailbox"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -29,7 +31,7 @@ type k8sElectorBuilder struct {
 	opts []interface{}
 }
 
-func newK8sElector() elector.Builder {
+func newK8sElector() module.Builder {
 	return &k8sElectorBuilder{}
 }
 
@@ -60,11 +62,15 @@ func (*k8sElectorBuilder) Name() string {
 	return ElectionName
 }
 
+func (*k8sElectorBuilder) Type() string {
+	return module.TyElector
+}
+
 func (eb *k8sElectorBuilder) AddOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *k8sElectorBuilder) Build(serviceName string) (elector.IElection, error) {
+func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
 
 	p := Parm{
 		ServiceName: serviceName,
@@ -99,7 +105,10 @@ func (eb *k8sElectorBuilder) Build(serviceName string) (elector.IElection, error
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == p.NodID {
+					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 					log.SysElection(p.NodID, identity)
+				} else {
+					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},
@@ -110,6 +119,7 @@ func (eb *k8sElectorBuilder) Build(serviceName string) (elector.IElection, error
 
 	el := &k8sElector{
 		parm:    p,
+		mb:      mb,
 		elector: elector,
 	}
 
@@ -118,12 +128,17 @@ func (eb *k8sElectorBuilder) Build(serviceName string) (elector.IElection, error
 
 type k8sElector struct {
 	parm    Parm
+	mb      mailbox.IMailbox
 	lock    *resourcelock.LeaseLock
 	elector *leaderelection.LeaderElector
 }
 
 func (e *k8sElector) IsMaster() bool {
 	return e.elector.IsLeader()
+}
+
+func (e *k8sElector) Init() {
+
 }
 
 func (e *k8sElector) Run() {
@@ -137,5 +152,5 @@ func (e *k8sElector) Close() {
 }
 
 func init() {
-	elector.Register(newK8sElector())
+	module.Register(newK8sElector())
 }

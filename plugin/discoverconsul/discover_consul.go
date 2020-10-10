@@ -8,9 +8,11 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/pubsub"
+	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/linkerredis"
 )
 
@@ -36,7 +38,7 @@ type consulDiscoverBuilder struct {
 	opts []interface{}
 }
 
-func newConsulDiscover() discover.Builder {
+func newConsulDiscover() module.Builder {
 	return &consulDiscoverBuilder{}
 }
 
@@ -44,11 +46,15 @@ func (b *consulDiscoverBuilder) Name() string {
 	return Name
 }
 
+func (b *consulDiscoverBuilder) Type() string {
+	return module.TyDiscover
+}
+
 func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *consulDiscoverBuilder) Build(serviceName string) (discover.IDiscover, error) {
+func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
 
 	p := Parm{
 		Tag:      "braid",
@@ -60,19 +66,15 @@ func (b *consulDiscoverBuilder) Build(serviceName string) (discover.IDiscover, e
 		opt.(Option)(&p)
 	}
 
-	if p.procPB == nil {
-		return nil, errors.New("discover_consul parm mismatch " + "no proc pubsub!")
-	}
-
 	// check address
 	_, err := consul.GetCatalogServices(p.Address, p.Tag)
-	fmt.Println(p.Address, err)
 	if err != nil {
 		return nil, err
 	}
 
 	e := &consulDiscover{
 		parm:       p,
+		mb:         mb,
 		passingMap: make(map[string]*syncNode),
 	}
 
@@ -86,6 +88,7 @@ type consulDiscover struct {
 
 	// parm
 	parm Parm
+	mb   mailbox.IMailbox
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -95,6 +98,8 @@ type syncNode struct {
 	service string
 	id      string
 	address string
+
+	linknum int
 
 	dyncWeight int
 	physWeight int
@@ -146,7 +151,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.parm.procPB.Pub(discover.EventAdd+"_"+service.ServiceName, pubsub.NewMessage(discover.Node{
+			dc.mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -160,17 +165,16 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			log.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.parm.procPB.Pub(discover.EventRmv+"_"+dc.passingMap[k].service, pubsub.NewMessage(discover.Node{
+			dc.mb.ProcPub(discover.RmvService, mailbox.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))
 
-			if dc.parm.clusterPB != nil {
-				dc.parm.clusterPB.Pub(linkerredis.LinkerTopicDown, linkerredis.NewDownMsg(
-					dc.passingMap[k].service,
-					dc.passingMap[k].address,
-				))
-			}
+			dc.mb.ClusterPub(linkerredis.LinkerTopicDown, linkcache.EncodeDownMsg(
+				dc.passingMap[k].id,
+				dc.passingMap[k].service,
+				dc.passingMap[k].address,
+			))
 
 			delete(dc.passingMap, k)
 		}
@@ -179,28 +183,23 @@ func (dc *consulDiscover) discoverImpl() {
 
 func (dc *consulDiscover) syncWeight() {
 	for k, v := range dc.passingMap {
-		num, err := dc.parm.linkcache.Num(discover.Node{
-			ID:      v.id,
-			Name:    v.service,
-			Address: v.address,
-		})
-		if err != nil || num == 0 {
+		if v.linknum == 0 {
 			continue
 		}
 
-		if num == v.dyncWeight {
+		if v.linknum == v.dyncWeight {
 			continue
 		}
 
-		dc.passingMap[k].dyncWeight = num
+		dc.passingMap[k].dyncWeight = v.linknum
 		nweight := 0
-		if dc.passingMap[k].physWeight-num > 0 {
-			nweight = dc.passingMap[k].physWeight - num
+		if dc.passingMap[k].physWeight-v.linknum > 0 {
+			nweight = dc.passingMap[k].physWeight - v.linknum
 		} else {
 			nweight = 1
 		}
 
-		dc.parm.procPB.Pub(discover.EventUpdate+"_"+v.service, pubsub.NewMessage(discover.Node{
+		dc.mb.ProcPub(discover.UpdateService, mailbox.NewMessage(discover.Node{
 			ID:     v.id,
 			Name:   v.service,
 			Weight: nweight,
@@ -226,10 +225,7 @@ func (dc *consulDiscover) runImpl() {
 			}
 		}()
 
-		if dc.parm.linkcache != nil {
-			dc.syncWeight()
-		}
-
+		dc.syncWeight()
 	}
 
 	dc.discoverTicker = time.NewTicker(dc.parm.Interval)
@@ -247,8 +243,23 @@ func (dc *consulDiscover) runImpl() {
 	}
 }
 
+func (dc *consulDiscover) Init() {
+	linknumC, _ := dc.mb.ProcSub(linkcache.ServiceLinkNum).AddShared()
+	linknumC.OnArrived(func(msg *mailbox.Message) error {
+
+		lninfo := linkcache.DecodeLinkNumMsg(msg)
+
+		if _, ok := dc.passingMap[lninfo.ID]; ok {
+			fmt.Println("sync service link number", lninfo.Num)
+			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+		}
+
+		return nil
+	})
+}
+
 // Discover 运行管理器
-func (dc *consulDiscover) Discover() {
+func (dc *consulDiscover) Run() {
 	go func() {
 		dc.runImpl()
 	}()
@@ -260,5 +271,5 @@ func (dc *consulDiscover) Close() {
 }
 
 func init() {
-	discover.Register(newConsulDiscover())
+	module.Register(newConsulDiscover())
 }

@@ -1,4 +1,4 @@
-package pubsub
+package mailbox
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(serviceName string) (IPubsub, error)
+	Build(serviceName string) (IMailbox, error)
 	Name() string
 	AddOption(opt interface{})
 }
@@ -35,10 +35,10 @@ func NewMessage(body interface{}) *Message {
 	}
 }
 
-// HandlerFunc 消息处理函数
+// HandlerFunc msg handler
 type HandlerFunc func(message *Message) error
 
-// IConsumer 消费者接口
+// IConsumer consumer
 type IConsumer interface {
 	OnArrived(handler HandlerFunc)
 
@@ -48,31 +48,26 @@ type IConsumer interface {
 	IsExited() bool
 }
 
-// ISubscriber 订阅接口
+// ISubscriber subscriber
 type ISubscriber interface {
-
-	// AddShared add shared consumer
-	AddShared() IConsumer
-	// AddCompetition add competition consumer
-	AddCompetition() IConsumer
-
-	GetConsumer(cid string) []IConsumer
+	AddShared() (IConsumer, error)
+	AddCompetition() (IConsumer, error)
 }
 
-// IPubsub 异步消息通知
-type IPubsub interface {
-	// Sub 订阅， 创建一个订阅者，它包含一组消费者
-	Sub(topic string) ISubscriber
+// IMailbox mailbox
+type IMailbox interface {
+	ProcPub(topic string, msg *Message)
+	ProcSub(topic string) ISubscriber
 
-	// Pub produce a message put in topic。
-	Pub(topic string, msg *Message)
+	ClusterPub(topic string, msg *Message)
+	ClusterSub(topic string) ISubscriber
 }
 
 var (
 	m = make(map[string]Builder)
 )
 
-// Register 注册linker
+// Register 注册
 func Register(b Builder) {
 	m[strings.ToLower(b.Name())] = b
 }

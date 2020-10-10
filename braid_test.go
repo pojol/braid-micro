@@ -11,7 +11,7 @@ import (
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/linkerredis"
-	"github.com/pojol/braid/plugin/pubsubnsq"
+	"github.com/pojol/braid/plugin/mailboxnsq"
 )
 
 func TestMain(m *testing.M) {
@@ -45,24 +45,23 @@ func TestMain(m *testing.M) {
 
 func TestPlugin(t *testing.T) {
 
-	b := New("testPlugin")
+	b := New(
+		"test_plugin",
+		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+	)
 
 	b.RegistPlugin(
 		Balancer(balancerswrr.Name),
+		LinkCache(linkerredis.Name),
 		Discover(
 			discoverconsul.Name,
 			discoverconsul.WithConsulAddr(mock.ConsulAddr),
 		),
-		LinkCache(linkerredis.Name),
 		Elector(
 			electorconsul.Name,
 			electorconsul.WithConsulAddr(mock.ConsulAddr),
 			electorconsul.WithLockTick(time.Second*2),
-		),
-		Pubsub(
-			pubsubnsq.Name,
-			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
 		),
 	)
 

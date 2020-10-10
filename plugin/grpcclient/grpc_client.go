@@ -12,63 +12,15 @@ import (
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
 )
 
-type grpcClientBuilder struct {
-	cfg Config
-}
-
-func newGRPCClient() client.Builder {
-	return &grpcClientBuilder{}
-}
-
-func (b *grpcClientBuilder) Name() string {
-	return ClientName
-}
-
-func (b *grpcClientBuilder) SetCfg(cfg interface{}) error {
-	cecfg, ok := cfg.(Config)
-	if !ok {
-		return ErrConfigConvert
-	}
-
-	b.cfg = cecfg
-	return nil
-}
-
-func (b *grpcClientBuilder) Build(link linkcache.ILinkCache, tracing bool) client.IClient {
-	c := &grpcClient{
-		cfg:       b.cfg,
-		linker:    link,
-		isTracing: tracing,
-	}
-
-	log.Debugf("build grpc client tracing %v", c.isTracing)
-
-	return c
-}
-
-// Client 调用器
-type grpcClient struct {
-	cfg Config
-
-	refushTick *time.Ticker
-
-	linker    linkcache.ILinkCache
-	isTracing bool
-
-	poolMgr sync.Map
-	sync.Mutex
-}
-
 var (
 
-	// ClientName client plugin name
-	ClientName = "GRPCClient"
+	// Name client plugin name
+	Name = "GRPCClient"
 
 	// ErrServiceNotAvailable 服务不可用，通常是因为没有查询到中心节点(coordinate)
 	ErrServiceNotAvailable = errors.New("caller service not available")
@@ -80,12 +32,64 @@ var (
 	ErrCantFindNode = errors.New("Can't find service node in center")
 )
 
+type grpcClientBuilder struct {
+	opts []interface{}
+}
+
+func newGRPCClient() client.Builder {
+	return &grpcClientBuilder{}
+}
+
+func (b *grpcClientBuilder) Name() string {
+	return Name
+}
+
+func (b *grpcClientBuilder) AddOption(opt interface{}) {
+	b.opts = append(b.opts, opt)
+}
+
+func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
+
+	p := Parm{
+		PoolInitNum:  128,
+		PoolCapacity: 1024,
+		PoolIdle:     time.Second * 120,
+	}
+	for _, opt := range b.opts {
+		opt.(Option)(&p)
+	}
+
+	c := &grpcClient{
+		serviceName: serviceName,
+		parm:        p,
+	}
+
+	return c, nil
+}
+
+// Client 调用器
+type grpcClient struct {
+	serviceName string
+	parm        Parm
+
+	poolMgr sync.Map
+}
+
+func (c *grpcClient) Init() {
+
+}
+
+func (c *grpcClient) Run() {
+
+}
+
 func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
 	caPool, err := c.pool(address)
 	if err != nil {
+		log.Debugf("get rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -93,6 +97,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	defer connCancel()
 	caConn, err = caPool.Get(connCtx)
 	if err != nil {
+		log.Debugf("get conn by rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -111,20 +116,16 @@ func pick(nodName string, token string) (discover.Node, error) {
 	}
 
 	if err != nil {
-		// err log
+		log.Debugf("pick err %s", err.Error())
 		return nod, err
 	}
 
 	if nod.Address == "" {
-		// err log
+		log.Debugf("pick err target address is nil")
 		return nod, errors.New("address is not available")
 	}
 
 	return nod, nil
-}
-
-func (c *grpcClient) linked() bool {
-	return c.linker != nil
 }
 
 func (c *grpcClient) findTarget(ctx context.Context, token string, target string) string {
@@ -132,13 +133,13 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	var err error
 	var nod discover.Node
 
-	if c.linked() && token != "" {
+	if c.parm.byLink && token != "" {
 
 		trt := tracer.RedisTracer{
 			Cmd: "linker.target",
 		}
 		trt.Begin(ctx)
-		address, err = c.linker.Target(token, target)
+		address, err = c.parm.linker.Target(token, target)
 		trt.End()
 		if err != nil {
 			log.Debugf("linker.target warning %s", err.Error())
@@ -154,12 +155,12 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 		}
 
 		address = nod.Address
-		if c.linked() && token != "" {
+		if c.parm.byLink && token != "" {
 			llt := tracer.RedisTracer{
 				Cmd: "linker.link",
 			}
 			llt.Begin(ctx)
-			err = c.linker.Link(token, nod)
+			err = c.parm.linker.Link(token, nod)
 			llt.End()
 			if err != nil {
 				log.Debugf("link warning %s %s", token, err.Error())
@@ -190,6 +191,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
+		log.Debugf("find target warning %s %s", token, nodName)
 		return
 	}
 
@@ -204,8 +206,8 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
 	if err != nil {
 		log.Debugf("client invoke warning %s", err.Error())
-		if c.linked() {
-			c.linker.Unlink(token)
+		if c.parm.byLink {
+			c.parm.linker.Unlink(token)
 		}
 
 		conn.Unhealthy()
@@ -220,7 +222,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if c.isTracing {
+		if c.parm.isTracing {
 			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {
@@ -228,6 +230,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		}
 
 		if err != nil {
+			log.Debugf("rpc pool factory err %s", err.Error())
 			return nil, err
 		}
 
@@ -236,8 +239,9 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 
 	pi, ok := c.poolMgr.Load(address)
 	if !ok {
-		p, err = pool.NewGRPCPool(factory, c.cfg.PoolInitNum, c.cfg.PoolCapacity, c.cfg.PoolIdle)
+		p, err = pool.NewGRPCPool(factory, c.parm.PoolInitNum, c.parm.PoolCapacity, c.parm.PoolIdle)
 		if err != nil {
+			log.Debugf("new grpc pool err %s", err.Error())
 			goto EXT
 		}
 
@@ -253,6 +257,10 @@ EXT:
 	}
 
 	return p, err
+}
+
+func (c *grpcClient) Close() {
+
 }
 
 func init() {

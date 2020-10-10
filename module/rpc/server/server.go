@@ -2,19 +2,20 @@ package server
 
 import (
 	"strings"
+
+	"github.com/pojol/braid/module"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(tracing bool) ISserver
+	Build(serviceName string) (ISserver, error)
 	Name() string
-	SetCfg(cfg interface{}) error
+	AddOption(opt interface{})
 }
 
 // ISserver rpc-server interface
 type ISserver interface {
-	Run()
-	Close()
+	module.IModule
 
 	// ...
 	Server() interface{}

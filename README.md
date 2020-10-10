@@ -66,10 +66,10 @@ go get github.com/pojol/braid@latest
 #### Web
 > Observe the link situation in the braid cluster through the sankey chart (need register link-cache plug-in
 ```shell
-cd /github.com/pojol/braid/sankey
-go build sankey.go
-./sankey
-localhost:8888/link
+$ docker pull braidgo/sankey:latest
+$ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
+    -consul http://172.17.0.1:8900 \
+    -redis redis://172.17.0.1:6379/0
 ```
 <img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
