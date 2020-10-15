@@ -91,8 +91,8 @@ func TestLinkerTarget(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1:12001")
 
-	lc.Unlink("token01")
-	lc.Unlink("token02")
+	lc.Unlink("token01", "")
+	lc.Unlink("token02", "")
 
 	for _, v := range nods {
 		lc.Down(v)

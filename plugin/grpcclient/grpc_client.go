@@ -139,6 +139,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 			Cmd: "linker.target",
 		}
 		trt.Begin(ctx)
+
 		address, err = c.parm.linker.Target(token, target)
 		trt.End()
 		if err != nil {
@@ -205,9 +206,9 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	//opts...
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
 	if err != nil {
-		log.Debugf("client invoke warning %s", err.Error())
+		log.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
 		if c.parm.byLink {
-			c.parm.linker.Unlink(token)
+			c.parm.linker.Unlink(token, nodName)
 		}
 
 		conn.Unhealthy()

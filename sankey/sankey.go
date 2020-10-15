@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -53,7 +52,7 @@ func linkInfo() *charts.Sankey {
 	defer conn.Close()
 
 	for _, v := range services {
-		parent := v.ServiceName + "-" + v.ServiceAddress + ":" + strconv.Itoa(v.ServicePort)
+		parent := v.ServiceName + "-" + v.ServiceID
 		sankeyNode = append(sankeyNode, charts.SankeyNode{Name: parent})
 
 		// 从父节点拿到所有的子节点成员
@@ -67,15 +66,16 @@ func linkInfo() *charts.Sankey {
 
 			nod := strings.Split(child, "-")
 
-			field := linkerredis.LinkerRedisPrefix + "lst-" + v.ServiceName + "-" + nod[0] + "-" + nod[1] + "-" + nod[2]
+			field := linkerredis.LinkerRedisPrefix + "lst-" + v.ServiceName + "-" + nod[0] + "-" + nod[1]
 			tokens, err := redis.ConnLRange(conn, field, 0, -1)
 			if err != nil || len(tokens) == 0 {
 				continue
 			}
 
+			fmt.Println(parent, nod[0]+"-"+nod[1], len(tokens))
 			sankeyLink = append(sankeyLink, charts.SankeyLink{
 				Source: parent,
-				Target: nod[0] + "-" + nod[2],
+				Target: nod[0] + "-" + nod[1],
 				Value:  float32(len(tokens)),
 			})
 		}
