@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/pojol/braid/3rd/log"
 )
 
 type (
@@ -85,7 +83,6 @@ func CreateSession(address string, name string) (ID string, err error) {
 
 EXT:
 	if err != nil {
-		log.SysError("consul", "createSession", err.Error())
 	}
 	return cRes.ID, err
 }
@@ -124,7 +121,6 @@ func DeleteSession(address string, id string) (succ bool, err error) {
 
 EXT:
 	if err != nil {
-		log.SysError("consul", "createSession", err.Error())
 	}
 	return succ, err
 }
@@ -163,7 +159,6 @@ func RefushSession(address string, id string) (err error) {
 
 EXT:
 	if err != nil {
-		log.SysError("consul", "createSession", err.Error())
 	}
 	return err
 }
@@ -208,7 +203,6 @@ func AcquireLock(address string, name string, id string) (succ bool, err error) 
 
 EXT:
 	if err != nil {
-		log.SysError("consul", "acquireLock", err.Error())
 	}
 	return succ, err
 }
@@ -247,7 +241,6 @@ func ReleaseLock(address string, name string, id string) (err error) {
 
 EXT:
 	if err != nil {
-		log.SysError("consul", "releaseLock", err.Error())
 	}
 	return err
 }

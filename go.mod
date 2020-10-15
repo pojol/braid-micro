@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/labstack/echo/v4 v4.1.6
-	github.com/labstack/gommon v0.3.0 // indirect
+	github.com/labstack/gommon v0.3.0
 	github.com/nsqio/go-nsq v1.0.8
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5

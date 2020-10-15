@@ -6,31 +6,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/plugin/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	mock.Init()
-
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 
 	r := redis.New()
 	r.Init(redis.Config{
@@ -54,14 +44,16 @@ func TestLinkerTarget(t *testing.T) {
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := mbb.Build("testlinkertarget")
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget", mb)
+	e, _ := eb.Build("testlinkertarget", mb, log)
 	defer e.Close()
 
 	b := module.GetBuilder(Name)
 
-	lk, err := b.Build("gate", mb)
+	lk, err := b.Build("gate", mb, log)
 	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(t, err, nil)
 
@@ -110,6 +102,8 @@ func TestDispatch(t *testing.T) {
 func BenchmarkLink(b *testing.B) {
 	LinkerRedisPrefix = "benchmarklink"
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
@@ -117,12 +111,12 @@ func BenchmarkLink(b *testing.B) {
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget", mb)
+	e, _ := eb.Build("testlinkertarget", mb, log)
 	defer e.Close()
 
 	lb := module.GetBuilder(Name)
 
-	lk, err := lb.Build("gate", mb)
+	lk, err := lb.Build("gate", mb, log)
 	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(b, err, nil)
 	rand.Seed(time.Now().UnixNano())

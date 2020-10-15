@@ -34,8 +34,7 @@ func Balancer(builderName string, opts ...interface{}) Plugin {
 		for _, opt := range opts {
 			builder.AddOption(opt)
 		}
-
-		balancer.NewGroup(builder, b.mailbox)
+		balancer.NewGroup(builder, b.mailbox, b.logger)
 		b.builders = append(b.builders, builder)
 	}
 }

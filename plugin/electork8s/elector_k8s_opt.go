@@ -1,6 +1,8 @@
 package electork8s
 
-import "time"
+import (
+	"time"
+)
 
 // Parm k8s elector config
 type Parm struct {

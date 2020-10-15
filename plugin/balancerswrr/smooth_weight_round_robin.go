@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -30,11 +30,12 @@ func (b *smoothWeightRoundrobinBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *smoothWeightRoundrobinBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (b *smoothWeightRoundrobinBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	swrr := &swrrBalancer{
 		serviceName: serviceName,
 		mb:          mb,
+		logger:      logger,
 	}
 
 	swrr.addSub, _ = mb.ProcSub(discover.AddService).AddShared()
@@ -115,6 +116,7 @@ type swrrBalancer struct {
 
 	serviceName string
 	mb          mailbox.IMailbox
+	logger      logger.ILogger
 
 	totalWeight int
 	nods        []weightedNod
@@ -195,7 +197,7 @@ func (wr *swrrBalancer) add(nod discover.Node) {
 
 	wr.calcTotalWeight()
 
-	log.Debugf("add weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	wr.logger.Debugf("add weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func (wr *swrrBalancer) rmv(nod discover.Node) {
@@ -212,7 +214,7 @@ func (wr *swrrBalancer) rmv(nod discover.Node) {
 	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
 
 	wr.calcTotalWeight()
-	log.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
+	wr.logger.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
 func (wr *swrrBalancer) syncWeight(nod discover.Node) {
@@ -226,7 +228,7 @@ func (wr *swrrBalancer) syncWeight(nod discover.Node) {
 		wr.calcTotalWeight()
 	}
 
-	log.Debugf("update weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	wr.logger.Debugf("update weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func init() {

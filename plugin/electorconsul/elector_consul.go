@@ -2,13 +2,12 @@ package electorconsul
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/elector"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -34,7 +33,7 @@ func (eb *consulElectionBuilder) AddOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	p := Parm{
 		ConsulAddr:        "http://127.0.0.1:8500",
@@ -47,13 +46,14 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox) 
 	}
 
 	e := &consulElection{
-		parm: p,
-		mb:   mb,
+		parm:   p,
+		mb:     mb,
+		logger: logger,
 	}
 
 	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
 	if err != nil {
-		log.Debugf("create session with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
+		e.logger.Debugf("create session with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
 		return nil, err
 	}
 
@@ -76,6 +76,8 @@ type consulElection struct {
 	sessionID string
 	locked    bool
 
+	logger logger.ILogger
+
 	mb   mailbox.IMailbox
 	parm Parm
 }
@@ -85,7 +87,7 @@ func (e *consulElection) runImpl() {
 	refushSession := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("discover", "refush Session", fmt.Errorf("%v", err).Error())
+				e.logger.Errorf("discover refush err %v", err)
 			}
 		}()
 
@@ -95,7 +97,7 @@ func (e *consulElection) runImpl() {
 	watchLock := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("discover", "watch lock", fmt.Errorf("%v", err).Error())
+				e.logger.Errorf("discover watchLock err %v", err)
 			}
 		}()
 
@@ -104,7 +106,7 @@ func (e *consulElection) runImpl() {
 			if succ {
 				e.locked = true
 				e.mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
-				log.SysElection(e.parm.ServiceName, e.sessionID)
+				e.logger.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
 				e.mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 			}

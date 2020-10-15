@@ -2,16 +2,15 @@ package discoverconsul
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/linkerredis"
 )
@@ -54,7 +53,7 @@ func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	p := Parm{
 		Tag:      "braid",
@@ -75,6 +74,7 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox) (
 	e := &consulDiscover{
 		parm:       p,
 		mb:         mb,
+		logger:     logger,
 		passingMap: make(map[string]*syncNode),
 	}
 
@@ -87,8 +87,9 @@ type consulDiscover struct {
 	syncWeightTicker *time.Ticker
 
 	// parm
-	parm Parm
-	mb   mailbox.IMailbox
+	parm   Parm
+	mb     mailbox.IMailbox
+	logger logger.ILogger
 
 	// service id : service nod
 	passingMap map[string]*syncNode
@@ -147,8 +148,7 @@ func (dc *consulDiscover) discoverImpl() {
 				dyncWeight: 0,
 				physWeight: defaultWeight,
 			}
-			log.Debugf("new service %s addr %s", service.ServiceName, sn.address)
-
+			dc.logger.Debugf("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
 			dc.mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
@@ -163,7 +163,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
-			log.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
+			dc.logger.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
 			dc.mb.ProcPub(discover.RmvService, mailbox.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
@@ -211,7 +211,7 @@ func (dc *consulDiscover) runImpl() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("status", "sync service", fmt.Errorf("%v", err).Error())
+				dc.logger.Errorf("consul discover syncService err %v", err)
 			}
 		}()
 		// todo ..
@@ -221,7 +221,7 @@ func (dc *consulDiscover) runImpl() {
 	syncWeight := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.SysError("status", "sync weight", fmt.Errorf("%v", err).Error())
+				dc.logger.Errorf("consul discover syncWeight err %v", err)
 			}
 		}()
 

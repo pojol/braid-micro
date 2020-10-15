@@ -2,11 +2,11 @@ package tracer
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid/3rd/log"
 	"github.com/uber/jaeger-client-go"
 	jaegerCfg "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/jaeger-client-go/transport"
@@ -95,7 +95,7 @@ func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	sender, err := newTransport(jcfg.Reporter)
 	if err != nil {
-		log.Debugf("new tracer transport err %s", err.Error())
+		fmt.Printf("new tracer transport err %s\n", err.Error())
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	jtracing, closer, err := jcfg.NewTracer(r, m)
 	if err != nil {
-		log.Debugf("new tracer err %s", err.Error())
+		fmt.Printf("new tracer err %s\n", err.Error())
 		return nil, err
 	}
 

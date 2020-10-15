@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/pojol/braid/3rd/log"
 )
 
 // ServiceHealthCheck 节点健康检查 check
@@ -68,8 +66,6 @@ func GetHealthNode(address string, service string) (nodes []string) {
 
 EXT:
 	if err != nil {
-		// log
-		log.SysError("consul", "healthNodes", err.Error())
 	}
 
 	return nodes

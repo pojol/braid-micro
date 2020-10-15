@@ -5,26 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/plugin/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(t *testing.M) {
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 
 	t.Run()
 }
@@ -32,7 +23,8 @@ func TestMain(t *testing.M) {
 func TestWRR(t *testing.T) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 
@@ -75,7 +67,8 @@ func TestWRRDymc(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 	pmap := make(map[string]int)
@@ -124,7 +117,8 @@ func TestWRROp(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 
@@ -153,7 +147,8 @@ func TestWRROp(t *testing.T) {
 func BenchmarkWRR(b *testing.B) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "BenchmarkWRR"
 	bw := balancer.Get(serviceName)
 

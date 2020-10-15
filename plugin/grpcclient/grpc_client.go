@@ -6,12 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
-
 	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
@@ -48,7 +47,7 @@ func (b *grpcClientBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
+func (b *grpcClientBuilder) Build(serviceName string, logger logger.ILogger) (client.IClient, error) {
 
 	p := Parm{
 		PoolInitNum:  128,
@@ -62,6 +61,7 @@ func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
 	c := &grpcClient{
 		serviceName: serviceName,
 		parm:        p,
+		logger:      logger,
 	}
 
 	return c, nil
@@ -71,6 +71,7 @@ func (b *grpcClientBuilder) Build(serviceName string) (client.IClient, error) {
 type grpcClient struct {
 	serviceName string
 	parm        Parm
+	logger      logger.ILogger
 
 	poolMgr sync.Map
 }
@@ -89,7 +90,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 
 	caPool, err := c.pool(address)
 	if err != nil {
-		log.Debugf("get rpc pool err %s", err.Error())
+		c.logger.Debugf("get rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -97,7 +98,7 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	defer connCancel()
 	caConn, err = caPool.Get(connCtx)
 	if err != nil {
-		log.Debugf("get conn by rpc pool err %s", err.Error())
+		c.logger.Debugf("get conn by rpc pool err %s", err.Error())
 		return nil, err
 	}
 
@@ -116,12 +117,10 @@ func pick(nodName string, token string) (discover.Node, error) {
 	}
 
 	if err != nil {
-		log.Debugf("pick err %s", err.Error())
 		return nod, err
 	}
 
 	if nod.Address == "" {
-		log.Debugf("pick err target address is nil")
 		return nod, errors.New("address is not available")
 	}
 
@@ -143,7 +142,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 		address, err = c.parm.linker.Target(token, target)
 		trt.End()
 		if err != nil {
-			log.Debugf("linker.target warning %s", err.Error())
+			c.logger.Debugf("linker.target warning %s", err.Error())
 			return ""
 		}
 	}
@@ -151,7 +150,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	if address == "" {
 		nod, err = pick(target, token)
 		if err != nil {
-			log.Debugf("pick warning %s", err.Error())
+			c.logger.Debugf("pick warning %s", err.Error())
 			return ""
 		}
 
@@ -164,7 +163,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 			err = c.parm.linker.Link(token, nod)
 			llt.End()
 			if err != nil {
-				log.Debugf("link warning %s %s", token, err.Error())
+				c.logger.Debugf("link warning %s %s", token, err.Error())
 			}
 		}
 	}
@@ -192,13 +191,13 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
-		log.Debugf("find target warning %s %s", token, nodName)
+		c.logger.Debugf("find target warning %s %s", token, nodName)
 		return
 	}
 
 	conn, err := c.getConn(address)
 	if err != nil {
-		log.Debugf("client get conn warning %s", err.Error())
+		c.logger.Debugf("client get conn warning %s", err.Error())
 		return
 	}
 	defer conn.Put()
@@ -206,7 +205,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	//opts...
 	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
 	if err != nil {
-		log.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
+		c.logger.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
 		if c.parm.byLink {
 			c.parm.linker.Unlink(token, nodName)
 		}
@@ -231,7 +230,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		}
 
 		if err != nil {
-			log.Debugf("rpc pool factory err %s", err.Error())
+			c.logger.Debugf("rpc pool factory err %s", err.Error())
 			return nil, err
 		}
 
@@ -242,7 +241,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 	if !ok {
 		p, err = pool.NewGRPCPool(factory, c.parm.PoolInitNum, c.parm.PoolCapacity, c.parm.PoolIdle)
 		if err != nil {
-			log.Debugf("new grpc pool err %s", err.Error())
+			c.logger.Debugf("new grpc pool err %s", err.Error())
 			goto EXT
 		}
 
@@ -253,10 +252,6 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 	p = pi.(*pool.GRPCPool)
 
 EXT:
-	if err != nil {
-		log.SysError("rpcClient", "pool", err.Error())
-	}
-
 	return p, err
 }
 

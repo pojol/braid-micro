@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -62,12 +62,13 @@ func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
 }
 
 // Build build link-cache
-func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	lc := &redisLinker{
 		serviceName:  serviceName,
 		mb:           mb,
 		electorState: elector.EWait,
+		logger:       logger,
 	}
 
 	lc.mb.ClusterPub(LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
@@ -76,7 +77,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (mo
 	go lc.watcher()
 	go lc.dispatch()
 
-	log.Debugf("build link-cache by redis & nsq")
+	logger.Debugf("build link-cache by redis & nsq")
 	return lc, nil
 }
 
@@ -87,6 +88,8 @@ type redisLinker struct {
 	mb           mailbox.IMailbox
 	unlink       mailbox.IConsumer
 	down         mailbox.IConsumer
+
+	logger logger.ILogger
 
 	sync.Mutex
 }
@@ -103,7 +106,7 @@ func (l *redisLinker) watcher() {
 
 	l.unlink, _ = l.mb.ClusterSub(LinkerTopicUnlink).AddCompetition()
 	l.unlink.OnArrived(func(msg *mailbox.Message) error {
-		log.Debugf("recv unlink msg %s", string(msg.Body))
+		l.logger.Debugf("recv unlink msg %s", string(msg.Body))
 		l.Unlink(string(msg.Body), "")
 		return nil
 	})
@@ -181,11 +184,11 @@ func (l *redisLinker) Link(token string, target discover.Node) error {
 
 	_, err := conn.Do("EXEC")
 	if err != nil {
-		log.Debugf("link exec err %s", err.Error())
+		l.logger.Debugf("link exec err %s", err.Error())
 		return err
 	}
 
-	log.Debugf("linked parent %s, target %s, token %s", l.serviceName, cia, token)
+	l.logger.Debugf("linked parent %s, target %s, token %s", l.serviceName, cia, token)
 	return nil
 }
 
@@ -235,11 +238,11 @@ func (l *redisLinker) Unlink(token string, target string) error {
 
 	_, err = conn.Do("EXEC")
 	if err != nil {
-		log.Debugf("unlink exec err %s", err.Error())
+		l.logger.Debugf("unlink exec err %s", err.Error())
 		return err
 	}
 
-	log.Debugf("unlink token service: %s, target :%s, token :%s", l.serviceName, target, token)
+	l.logger.Debugf("unlink token service: %s, target :%s, token :%s", l.serviceName, target, token)
 	return nil
 }
 
@@ -258,11 +261,11 @@ func (l *redisLinker) Down(target discover.Node) error {
 		return nil
 	}
 
-	log.Debugf("redis linker down child %s, target %s", target.Name, target.Address)
+	l.logger.Debugf("redis linker down child %s, target %s", target.Name, target.Address)
 
 	tokens, err := redis.ConnLRange(conn, LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia, 0, -1)
 	if err != nil {
-		log.Debugf("linker down ConnLRange %s", err.Error())
+		l.logger.Debugf("linker down ConnLRange %s", err.Error())
 		return err
 	}
 
@@ -275,7 +278,7 @@ func (l *redisLinker) Down(target discover.Node) error {
 
 	_, err = conn.Do("EXEC")
 	if err != nil {
-		log.Debugf("linker down exec %s", err.Error())
+		l.logger.Debugf("linker down exec %s", err.Error())
 		return err
 	}
 
