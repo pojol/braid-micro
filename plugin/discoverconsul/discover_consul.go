@@ -250,7 +250,6 @@ func (dc *consulDiscover) Init() {
 		lninfo := linkcache.DecodeLinkNumMsg(msg)
 
 		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			fmt.Println("sync service link number", lninfo.Num)
 			dc.passingMap[lninfo.ID].linknum = lninfo.Num
 		}
 

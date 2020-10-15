@@ -3,7 +3,6 @@ package grpcserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -22,7 +21,6 @@ type rpcServer struct {
 func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto.RouteRes, error) {
 	out := new(bproto.RouteRes)
 	var err error
-	fmt.Println("pong")
 
 	if req.Service == "test" {
 		err = nil

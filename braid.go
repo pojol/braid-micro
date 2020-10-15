@@ -1,7 +1,7 @@
 package braid
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
@@ -74,7 +74,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 
 		m, err := builder.Build(b.cfg.Name, b.mailbox)
 		if err != nil {
-			fmt.Println("build err", builder.Name())
+			log.Fatalf("build err %s ,%s", err.Error(), builder.Name())
 			continue
 		}
 

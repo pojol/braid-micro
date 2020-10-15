@@ -1,7 +1,6 @@
 package balancerswrr
 
 import (
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -109,8 +108,6 @@ func TestWRRDymc(t *testing.T) {
 		pmap[nod.ID]++
 	}
 
-	fmt.Println("step 1", pmap)
-
 	mb.ProcPub(discover.UpdateService, mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
@@ -121,9 +118,6 @@ func TestWRRDymc(t *testing.T) {
 		nod, _ := bw.Pick()
 		pmap[nod.ID]++
 	}
-
-	fmt.Println("step 2", pmap)
-
 }
 
 func TestWRROp(t *testing.T) {

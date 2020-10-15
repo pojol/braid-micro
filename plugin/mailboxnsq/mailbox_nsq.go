@@ -1,7 +1,6 @@
 package mailboxnsq
 
 import (
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -94,7 +93,7 @@ func (c *nsqConsumer) PutMsg(msg *mailbox.Message) error {
 	return c.handle(msg)
 }
 
-func (ns *nsqSubscriber) subImpl(channel string) *nsqConsumer {
+func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	config := nsq.NewConfig()
 	nc := &nsqConsumer{
 		exitCh: braidsync.NewSwitch(),
@@ -103,8 +102,7 @@ func (ns *nsqSubscriber) subImpl(channel string) *nsqConsumer {
 
 	consumer, err := nsq.NewConsumer(ns.Topic, nc.uuid, config)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 
 	consumer.AddHandler(&consumerHandler{
@@ -114,13 +112,12 @@ func (ns *nsqSubscriber) subImpl(channel string) *nsqConsumer {
 
 	err = consumer.ConnectToNSQLookupds(ns.lookupAddres)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 
 	nc.consumer = consumer
 
-	return nc
+	return nc, nil
 }
 
 // AddCompetition 从固定的管道中竞争消息
@@ -132,7 +129,10 @@ func (ns *nsqSubscriber) AddCompetition() (mailbox.IConsumer, error) {
 		ns.Channel = ns.serviceName + "-" + "competition"
 	}
 
-	nc := ns.subImpl(ns.Channel)
+	nc, err := ns.subImpl(ns.Channel)
+	if err != nil {
+		return nil, err
+	}
 	ns.group[nc.uuid] = nc
 
 	return nc, nil
@@ -145,7 +145,10 @@ func (ns *nsqSubscriber) AddShared() (mailbox.IConsumer, error) {
 
 	uid := ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
 
-	nc := ns.subImpl(uid)
+	nc, err := ns.subImpl(uid)
+	if err != nil {
+		return nil, err
+	}
 	ns.group[nc.uuid] = nc
 
 	return nc, nil

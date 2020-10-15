@@ -2,7 +2,6 @@ package consul
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -52,10 +51,6 @@ func ServicesList(address string) (map[string][]string, error) {
 	}
 
 EXT:
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	return services, err
 }
 
@@ -122,9 +117,5 @@ func GetCatalogServices(address string, serviceTag string) (map[string]NodServic
 	}
 
 EXT:
-	if err != nil {
-		fmt.Println("GetCatalogServices", err)
-	}
-
 	return nodServices, err
 }

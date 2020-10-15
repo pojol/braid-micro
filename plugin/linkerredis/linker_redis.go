@@ -2,7 +2,6 @@ package linkerredis
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -138,7 +137,6 @@ func (l *redisLinker) dispatchLinkinfo() {
 		id := nod[4]
 
 		if l.serviceName == parent {
-			//fmt.Println("parent", parent, "child", child, "id", id, "num", num)
 			l.mb.ProcPub(linkcache.ServiceLinkNum, linkcache.EncodeLinkNumMsg(id, num))
 		}
 
@@ -213,13 +211,11 @@ func (l *redisLinker) Unlink(token string, target string) error {
 		for _, relation := range relations {
 			rinfo := strings.Split(relation, "-")
 			if rinfo[0] == target {
-				fmt.Println("lrem", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+relation, token)
 				conn.Send("LREM", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+relation, 0, token)
 				lremCount++
 			}
 		}
 
-		fmt.Println("hdel", l.serviceName+"-"+token+"-"+target)
 		conn.Send("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+target)
 
 		if lremCount == len(relations) {

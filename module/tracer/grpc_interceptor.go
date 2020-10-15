@@ -2,11 +2,11 @@ package tracer
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/pojol/braid/3rd/log"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -74,16 +74,12 @@ func ClientInterceptor(tracer opentracing.Tracer) grpc.UnaryClientInterceptor {
 		// 注入 spanContext
 		err := tracer.Inject(span.Context(), opentracing.TextMap, mdWriter)
 		if err != nil {
-			fmt.Println("inject", err)
+			log.Debugf("tracer inject err %s", err.Error())
 		}
 
 		// new ctx ，并调用后续操作
 		newCtx := metadata.NewOutgoingContext(ctx, md)
-		err = invoker(newCtx, method, req, reply, cc, opts...)
-		if err != nil {
-			fmt.Println("call", err)
-		}
-		return err
+		return invoker(newCtx, method, req, reply, cc, opts...)
 	}
 }
 

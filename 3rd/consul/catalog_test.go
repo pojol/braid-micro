@@ -1,7 +1,6 @@
 package consul
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/pojol/braid/3rd/log"
@@ -41,12 +40,11 @@ func TestGetNodeServices(t *testing.T) {
 	}))
 	defer l.Close()
 
-	lst, err := GetCatalogServices(mock.ConsulAddr, "redis")
+	_, err := GetCatalogServices(mock.ConsulAddr, "redis")
 	if err != nil {
 		t.Error(err)
 	}
 
-	fmt.Println(lst)
 	GetCatalogServices("xxx", "redis")
 }
 

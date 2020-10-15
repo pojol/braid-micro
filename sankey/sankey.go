@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -58,7 +57,6 @@ func linkInfo() *charts.Sankey {
 		// 从父节点拿到所有的子节点成员
 		childs, err := redis.ConnSMembers(conn, linkerredis.LinkerRedisPrefix+"relation-"+v.ServiceName)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 
@@ -72,7 +70,6 @@ func linkInfo() *charts.Sankey {
 				continue
 			}
 
-			fmt.Println(parent, nod[0]+"-"+nod[1], len(tokens))
 			sankeyLink = append(sankeyLink, charts.SankeyLink{
 				Source: parent,
 				Target: nod[0] + "-" + nod[1],
