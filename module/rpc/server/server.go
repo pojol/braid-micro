@@ -4,11 +4,12 @@ import (
 	"strings"
 
 	"github.com/pojol/braid/module"
+	"github.com/pojol/braid/module/logger"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(serviceName string) (ISserver, error)
+	Build(serviceName string, logger logger.ILogger) (ISserver, error)
 	Name() string
 	AddOption(opt interface{})
 }

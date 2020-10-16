@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/pojol/braid/module"
+	"github.com/pojol/braid/module/logger"
 )
 
 // Builder grpc-client builder
 type Builder interface {
-	Build(serviceName string) (IClient, error)
+	Build(serviceName string, logger logger.ILogger) (IClient, error)
 	Name() string
 	AddOption(opt interface{})
 }

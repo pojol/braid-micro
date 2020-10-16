@@ -87,7 +87,7 @@ type ILinkCache interface {
 	Link(token string, target discover.Node) error
 
 	// unlink token
-	Unlink(token string) error
+	Unlink(token string, target string) error
 
 	// clean up the service
 	Down(target discover.Node) error

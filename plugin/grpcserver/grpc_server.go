@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net"
 
-	"github.com/pojol/braid/3rd/log"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
 	"google.golang.org/grpc"
@@ -36,7 +36,7 @@ func (b *grpcServerBuilder) Name() string {
 	return Name
 }
 
-func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
+func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.ISserver, error) {
 	p := Parm{
 		ListenAddr: ":14222",
 	}
@@ -46,6 +46,7 @@ func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
 
 	s := &grpcServer{
 		parm:        p,
+		logger:      logger,
 		serviceName: serviceName,
 	}
 
@@ -55,7 +56,7 @@ func (b *grpcServerBuilder) Build(serviceName string) (server.ISserver, error) {
 		s.rpc = grpc.NewServer()
 	}
 
-	log.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, p.isTracing)
+	s.logger.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, p.isTracing)
 	return s, nil
 }
 
@@ -64,7 +65,8 @@ type grpcServer struct {
 	rpc         *grpc.Server
 	serviceName string
 
-	parm Parm
+	logger logger.ILogger
+	parm   Parm
 }
 
 func (s *grpcServer) Init() {
@@ -81,19 +83,19 @@ func (s *grpcServer) Run() {
 
 	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
 	if err != nil {
-		log.SysError("register", "run listen "+s.parm.ListenAddr, err.Error())
+		s.logger.Errorf("server listen err %s %s", err.Error(), s.parm.ListenAddr)
 	}
 
 	go func() {
 		if err := s.rpc.Serve(rpcListen); err != nil {
-			log.SysError("register", "run serve", err.Error())
+			s.logger.Errorf("run server err %s", err.Error())
 		}
 	}()
 }
 
 // Close 退出处理
 func (s *grpcServer) Close() {
-	log.Debugf("grpc-server closed")
+	s.logger.Debugf("grpc-server closed")
 	s.rpc.Stop()
 }
 

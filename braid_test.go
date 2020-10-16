@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/plugin/balancerswrr"
@@ -17,16 +16,6 @@ import (
 func TestMain(m *testing.M) {
 
 	mock.Init()
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 
 	c := redis.New()
 	c.Init(redis.Config{
@@ -45,7 +34,7 @@ func TestMain(m *testing.M) {
 
 func TestPlugin(t *testing.T) {
 
-	b := New(
+	b, _ := New(
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),

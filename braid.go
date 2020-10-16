@@ -1,10 +1,9 @@
 package braid
 
 import (
-	"fmt"
-
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
@@ -12,11 +11,14 @@ import (
 	"github.com/pojol/braid/plugin/grpcclient"
 	"github.com/pojol/braid/plugin/grpcserver"
 	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/plugin/zaplogger"
 )
 
 // Braid framework instance
 type Braid struct {
 	cfg config
+
+	logger logger.ILogger
 
 	builders []module.Builder
 
@@ -39,7 +41,7 @@ var (
 )
 
 // New 构建braid
-func New(name string, mailboxOpts ...interface{}) *Braid {
+func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	for _, opt := range mailboxOpts {
@@ -47,7 +49,13 @@ func New(name string, mailboxOpts ...interface{}) *Braid {
 	}
 	mb, err := mbb.Build(name)
 	if err != nil {
-		return nil
+		return nil, err
+	}
+
+	zlb := logger.GetBuilder(zaplogger.Name)
+	log, err := zlb.Build(logger.DEBUG)
+	if err != nil {
+		return nil, err
 	}
 
 	braidGlobal = &Braid{
@@ -55,10 +63,11 @@ func New(name string, mailboxOpts ...interface{}) *Braid {
 			Name: name,
 		},
 		mailbox:   mb,
+		logger:    log,
 		moduleMap: make(map[string]module.IModule),
 	}
 
-	return braidGlobal
+	return braidGlobal, nil
 }
 
 // RegistPlugin 注册插件
@@ -72,9 +81,9 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	// build
 	for _, builder := range b.builders {
 
-		m, err := builder.Build(b.cfg.Name, b.mailbox)
+		m, err := builder.Build(b.cfg.Name, b.mailbox, b.logger)
 		if err != nil {
-			fmt.Println("build err", builder.Name())
+			b.logger.Fatalf("build err %s ,%s", err.Error(), builder.Name())
 			continue
 		}
 
@@ -90,7 +99,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
 			b.clientBuilder.AddOption(grpcclient.LinkCache(lc.(linkcache.ILinkCache)))
 		}
-		b.client, _ = b.clientBuilder.Build(b.cfg.Name)
+		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.logger)
 	}
 
 	if b.serverBuilder != nil {
@@ -98,7 +107,7 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 			b.serverBuilder.AddOption(grpcserver.WithTracing())
 		}
 
-		b.server, _ = b.serverBuilder.Build(b.cfg.Name)
+		b.server, _ = b.serverBuilder.Build(b.cfg.Name, b.logger)
 		b.modules = append(b.modules, b.server)
 	}
 

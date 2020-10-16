@@ -1,18 +1,17 @@
 package linkerredis
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
-	"github.com/pojol/braid/3rd/redis"
+	"github.com/garyburd/redigo/redis"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/elector"
 	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -33,14 +32,39 @@ const (
 	LinkerTopicDown = "braid_linker_down"
 )
 
-type tokenRelation struct {
-	targets []discover.Node
-}
-
 var (
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("convert config error")
 )
+
+type (
+
+	// RedisClient redis client
+	RedisClient struct {
+		pool    *redis.Pool
+		Address string
+	}
+
+	// RedisConfig 配置项
+	RedisConfig struct {
+		Address string //connection string, like "redis:// :password@10.0.1.11:6379/0"
+
+		ReadTimeOut    time.Duration // 连接的读取超时时间
+		WriteTimeOut   time.Duration // 连接的写入超时时间
+		ConnectTimeOut time.Duration // 连接超时时间
+		MaxIdle        int           // 最大空闲连接数
+		MaxActive      int           // 最大连接数，当为0时没有连接数限制
+		IdleTimeout    time.Duration // 闲置连接的超时时间, 设置小于服务器的超时时间 redis.conf : timeout
+	}
+)
+
+// Ping 测试一个连接是否可用
+func (rc *RedisClient) Ping() (string, error) {
+	conn := rc.pool.Get()
+	defer conn.Close()
+	val, err := redis.String(conn.Do("PING"))
+	return val, err
+}
 
 type redisLinkerBuilder struct {
 	opts []interface{}
@@ -63,12 +87,45 @@ func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
 }
 
 // Build build link-cache
-func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+
+	p := Parm{
+		RedisAddr:      "redis://127.0.0.1:6379/0",
+		RedisMaxIdle:   16,
+		RedisMaxActive: 128,
+	}
+	for _, opt := range rb.opts {
+		opt.(Option)(&p)
+	}
+
+	client := &RedisClient{
+		pool: &redis.Pool{
+			MaxIdle:   p.RedisMaxIdle,
+			MaxActive: p.RedisMaxActive,
+			Dial: func() (redis.Conn, error) {
+				c, err := redis.DialURL(
+					p.RedisAddr,
+					redis.DialReadTimeout(5*time.Second),
+					redis.DialWriteTimeout(5*time.Second),
+					redis.DialConnectTimeout(2*time.Second),
+				)
+				return c, err
+			},
+		},
+	}
+
+	_, err := client.Ping()
+	if err != nil {
+		logger.Debugf("redis ping err %s", err.Error())
+		return nil, err
+	}
 
 	lc := &redisLinker{
 		serviceName:  serviceName,
 		mb:           mb,
 		electorState: elector.EWait,
+		logger:       logger,
+		client:       client,
 	}
 
 	lc.mb.ClusterPub(LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
@@ -77,7 +134,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox) (mo
 	go lc.watcher()
 	go lc.dispatch()
 
-	log.Debugf("build link-cache by redis & nsq")
+	logger.Debugf("build link-cache by redis & nsq")
 	return lc, nil
 }
 
@@ -88,6 +145,12 @@ type redisLinker struct {
 	mb           mailbox.IMailbox
 	unlink       mailbox.IConsumer
 	down         mailbox.IConsumer
+
+	logger logger.ILogger
+
+	client *RedisClient
+
+	sync.Mutex
 }
 
 func (l *redisLinker) Init() {
@@ -102,7 +165,8 @@ func (l *redisLinker) watcher() {
 
 	l.unlink, _ = l.mb.ClusterSub(LinkerTopicUnlink).AddCompetition()
 	l.unlink.OnArrived(func(msg *mailbox.Message) error {
-		l.Unlink(string(msg.Body))
+		l.logger.Debugf("recv unlink msg %s", string(msg.Body))
+		l.Unlink(string(msg.Body), "")
 		return nil
 	})
 
@@ -124,18 +188,25 @@ func (l *redisLinker) watcher() {
 
 }
 
+func (l *redisLinker) getConn() redis.Conn {
+	return l.client.pool.Get()
+}
+
 func (l *redisLinker) dispatchLinkinfo() {
-	keys, _ := redis.Get().Keys(LinkerRedisPrefix + "lst-*")
+
+	conn := l.getConn()
+	defer conn.Close()
+
+	keys, _ := redis.Strings(conn.Do("KEYS", LinkerRedisPrefix+"lst-*"))
 	for _, key := range keys {
 		nod := strings.Split(key, "-")
-		num, _ := redis.Get().LLen(key)
+		num, _ := redis.Int(conn.Do("LLen", key))
 
 		parent := nod[2]
 		//child := nod[3]
 		id := nod[4]
 
 		if l.serviceName == parent {
-			//fmt.Println("parent", parent, "child", child, "id", id, "num", num)
 			l.mb.ProcPub(linkcache.ServiceLinkNum, linkcache.EncodeLinkNumMsg(id, num))
 		}
 
@@ -155,133 +226,99 @@ func (l *redisLinker) dispatch() {
 
 func (l *redisLinker) Target(token string, serviceName string) (target string, err error) {
 
-	val, err := redis.Get().HGet(LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
-	if err != nil {
-		return "", err
-	}
+	conn := l.getConn()
+	defer conn.Close()
 
-	if val == "" {
+	val, err := redis.String(conn.Do("HGET", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+serviceName))
+	if val == "" || err != nil {
 		return "", nil
 	}
 
-	tr := tokenRelation{}
-	err = json.Unmarshal([]byte(val), &tr.targets)
-	if err != nil {
-		return "", err
-	}
-
-	for _, v := range tr.targets {
-		if v.Name == serviceName {
-			return v.Address, nil
-		}
-	}
-
-	return "", nil
+	return val, nil
 }
 
 func (l *redisLinker) Link(token string, target discover.Node) error {
-
-	conn := redis.Get().Conn()
+	conn := l.getConn()
 	defer conn.Close()
 
-	mu := redis.Mutex{
-		Token: token,
-	}
-	err := mu.Lock("braid_link_token")
-	if err != nil {
-		return err
-	}
-	defer mu.Unlock()
-
-	val, err := redis.ConnHGet(conn, LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
-	if err != nil {
-		return err
-	}
-
-	tr := tokenRelation{}
-	var dat []byte
-	if val != "" {
-		err = json.Unmarshal([]byte(val), &tr.targets)
-		if err != nil {
-			return err
-		}
-	}
-
-	tr.targets = append(tr.targets, target)
-	dat, err = json.Marshal(&tr.targets)
-	if err != nil {
-		return err
-	}
-
-	cia := target.Name + "-" + target.ID + "-" + target.Address
+	cia := target.Name + "-" + target.ID
 	conn.Send("MULTI")
+	conn.Send("SADD", LinkerRedisPrefix+"relation-"+l.serviceName+"-"+token, cia)
 	conn.Send("SADD", LinkerRedisPrefix+"relation-"+l.serviceName, cia)
 	conn.Send("LPUSH", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia, token)
-	conn.Send("HSET", LinkerRedisPrefix+"hash", l.serviceName+"-"+token, string(dat))
+	conn.Send("HSET", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+target.Name, target.Address)
 
-	_, err = conn.Do("EXEC")
+	_, err := conn.Do("EXEC")
 	if err != nil {
+		l.logger.Debugf("link exec err %s", err.Error())
 		return err
 	}
 
-	log.Debugf("linked parent %s, target %s, token %s", l.serviceName, target.Address, token)
+	l.logger.Debugf("linked parent %s, target %s, token %s", l.serviceName, cia, token)
 	return nil
 }
 
 // Unlink 当前节点所属的用户离线
-func (l *redisLinker) Unlink(token string) error {
-
+func (l *redisLinker) Unlink(token string, target string) error {
 	if token == "" || token == "nil" {
 		return nil
 	}
 
-	conn := redis.Get().Conn()
+	conn := l.getConn()
 	defer conn.Close()
-
-	fmt.Println("before unlink token", l.serviceName+"-"+token)
-
-	val, err := redis.ConnHGet(conn, LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
+	relations, err := redis.Strings(conn.Do("SMEMBERS", LinkerRedisPrefix+"relation-"+l.serviceName+"-"+token))
 	if err != nil {
-		fmt.Println(err.Error())
-		return err
-	}
-	if val == "" {
-		fmt.Println("nil value")
-		return nil
-	}
-
-	tr := tokenRelation{}
-	err = json.Unmarshal([]byte(val), &tr.targets)
-	if err != nil {
-		fmt.Println(string(val), err, "field", LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
 		return err
 	}
 
 	conn.Send("MULTI")
-	for _, t := range tr.targets {
-		cia := t.Name + "-" + t.ID + "-" + t.Address
-		conn.Send("LREM", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia, 0, token)
+	lremCount := 0
+
+	if target != "" {
+
+		for _, relation := range relations {
+			rinfo := strings.Split(relation, "-")
+			if rinfo[0] == target {
+				conn.Send("LREM", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+relation, 0, token)
+				lremCount++
+			}
+		}
+
+		conn.Send("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+target)
+
+		if lremCount == len(relations) {
+			conn.Send("DEL", LinkerRedisPrefix+"relation-"+l.serviceName+"-"+token)
+		}
+
+	} else {
+
+		for _, relation := range relations {
+			rinfo := strings.Split(relation, "-")
+			conn.Send("LREM", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+relation, 0, token)
+			conn.Send("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+rinfo[0])
+		}
+
+		conn.Send("DEL", LinkerRedisPrefix+"relation-"+l.serviceName+"-"+token)
 	}
-	conn.Send("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
 
 	_, err = conn.Do("EXEC")
 	if err != nil {
-		log.Debugf("unlink exec err %s", err.Error())
+		l.logger.Debugf("unlink exec err %s", err.Error())
 		return err
 	}
 
-	log.Debugf("unlink token %s", token)
+	l.logger.Debugf("unlink token service: %s, target :%s, token :%s", l.serviceName, target, token)
 	return nil
 }
 
 // Down 删除离线节点的链路缓存
 func (l *redisLinker) Down(target discover.Node) error {
 
-	conn := redis.Get().Conn()
+	conn := l.getConn()
 	defer conn.Close()
-	cia := target.Name + "-" + target.ID + "-" + target.Address
+	cia := target.Name + "-" + target.Address
 
-	ismember, err := redis.ConnSIsMember(conn, LinkerRedisPrefix+"relation-"+l.serviceName, cia)
+	ismember, err := redis.Bool(conn.Do("SISMEMBER", LinkerRedisPrefix+"relation-"+l.serviceName, cia))
 	if err != nil {
 		return err
 	}
@@ -289,23 +326,24 @@ func (l *redisLinker) Down(target discover.Node) error {
 		return nil
 	}
 
-	log.Debugf("redis linker down child %s, target %s", target.Name, target.Address)
+	l.logger.Debugf("redis linker down child %s, target %s", target.Name, target.Address)
 
-	tokens, err := redis.ConnLRange(conn, LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia, 0, -1)
+	tokens, err := redis.Strings(conn.Do("LRANGE", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia, 0, -1))
 	if err != nil {
-		log.Debugf("linker down ConnLRange %s", err.Error())
+		l.logger.Debugf("linker down ConnLRange %s", err.Error())
 		return err
 	}
 
 	conn.Send("MULTI")
 	for _, token := range tokens {
-		conn.Send("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token)
+		conn.Do("HDEL", LinkerRedisPrefix+"hash", l.serviceName+"-"+token+"-"+target.Name)
+		conn.Do("SREM", LinkerRedisPrefix+"relation-"+l.serviceName+"-"+token, target.Name+"-"+target.ID)
 	}
 	conn.Send("DEL", LinkerRedisPrefix+"lst-"+l.serviceName+"-"+cia)
-	conn.Send("SREM", LinkerRedisPrefix+"relation-"+l.serviceName, cia)
+
 	_, err = conn.Do("EXEC")
 	if err != nil {
-		log.Debugf("linker down exec %s", err.Error())
+		l.logger.Debugf("linker down exec %s", err.Error())
 		return err
 	}
 
@@ -313,7 +351,7 @@ func (l *redisLinker) Down(target discover.Node) error {
 }
 
 func (l *redisLinker) Close() {
-
+	l.client.pool.Close()
 }
 
 func createTopic(topic string) {

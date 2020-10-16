@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/elector"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -70,12 +70,15 @@ func (eb *k8sElectorBuilder) AddOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (module.IModule, error) {
+func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	p := Parm{
 		ServiceName: serviceName,
 		Namespace:   "default",
 		RetryPeriod: time.Second * 2,
+	}
+	for _, opt := range eb.opts {
+		opt.(Option)(&p)
 	}
 
 	clientset, err := newClientset(p.KubeCfg)
@@ -106,7 +109,8 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (mod
 			OnNewLeader: func(identity string) {
 				if identity == p.NodID {
 					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
-					log.SysElection(p.NodID, identity)
+					logger.Debugf("new leader %s %s", p.NodID, identity)
+
 				} else {
 					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 				}
@@ -121,6 +125,7 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (mod
 		parm:    p,
 		mb:      mb,
 		elector: elector,
+		logger:  logger,
 	}
 
 	return el, nil
@@ -128,6 +133,7 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox) (mod
 
 type k8sElector struct {
 	parm    Parm
+	logger  logger.ILogger
 	mb      mailbox.IMailbox
 	lock    *resourcelock.LeaseLock
 	elector *leaderelection.LeaderElector

@@ -1,31 +1,21 @@
 package balancerswrr
 
 import (
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/log"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/plugin/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(t *testing.M) {
-	l := log.New(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testNormal",
-		Suffex: ".log",
-	}, log.WithSys(log.Config{
-		Mode:   log.DebugMode,
-		Path:   "testSys",
-		Suffex: ".sys",
-	}))
-	defer l.Close()
 
 	t.Run()
 }
@@ -33,7 +23,8 @@ func TestMain(t *testing.M) {
 func TestWRR(t *testing.T) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 
@@ -76,7 +67,8 @@ func TestWRRDymc(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 	pmap := make(map[string]int)
@@ -109,8 +101,6 @@ func TestWRRDymc(t *testing.T) {
 		pmap[nod.ID]++
 	}
 
-	fmt.Println("step 1", pmap)
-
 	mb.ProcPub(discover.UpdateService, mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
@@ -121,16 +111,14 @@ func TestWRRDymc(t *testing.T) {
 		nod, _ := bw.Pick()
 		pmap[nod.ID]++
 	}
-
-	fmt.Println("step 2", pmap)
-
 }
 
 func TestWRROp(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
 
@@ -159,7 +147,8 @@ func TestWRROp(t *testing.T) {
 func BenchmarkWRR(b *testing.B) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	balancer.NewGroup(bb, mb)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	balancer.NewGroup(bb, mb, log)
 	serviceName := "BenchmarkWRR"
 	bw := balancer.Get(serviceName)
 

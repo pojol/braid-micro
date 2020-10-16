@@ -3,6 +3,7 @@ package module
 import (
 	"strings"
 
+	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -17,7 +18,7 @@ const (
 
 // Builder builder
 type Builder interface {
-	Build(serviceName string, mb mailbox.IMailbox) (IModule, error)
+	Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (IModule, error)
 	Name() string
 	Type() string
 	AddOption(opt interface{})

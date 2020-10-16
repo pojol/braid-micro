@@ -95,7 +95,7 @@ func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	sender, err := newTransport(jcfg.Reporter)
 	if err != nil {
-		fmt.Println("new transport err", err)
+		fmt.Printf("new tracer transport err %s\n", err.Error())
 		return nil, err
 	}
 
@@ -104,7 +104,7 @@ func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
 
 	jtracing, closer, err := jcfg.NewTracer(r, m)
 	if err != nil {
-		fmt.Println("new tracer err", err)
+		fmt.Printf("new tracer err %s\n", err.Error())
 		return nil, err
 	}
 

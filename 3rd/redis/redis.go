@@ -204,6 +204,12 @@ func ConnSIsMember(conn redis.Conn, key string, member string) (bool, error) {
 	return val, err
 }
 
+// ConnSRem srem
+func ConnSRem(conn redis.Conn, key string, member string) (int64, error) {
+	val, err := redis.Int64(conn.Do("SREM", key, member))
+	return val, err
+}
+
 // ---------------------- hash -------------------------------
 
 // HGet 返回哈希表 key 中给定域 field 的值
