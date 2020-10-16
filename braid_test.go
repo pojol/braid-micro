@@ -42,7 +42,7 @@ func TestPlugin(t *testing.T) {
 
 	b.RegistPlugin(
 		Balancer(balancerswrr.Name),
-		LinkCache(linkerredis.Name),
+		LinkCache(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
 		Discover(
 			discoverconsul.Name,
 			discoverconsul.WithConsulAddr(mock.ConsulAddr),
