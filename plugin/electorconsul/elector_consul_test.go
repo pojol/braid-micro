@@ -21,7 +21,7 @@ func TestElection(t *testing.T) {
 	eb := module.GetBuilder(Name)
 	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
 	e, _ := eb.Build("test_elector_with_consul", mb, log)
 

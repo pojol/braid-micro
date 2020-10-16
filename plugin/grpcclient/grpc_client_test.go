@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, err := mbb.Build("TestMain")
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
 	db := module.GetBuilder(discoverconsul.Name)
 	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
@@ -47,7 +47,7 @@ func TestMain(m *testing.M) {
 
 func TestCaller(t *testing.T) {
 	b := client.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	cb, _ := b.Build("TestCaller", log)
 
 	time.Sleep(time.Millisecond * 200)

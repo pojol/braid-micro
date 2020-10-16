@@ -1,8 +1,6 @@
 package zaplogger
 
 import (
-	"os"
-
 	"github.com/pojol/braid/module/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -25,9 +23,20 @@ func (*zaplogBuilder) Name() string {
 	return Name
 }
 
-func (*zaplogBuilder) Build() (logger.ILogger, error) {
-	atom := zap.NewAtomicLevelAt(zap.WarnLevel)
+func (*zaplogBuilder) Build(lv logger.Lvl) (logger.ILogger, error) {
+
+	var atom zap.AtomicLevel
 	var ws zapcore.WriteSyncer
+
+	if lv == logger.DEBUG {
+		atom = zap.NewAtomicLevelAt(zap.DebugLevel)
+	} else if lv == logger.INFO {
+		atom = zap.NewAtomicLevelAt(zap.InfoLevel)
+	} else if lv == logger.WARN {
+		atom = zap.NewAtomicLevelAt(zap.WarnLevel)
+	} else {
+		atom = zap.NewAtomicLevelAt(zap.ErrorLevel)
+	}
 
 	encoderConfig := zapcore.EncoderConfig{
 		TimeKey:        "time",
@@ -44,17 +53,14 @@ func (*zaplogBuilder) Build() (logger.ILogger, error) {
 	}
 
 	hook := lumberjack.Logger{
-		Filename:   ".braid", // 日志文件路径
-		MaxSize:    64,       // 每个日志文件保存的最大尺寸 单位：M
-		MaxBackups: 30,       // 日志文件最多保存多少个备份
-		MaxAge:     7,        // 文件最多保存多少天
-		Compress:   false,    // 是否压缩
+		Filename:   "log.braid", // 日志文件路径
+		MaxSize:    64,          // 每个日志文件保存的最大尺寸 单位：M
+		MaxBackups: 30,          // 日志文件最多保存多少个备份
+		MaxAge:     7,           // 文件最多保存多少天
+		Compress:   false,       // 是否压缩
 	}
-	//if lv == zap.DebugLevel {
-	ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook))
-	//} else {
-	//	ws = zapcore.NewMultiWriteSyncer( /*zapcore.AddSync(os.Stdout), */ zapcore.AddSync(&hook))
-	//}
+
+	ws = zapcore.NewMultiWriteSyncer( /*zapcore.AddSync(os.Stdout), */ zapcore.AddSync(&hook))
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig), // 编码器配置

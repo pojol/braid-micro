@@ -23,7 +23,7 @@ func TestMain(t *testing.M) {
 func TestWRR(t *testing.T) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
@@ -67,7 +67,7 @@ func TestWRRDymc(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
@@ -117,7 +117,7 @@ func TestWRROp(t *testing.T) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	balancer.NewGroup(bb, mb, log)
 	serviceName := "TestWRR"
 	bw := balancer.Get(serviceName)
@@ -147,7 +147,7 @@ func TestWRROp(t *testing.T) {
 func BenchmarkWRR(b *testing.B) {
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
 	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	balancer.NewGroup(bb, mb, log)
 	serviceName := "BenchmarkWRR"
 	bw := balancer.Get(serviceName)

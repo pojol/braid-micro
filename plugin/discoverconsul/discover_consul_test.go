@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	bb := module.GetBuilder(balancerswrr.Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	balancer.NewGroup(bb, mb, log)
 
 	m.Run()
@@ -45,7 +45,7 @@ func TestDiscover(t *testing.T) {
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
-	log, err := logger.GetBuilder(zaplogger.Name).Build()
+	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
 	d, err := b.Build("test", mb, log)
 	assert.Equal(t, err, nil)
@@ -61,7 +61,7 @@ func TestParmAddress(t *testing.T) {
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr("http://127.0.0.1:8500"))
-	log, err := logger.GetBuilder(zaplogger.Name).Build()
+	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
 	_, err = b.Build("test", mb, log)
 	assert.NotEqual(t, err, nil)
