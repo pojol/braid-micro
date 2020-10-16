@@ -1,6 +1,8 @@
 package zaplogger
 
 import (
+	"os"
+
 	"github.com/pojol/braid/module/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -60,7 +62,11 @@ func (*zaplogBuilder) Build(lv logger.Lvl) (logger.ILogger, error) {
 		Compress:   false,       // 是否压缩
 	}
 
-	ws = zapcore.NewMultiWriteSyncer( /*zapcore.AddSync(os.Stdout), */ zapcore.AddSync(&hook))
+	if lv == logger.DEBUG {
+		ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook))
+	} else {
+		ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(&hook))
+	}
 
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig), // 编码器配置

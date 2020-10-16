@@ -7,3 +7,4 @@ test.log
 .sys
 testSys.sys
 testNormal.log
+*.braid

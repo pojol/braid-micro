@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	cloud.google.com/go v0.38.0
+	github.com/garyburd/redigo v1.6.2
 	github.com/go-echarts/go-echarts v1.0.0
 	github.com/gobuffalo/packr v1.30.1
 	github.com/golang/protobuf v1.4.2
