@@ -1,5 +1,5 @@
 ## Braid
-**Braid** plug-ins become service grid
+**Braid** 提供统一的`模块` `服务`交互模型，通过注册插件（支持自定义），构建属于自己的微服务。
 
 ---
 
@@ -11,39 +11,45 @@
 
 
 #### Plug-ins
-* RPC
-  - grpc-client
-  - grpc-server
-* Linker
-  -  linker-redis   `linker based in the nsq and redis`
-* Discover
-  - discover-consul
-* Balancer
-  - smooth-weight-round-robin
-* Elector
-  - elector-consul
-  - elector-k8s
-* Pub-sub
-  - pubsub-proc
-  - pubsub-nsq
-* Tracing
-  - tracing-jeager
+###### Mailbox
+> 异步交互组件，支持进程内以及集群中的消息订阅和发送。
+###### BalancerSWRR
+> 平滑加权负载均衡器，同时在开启link-cache后,会依据连接数进行权重的调整。
+###### Discover
+> 服务发现，提供服务的`进入` `离开` `更新` 消息。
+###### Elector
+> 选举，提供节点是否为 `主` 节点的消息。
+###### Link-cache
+> 链路缓存，固定基于用户凭证的节点访问链路。用户可以在此基础上做一些业务逻辑优化。
+###### GRPC client & server
+> GRPC的封装, 支持连接池，同时可以绑定分布式追踪插件，以及链路缓存插件。
+###### JaegerTracer
+> 基于jaeger的分布式追踪服务
 
+---
 
-#### rpc-client sample
-```go
-b := New("test")
-b.RegistPlugin(
-	Discover(
-		discoverconsul.Name,
-		discoverconsul.WithConsulAddress(mock.ConsulAddr)),
-	Balancer(balancerswrr.Name),
-	GRPCClient(grpcclient.WithPoolCapacity(128)))
+#### Sample
+```golang
+b, _ := braid.New(
+		NodeName,
+		mailboxnsq.WithLookupAddr([]string{nsqLookupAddr}),
+		mailboxnsq.WithNsqdAddr([]string{nsqdAddr}))
+
+	b.RegistPlugin(
+		braid.Discover(
+			discoverconsul.Name,
+			discoverconsul.WithConsulAddr(consulAddr)),
+		braid.Balancer(balancerswrr.Name),
+		braid.GRPCClient(grpcclient.Name),
+		braid.Elector(
+			electorconsul.Name,
+			electorconsul.WithConsulAddr(consulAddr),
+		),
+		braid.LinkCache(linkerredis.Name),
+		braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
 
 b.Run()
 defer b.Close()
-
-Client().Invoke(context.TODO(), "target", "method", "", args, reply)
 ```
 
 
@@ -64,7 +70,7 @@ go get github.com/pojol/braid@latest
   https://github.com/pojol/braid/wiki/quick-start-with-k8s
 
 #### Web
-> Observe the link situation in the braid cluster through the sankey chart (need register link-cache plug-in
+> 流向图，用于监控链路上的连接数以及分布情况
 ```shell
 $ docker pull braidgo/sankey:latest
 $ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
