@@ -10,7 +10,7 @@
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
 
-#### Plug-ins
+### Plug-ins
 **Mailbox** 异步交互组件，支持进程内以及集群中的消息订阅和发送。
 
 **BalancerSWRR** 平滑加权负载均衡器，同时在开启link-cache后,会依据连接数进行权重的调整。
