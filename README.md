@@ -31,22 +31,22 @@
 #### Sample
 ```golang
 b, _ := braid.New(
-		NodeName,
-		mailboxnsq.WithLookupAddr([]string{nsqLookupAddr}),
-		mailboxnsq.WithNsqdAddr([]string{nsqdAddr}))
+  NodeName,
+  mailboxnsq.WithLookupAddr([]string{nsqLookupAddr}),
+  mailboxnsq.WithNsqdAddr([]string{nsqdAddr}))
 
-	b.RegistPlugin(
-		braid.Discover(
-			discoverconsul.Name,
-			discoverconsul.WithConsulAddr(consulAddr)),
-		braid.Balancer(balancerswrr.Name),
-		braid.GRPCClient(grpcclient.Name),
-		braid.Elector(
-			electorconsul.Name,
-			electorconsul.WithConsulAddr(consulAddr),
-		),
-		braid.LinkCache(linkerredis.Name),
-		braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
+b.RegistPlugin(
+  braid.Discover(
+    discoverconsul.Name,
+    discoverconsul.WithConsulAddr(consulAddr)),
+  braid.Balancer(balancerswrr.Name),
+  braid.GRPCClient(grpcclient.Name),
+  braid.Elector(
+    electorconsul.Name,
+    electorconsul.WithConsulAddr(consulAddr),
+  ),
+  braid.LinkCache(linkerredis.Name),
+  braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
 
 b.Run()
 defer b.Close()
