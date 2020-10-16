@@ -52,6 +52,7 @@ func TestLinkerTarget(t *testing.T) {
 	defer e.Close()
 
 	b := module.GetBuilder(Name)
+	b.AddOption(WithRedisAddr(mock.RedisAddr))
 
 	lk, err := b.Build("gate", mb, log)
 	lc := lk.(linkcache.ILinkCache)
@@ -115,6 +116,7 @@ func BenchmarkLink(b *testing.B) {
 	defer e.Close()
 
 	lb := module.GetBuilder(Name)
+	lb.AddOption(WithRedisAddr(mock.RedisAddr))
 
 	lk, err := lb.Build("gate", mb, log)
 	lc := lk.(linkcache.ILinkCache)
