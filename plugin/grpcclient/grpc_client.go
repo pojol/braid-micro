@@ -133,14 +133,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	var nod discover.Node
 
 	if c.parm.byLink && token != "" {
-
-		trt := tracer.RedisTracer{
-			Cmd: "linker.target",
-		}
-		trt.Begin(ctx)
-
 		address, err = c.parm.linker.Target(token, target)
-		trt.End()
 		if err != nil {
 			c.logger.Debugf("linker.target warning %s", err.Error())
 			return ""
