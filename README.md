@@ -51,22 +51,11 @@ b.Run()
 defer b.Close()
 ```
 
+#### Wiki
+https://github.com/pojol/braid/wiki
 
-#### Quick start
-
-> get braid `v1.1.x` Preview version
-
-```bash
-go get github.com/pojol/braid@latest
-```
-
-> hello,braid
-
-* Architecture based on Docker
-  https://github.com/pojol/braid/wiki/quick-start-with-docker
-
-* Architecture based on k8s
-  https://github.com/pojol/braid/wiki/quick-start-with-k8s
+#### Sample
+https://github.com/pojol/braid-sample
 
 #### Web
 > 流向图，用于监控链路上的连接数以及分布情况
@@ -78,8 +67,3 @@ $ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
 ```
 <img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
-#### Wiki
-https://github.com/pojol/braid/wiki
-
-#### Sample
-https://github.com/pojol/braid-sample
