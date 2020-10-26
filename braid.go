@@ -1,6 +1,10 @@
 package braid
 
 import (
+	"context"
+	"fmt"
+	"runtime"
+
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
@@ -72,7 +76,6 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 
 // RegistPlugin 注册插件
 func (b *Braid) RegistPlugin(plugins ...Plugin) error {
-
 	//
 	for _, plugin := range plugins {
 		plugin(braidGlobal)
@@ -117,20 +120,38 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 // Run 运行braid
 func (b *Braid) Run() {
 
+	defer func() {
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = fmt.Errorf("%v", r)
+			}
+			stack := make([]byte, 4<<10) // 4kb
+			length := runtime.Stack(stack, true)
+			b.logger.Errorf("[PANIC RECOVER] %v %s", err, stack[:length])
+		}
+	}()
+
 	for _, m := range b.modules {
 		m.Run()
 	}
 
 }
 
-// Client grpc-client
-func Client() client.IClient {
-	return braidGlobal.client
+// Invoke iclient.invoke
+func Invoke(ctx context.Context, nodeName, methon, token string, args, reply interface{}) {
+	if braidGlobal != nil && braidGlobal.client != nil {
+		braidGlobal.client.Invoke(ctx, nodeName, methon, token, args, reply)
+	}
 }
 
-// Server grpc-server
-func Server() server.ISserver {
-	return braidGlobal.server
+// Server iserver.server
+func Server() interface{} {
+	if braidGlobal != nil && braidGlobal.server != nil {
+		return braidGlobal.server.Server()
+	}
+
+	return nil
 }
 
 // Mailbox pub-sub
