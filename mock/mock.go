@@ -42,7 +42,7 @@ func Init() {
 	// 构造测试环境
 	ConsulAddr = os.Getenv(mockConsulEnv)
 	if ConsulAddr == "" {
-		ConsulAddr = "http://127.0.0.1:8500"
+		ConsulAddr = "http://127.0.0.1:8900"
 	}
 
 	// 构造测试环境
