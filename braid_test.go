@@ -9,10 +9,8 @@ import (
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/grpcserver"
 	"github.com/pojol/braid/plugin/linkerredis"
 	"github.com/pojol/braid/plugin/mailboxnsq"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -72,17 +70,4 @@ func TestWithClient(t *testing.T) {
 
 		Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
 	*/
-}
-
-func TestServerInterface(t *testing.T) {
-	s := Server()
-	assert.Equal(t, s, nil)
-
-	b, _ := New("testserverinterface")
-	b.RegistPlugin(GRPCServer(
-		grpcserver.Name,
-		grpcserver.WithListen(":14222")))
-
-	s = Server()
-	assert.NotEqual(t, s, nil)
 }
