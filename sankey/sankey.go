@@ -30,7 +30,7 @@ func initFlag() {
 	flag.StringVar(&tag, "tag", "braid", "set discover tag")
 	flag.StringVar(&host, "host", ":8888", "set http listen address")
 	flag.StringVar(&redisAddr, "redis", "redis://127.0.0.1:6379/0", "set redis address")
-	flag.StringVar(&consulAddr, "consul", "http://127.0.0.1:8900", "set consul address")
+	flag.StringVar(&consulAddr, "consul", "http://127.0.0.1:8500", "set consul address")
 }
 
 var redisclient *redis.Client

@@ -62,7 +62,7 @@ https://github.com/pojol/braid-sample
 ```shell
 $ docker pull braidgo/sankey:latest
 $ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
-    -consul http://172.17.0.1:8900 \
+    -consul http://172.17.0.1:8500 \
     -redis redis://172.17.0.1:6379/0
 ```
 <img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
