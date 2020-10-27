@@ -56,13 +56,22 @@ func TestDiscover(t *testing.T) {
 	d.Close()
 }
 
-func TestParmAddress(t *testing.T) {
+func TestParm(t *testing.T) {
 	b := module.GetBuilder(Name)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr("http://127.0.0.1:8500"))
+	b.AddOption(WithTag("TestParm"))
+	b.AddOption(WithBlacklist([]string{"gate"}))
+	b.AddOption(WithInterval(time.Second))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
-	_, err = b.Build("test", mb, log)
+	discv, err := b.Build("test", mb, log)
 	assert.NotEqual(t, err, nil)
+
+	cd := discv.(*consulDiscover)
+	assert.Equal(t, cd.parm.Address, "http://127.0.0.1:8500")
+	assert.Equal(t, cd.parm.Tag, "TestParm")
+	assert.Equal(t, cd.parm.Blacklist, []string{"gate"})
+	assert.Equal(t, cd.parm.Interval, time.Second)
 }

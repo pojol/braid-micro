@@ -16,6 +16,7 @@ import (
 	"github.com/pojol/braid/plugin/grpcclient/bproto"
 	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/pojol/braid/plugin/zaplogger"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -64,5 +65,25 @@ func TestCaller(t *testing.T) {
 		Service: serviceName,
 		ReqBody: []byte{},
 	}, res)
+
+}
+
+func TestParm(t *testing.T) {
+	b := client.GetBuilder(Name)
+	b.AddOption(WithPoolInitNum(100))
+	b.AddOption(WithPoolCapacity(101))
+	b.AddOption(WithPoolIdle(120))
+	b.AddOption(Tracing())
+	b.AddOption(LinkCache(nil))
+
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	cb, _ := b.Build("TestCaller", log)
+	gc := cb.(*grpcClient)
+
+	assert.Equal(t, gc.parm.PoolInitNum, 100)
+	assert.Equal(t, gc.parm.PoolCapacity, 101)
+	assert.Equal(t, gc.parm.PoolIdle, time.Second*120)
+	assert.Equal(t, gc.parm.isTracing, true)
+	assert.Equal(t, gc.parm.byLink, true)
 
 }
