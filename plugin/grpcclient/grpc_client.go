@@ -105,12 +105,12 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	return caConn, nil
 }
 
-func pick(nodName string, token string) (discover.Node, error) {
+func pick(nodName string, token string, link bool) (discover.Node, error) {
 
 	var nod discover.Node
 	var err error
 
-	if token == "" {
+	if token == "" && link {
 		nod, err = balancer.Get(nodName).Random()
 	} else {
 		nod, err = balancer.Get(nodName).Pick()
@@ -141,7 +141,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	}
 
 	if address == "" {
-		nod, err = pick(target, token)
+		nod, err = pick(target, token, c.parm.byLink)
 		if err != nil {
 			c.logger.Debugf("pick warning %s", err.Error())
 			return ""

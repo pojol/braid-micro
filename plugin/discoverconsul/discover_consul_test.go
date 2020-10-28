@@ -42,27 +42,46 @@ func TestMain(m *testing.M) {
 func TestDiscover(t *testing.T) {
 
 	b := module.GetBuilder(Name)
+	assert.Equal(t, b.Type(), module.TyDiscover)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
+	b.AddOption(WithSyncServiceInterval(time.Millisecond * 100))
+	b.AddOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
+	b.AddOption(WithBlacklist([]string{"gate"}))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
 	d, err := b.Build("test", mb, log)
 	assert.Equal(t, err, nil)
+	dc := d.(*consulDiscover)
+	assert.Equal(t, dc.InBlacklist("gate"), true)
+	assert.Equal(t, dc.InBlacklist("login"), false)
 
+	d.Init()
 	d.Run()
 
 	time.Sleep(time.Second)
 	d.Close()
 }
 
-func TestParmAddress(t *testing.T) {
+func TestParm(t *testing.T) {
 	b := module.GetBuilder(Name)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
-	b.AddOption(WithConsulAddr("http://127.0.0.1:8500"))
+	b.AddOption(WithConsulAddr(mock.ConsulAddr))
+	b.AddOption(WithTag("TestParm"))
+	b.AddOption(WithBlacklist([]string{"gate"}))
+	b.AddOption(WithSyncServiceInterval(time.Second))
+	b.AddOption(WithSyncServiceWeightInterval(time.Second))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 
-	_, err = b.Build("test", mb, log)
+	discv, err := b.Build("test", mb, log)
 	assert.NotEqual(t, err, nil)
+
+	cd := discv.(*consulDiscover)
+	assert.Equal(t, cd.parm.Address, mock.ConsulAddr)
+	assert.Equal(t, cd.parm.Tag, "TestParm")
+	assert.Equal(t, cd.parm.Blacklist, []string{"gate"})
+	assert.Equal(t, cd.parm.SyncServicesInterval, time.Second)
+	assert.Equal(t, cd.parm.SyncServiceWeightInterval, time.Second)
 }

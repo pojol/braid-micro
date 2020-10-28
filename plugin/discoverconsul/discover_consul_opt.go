@@ -9,7 +9,10 @@ type Parm struct {
 	Name string
 
 	// 同步节点信息间隔
-	Interval time.Duration
+	SyncServicesInterval time.Duration
+
+	// 同步节点权重间隔
+	SyncServiceWeightInterval time.Duration
 
 	// 注册中心
 	Address string
@@ -36,10 +39,17 @@ func WithBlacklist(lst []string) Option {
 	}
 }
 
-// WithInterval 修改config中的interval
-func WithInterval(interval time.Duration) Option {
+// WithSyncServiceInterval 修改config中的interval
+func WithSyncServiceInterval(interval time.Duration) Option {
 	return func(c *Parm) {
-		c.Interval = interval
+		c.SyncServicesInterval = interval
+	}
+}
+
+// WithSyncServiceWeightInterval 修改权重同步间隔
+func WithSyncServiceWeightInterval(interval time.Duration) Option {
+	return func(c *Parm) {
+		c.SyncServiceWeightInterval = interval
 	}
 }
 

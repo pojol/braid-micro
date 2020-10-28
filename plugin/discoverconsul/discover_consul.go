@@ -56,10 +56,11 @@ func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
 func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	p := Parm{
-		Tag:      "braid",
-		Name:     serviceName,
-		Interval: time.Second * 2,
-		Address:  "http://127.0.0.1:8500",
+		Tag:                       "braid",
+		Name:                      serviceName,
+		SyncServicesInterval:      time.Second * 2,
+		SyncServiceWeightInterval: time.Second * 10,
+		Address:                   "http://127.0.0.1:8500",
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
@@ -228,8 +229,8 @@ func (dc *consulDiscover) runImpl() {
 		dc.syncWeight()
 	}
 
-	dc.discoverTicker = time.NewTicker(dc.parm.Interval)
-	dc.syncWeightTicker = time.NewTicker(time.Second * 10)
+	dc.discoverTicker = time.NewTicker(dc.parm.SyncServicesInterval)
+	dc.syncWeightTicker = time.NewTicker(dc.parm.SyncServiceWeightInterval)
 
 	dc.discoverImpl()
 
