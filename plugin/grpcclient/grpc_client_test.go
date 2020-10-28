@@ -107,6 +107,7 @@ func TestInvokeByLink(t *testing.T) {
 	mb, _ := mbb.Build("TestInvokeByLink")
 
 	lb := module.GetBuilder(linkerredis.Name)
+	lb.AddOption(linkerredis.WithRedisAddr(mock.RedisAddr))
 	lc, _ := lb.Build("TestInvokeByLink", mb, log)
 
 	b.AddOption(LinkCache(lc.(linkcache.ILinkCache)))
