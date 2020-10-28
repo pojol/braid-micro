@@ -5,9 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+
+	mock.Init()
+
+	m.Run()
+}
 
 func TestSharedProc(t *testing.T) {
 

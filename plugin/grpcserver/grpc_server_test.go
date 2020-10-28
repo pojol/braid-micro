@@ -75,4 +75,8 @@ func TestOpts(t *testing.T) {
 	op := WithListen(":1201")
 	op(&cfg)
 	assert.Equal(t, cfg.ListenAddr, ":1201")
+
+	top := WithTracing()
+	top(&cfg)
+	assert.Equal(t, cfg.isTracing, true)
 }
