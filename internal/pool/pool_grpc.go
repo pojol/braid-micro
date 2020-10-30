@@ -63,10 +63,6 @@ func NewGRPCPool(factory GRPCConnFactory, initNum, capacity int, idleTimeout tim
 		return nil, ErrPoolCapacity
 	}
 
-	if initNum > capacity {
-		initNum = capacity
-	}
-
 	p := &GRPCPool{
 		clients:     make(chan ClientConn, capacity),
 		factory:     factory,
@@ -140,6 +136,7 @@ func (p *GRPCPool) Get(ctx context.Context) (*ClientConn, error) {
 				pool: p,
 			}
 		}
+
 		// This is a new connection, reset its initiated time
 		wrapper.timeInitiated = time.Now()
 
@@ -150,7 +147,6 @@ func (p *GRPCPool) Get(ctx context.Context) (*ClientConn, error) {
 
 // Put 放回池中
 func (c *ClientConn) Put() error {
-
 	wrapper := ClientConn{
 		pool:       c.pool,
 		ClientConn: c.ClientConn,
