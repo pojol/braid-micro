@@ -50,9 +50,9 @@ func (b *grpcClientBuilder) AddOption(opt interface{}) {
 func (b *grpcClientBuilder) Build(serviceName string, logger logger.ILogger) (client.IClient, error) {
 
 	p := Parm{
-		PoolInitNum:  128,
-		PoolCapacity: 1024,
-		PoolIdle:     time.Second * 120,
+		PoolInitNum:  8,
+		PoolCapacity: 64,
+		PoolIdle:     time.Second * 100,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
@@ -84,7 +84,7 @@ func (c *grpcClient) Run() {
 
 }
 
-func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
+func (c *grpcClient) getConnWithPool(address string) (*pool.ClientConn, error) {
 	var caConn *pool.ClientConn
 	var caPool *pool.GRPCPool
 
@@ -188,7 +188,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 		return
 	}
 
-	conn, err := c.getConn(address)
+	conn, err := c.getConnWithPool(address)
 	if err != nil {
 		c.logger.Debugf("client get conn warning %s", err.Error())
 		return
@@ -196,7 +196,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	defer conn.Put()
 
 	//opts...
-	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
+	err = conn.Invoke(ctx, methon, args, reply)
 	if err != nil {
 		c.logger.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
 		if c.parm.byLink {
@@ -239,6 +239,7 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		}
 
 		c.poolMgr.Store(address, p)
+
 		pi = p
 	}
 
