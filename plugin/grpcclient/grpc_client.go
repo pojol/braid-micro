@@ -50,9 +50,9 @@ func (b *grpcClientBuilder) AddOption(opt interface{}) {
 func (b *grpcClientBuilder) Build(serviceName string, logger logger.ILogger) (client.IClient, error) {
 
 	p := Parm{
-		PoolInitNum:  128,
-		PoolCapacity: 1024,
-		PoolIdle:     time.Second * 120,
+		PoolInitNum:  8,
+		PoolCapacity: 64,
+		PoolIdle:     time.Second * 100,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
