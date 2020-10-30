@@ -3,6 +3,8 @@ package pool
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -158,6 +160,78 @@ func TestErr(t *testing.T) {
 			p.Get(context.Background())
 		}
 	}
+
+}
+
+var syncmap sync.Map
+var synctick uint64
+
+func getpool(address string) (p *GRPCPool, err error) {
+
+	factory := func() (*grpc.ClientConn, error) {
+		var conn *grpc.ClientConn
+		var err error
+
+		conn, err = grpc.Dial(address, grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+
+		atomic.AddUint64(&synctick, 1)
+
+		return conn, nil
+	}
+
+	pi, ok := syncmap.Load(address)
+	if !ok {
+		p, err = NewGRPCPool(factory, 10, 20, time.Second*10)
+		if err != nil {
+			goto EXT
+		}
+
+		syncmap.Store(address, p)
+
+		pi = p
+	}
+
+	p = pi.(*GRPCPool)
+
+EXT:
+	return p, err
+}
+
+func getConn(address string) (*ClientConn, error) {
+	var caConn *ClientConn
+	var caPool *GRPCPool
+
+	caPool, err := getpool(address)
+	if err != nil {
+		return nil, err
+	}
+
+	connCtx, connCancel := context.WithTimeout(context.Background(), time.Second)
+	defer connCancel()
+	caConn, err = caPool.Get(connCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	return caConn, nil
+}
+
+func TestFactory(t *testing.T) {
+
+	//assert.Equal(t, synctick, uint64(10))
+
+	for i := 0; i < 1000; i++ {
+		c1, _ := getConn("127")
+		c1.Put()
+		c2, _ := getConn("128")
+		c2.Put()
+	}
+
+	time.Sleep(time.Millisecond * 10)
+	assert.Equal(t, synctick, uint64(40))
 
 }
 
