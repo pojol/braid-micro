@@ -45,11 +45,14 @@ func TestDiscover(t *testing.T) {
 	assert.Equal(t, b.Type(), module.TyDiscover)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	assert.Equal(t, err, nil)
+
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 	b.AddOption(WithSyncServiceInterval(time.Millisecond * 100))
 	b.AddOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	assert.Equal(t, err, nil)
 
 	d, err := b.Build("test", mb, log)
 	assert.Equal(t, err, nil)
@@ -68,12 +71,15 @@ func TestParm(t *testing.T) {
 	b := module.GetBuilder(Name)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	assert.Equal(t, err, nil)
+
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 	b.AddOption(WithTag("TestParm"))
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	b.AddOption(WithSyncServiceInterval(time.Second))
 	b.AddOption(WithSyncServiceWeightInterval(time.Second))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)
 	assert.NotEqual(t, err, nil)
