@@ -64,40 +64,6 @@ func Elector(builderName string, opts ...interface{}) Plugin {
 	}
 }
 
-// ElectorByK8s 基于k8s实现的elector
-/*
-func ElectorByK8s(kubeconfig string, nodid string) Plugin {
-	return func(b *Braid) {
-		b.electorBuild = elector.GetBuilder(electork8s.ElectionName)
-		b.electorBuild.SetCfg(electork8s.Cfg{
-			KubeCfg:     kubeconfig,
-			NodID:       nodid,
-			Namespace:   "default",
-			RetryPeriod: time.Second * 2,
-		})
-	}
-}
-*/
-
-// PubsubByNsq 构建pubsub
-/*
-func PubsubByNsq(lookupAddres []string, addr []string, opts ...pubsubnsq.Option) Plugin {
-	return func(b *Braid) {
-		b.pubsubBuilder = pubsub.GetBuilder(pubsubnsq.PubsubName)
-		cfg := pubsubnsq.NsqConfig{
-			LookupAddres: lookupAddres,
-			Addres:       addr,
-		}
-
-		for _, opt := range opts {
-			opt(&cfg)
-		}
-
-		b.pubsubBuilder.SetCfg(cfg)
-	}
-}
-*/
-
 // GRPCClient rpc-client
 func GRPCClient(builderName string, opts ...interface{}) Plugin {
 	return func(b *Braid) {
