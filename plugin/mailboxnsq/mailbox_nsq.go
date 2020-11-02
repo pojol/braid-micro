@@ -110,7 +110,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 		uuid: nc.uuid,
 	})
 
-	err = consumer.ConnectToNSQLookupds(ns.lookupAddres)
+	err = consumer.ConnectToNSQLookupds(ns.lookupAddress)
 	if err != nil {
 		return nil, err
 	}
