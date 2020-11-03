@@ -38,7 +38,6 @@ b.RegistPlugin(
   braid.Discover(
     discoverconsul.Name,
     discoverconsul.WithConsulAddr(consulAddr)),
-  braid.Balancer(balancerswrr.Name),
   braid.GRPCClient(grpcclient.Name),
   braid.Elector(
     electorconsul.Name,

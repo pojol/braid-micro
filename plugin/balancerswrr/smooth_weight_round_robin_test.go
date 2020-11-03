@@ -10,6 +10,7 @@ import (
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid/plugin/balancergroupbase"
 	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/pojol/braid/plugin/zaplogger"
 	"github.com/stretchr/testify/assert"
@@ -21,12 +22,20 @@ func TestMain(t *testing.M) {
 }
 
 func TestWRR(t *testing.T) {
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
-	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
+
 	serviceName := "TestWRR"
-	bw := balancer.Get(serviceName)
+
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{Name}))
+	b, _ := bgb.Build(serviceName, mb, log)
+	bg := b.(balancer.IBalancerGroup)
+
+	b.Init()
+	b.Run()
+	defer b.Close()
 
 	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
@@ -57,7 +66,7 @@ func TestWRR(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 1000)
 	for _, v := range tests {
-		nod, _ := bw.Pick()
+		nod, _ := bg.Pick(Name, serviceName)
 		assert.Equal(t, nod.Address, v.ID)
 	}
 
@@ -65,12 +74,20 @@ func TestWRR(t *testing.T) {
 
 func TestWRRDymc(t *testing.T) {
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
-	bb := module.GetBuilder(Name)
+	serviceName := "TestWRRDymc"
+
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
-	serviceName := "TestWRR"
-	bw := balancer.Get(serviceName)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{Name}))
+	b, _ := bgb.Build(serviceName, mb, log)
+	bg := b.(balancer.IBalancerGroup)
+
+	b.Init()
+	b.Run()
+	defer b.Close()
+
 	pmap := make(map[string]int)
 
 	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
@@ -97,7 +114,7 @@ func TestWRRDymc(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	for i := 0; i < 100; i++ {
-		nod, _ := bw.Pick()
+		nod, _ := bg.Pick(Name, serviceName)
 		pmap[nod.ID]++
 	}
 
@@ -108,19 +125,26 @@ func TestWRRDymc(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	for i := 0; i < 100; i++ {
-		nod, _ := bw.Pick()
+		nod, _ := bg.Pick(Name, serviceName)
 		pmap[nod.ID]++
 	}
 }
 
 func TestWRROp(t *testing.T) {
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
-	bb := module.GetBuilder(Name)
+	serviceName := "TestWRROp"
+
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
-	serviceName := "TestWRR"
-	bw := balancer.Get(serviceName)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{Name}))
+	b, _ := bgb.Build(serviceName, mb, log)
+	bg := b.(balancer.IBalancerGroup)
+
+	b.Init()
+	b.Run()
+	defer b.Close()
 
 	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:     "A",
@@ -139,18 +163,30 @@ func TestWRROp(t *testing.T) {
 		Weight: 2,
 	}))
 
-	bw.Pick()
+	time.Sleep(time.Millisecond * 500)
+	for i := 0; i < 10; i++ {
+		nod, err := bg.Pick(Name, serviceName)
+		assert.Equal(t, err, nil)
+		assert.Equal(t, nod.ID, "B")
+	}
 
 }
 
 //20664206	        58.9 ns/op	       0 B/op	       0 allocs/op
 func BenchmarkWRR(b *testing.B) {
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestWRR")
-	bb := module.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
 	serviceName := "BenchmarkWRR"
-	bw := balancer.Get(serviceName)
+
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{Name}))
+	bm, _ := bgb.Build(serviceName, mb, log)
+	bg := bm.(balancer.IBalancerGroup)
+
+	bm.Init()
+	bm.Run()
+	defer bm.Close()
 
 	for i := 0; i < 100; i++ {
 		mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
@@ -163,6 +199,6 @@ func BenchmarkWRR(b *testing.B) {
 	time.Sleep(time.Millisecond * 1000)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		bw.Pick()
+		bg.Pick(Name, serviceName)
 	}
 }

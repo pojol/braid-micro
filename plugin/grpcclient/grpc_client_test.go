@@ -8,14 +8,12 @@ import (
 
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/grpcclient/bproto"
 	"github.com/pojol/braid/plugin/grpcserver"
@@ -56,10 +54,6 @@ func TestMain(m *testing.M) {
 	db := module.GetBuilder(discoverconsul.Name)
 	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
 
-	bb := module.GetBuilder(balancerswrr.Name)
-	balancer.NewGroup(bb, mb, log)
-	balancer.Get("testgrpcclient")
-
 	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1216"))
 	s, _ := sb.Build("testgrpcclient", log)
@@ -78,9 +72,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestInvoke(t *testing.T) {
+	mbb := mailbox.GetBuilder(mailboxnsq.Name)
+	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mb, _ := mbb.Build("TestInvoke")
+
 	b := client.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	cb, _ := b.Build("TestInvoke", log)
+	cb, _ := b.Build("TestInvoke", mb, log)
+
+	cb.Init()
+	cb.Run()
 	defer cb.Close()
 
 	time.Sleep(time.Second)
@@ -112,7 +114,10 @@ func TestInvokeByLink(t *testing.T) {
 
 	b.AddOption(LinkCache(lc.(linkcache.ILinkCache)))
 	b.AddOption(Tracing())
-	cb, _ := b.Build("TestInvokeByLink", log)
+	cb, _ := b.Build("TestInvokeByLink", mb, log)
+
+	cb.Init()
+	cb.Run()
 	defer cb.Close()
 
 	time.Sleep(time.Second)
@@ -135,6 +140,12 @@ func TestInvokeByLink(t *testing.T) {
 }
 
 func TestParm(t *testing.T) {
+
+	mbb := mailbox.GetBuilder(mailboxnsq.Name)
+	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mb, _ := mbb.Build("TestParm")
+
 	b := client.GetBuilder(Name)
 	b.AddOption(WithPoolInitNum(100))
 	b.AddOption(WithPoolCapacity(101))
@@ -143,7 +154,7 @@ func TestParm(t *testing.T) {
 	b.AddOption(LinkCache(nil))
 
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	cb, _ := b.Build("TestCaller", log)
+	cb, _ := b.Build("TestCaller", mb, log)
 	gc := cb.(*grpcClient)
 
 	assert.Equal(t, gc.parm.PoolInitNum, 100)

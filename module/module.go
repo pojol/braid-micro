@@ -9,11 +9,12 @@ import (
 
 // module type
 const (
-	TyDiscover  = "discover"
-	TyBalancer  = "balancer"
-	TyElector   = "elector"
-	TyLinkCache = "link-cache"
-	TyTracer    = "tracer"
+	TyDiscover      = "discover"
+	TyBalancer      = "balancer"
+	TyBalancerGroup = "balancer_group"
+	TyElector       = "elector"
+	TyLinkCache     = "link-cache"
+	TyTracer        = "tracer"
 )
 
 // Builder builder

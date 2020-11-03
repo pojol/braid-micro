@@ -8,11 +8,16 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
+	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid/plugin/balancergroupbase"
+	"github.com/pojol/braid/plugin/balancerrandom"
+	"github.com/pojol/braid/plugin/balancerswrr"
 	"google.golang.org/grpc"
 )
 
@@ -47,19 +52,29 @@ func (b *grpcClientBuilder) AddOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *grpcClientBuilder) Build(serviceName string, logger logger.ILogger) (client.IClient, error) {
+func (b *grpcClientBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (client.IClient, error) {
 
 	p := Parm{
-		PoolInitNum:  8,
-		PoolCapacity: 64,
-		PoolIdle:     time.Second * 100,
+		PoolInitNum:      8,
+		PoolCapacity:     64,
+		PoolIdle:         time.Second * 100,
+		balancerStrategy: []string{balancerrandom.Name, balancerswrr.Name},
+		balancerGroup:    balancergroupbase.Name,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
 	}
 
+	bgb := module.GetBuilder(p.balancerGroup)
+	bgb.AddOption(balancergroupbase.WithStrategy(p.balancerStrategy))
+	bg, err := bgb.Build(serviceName, mb, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	c := &grpcClient{
 		serviceName: serviceName,
+		bg:          bg.(balancer.IBalancerGroup),
 		parm:        p,
 		logger:      logger,
 	}
@@ -71,17 +86,18 @@ func (b *grpcClientBuilder) Build(serviceName string, logger logger.ILogger) (cl
 type grpcClient struct {
 	serviceName string
 	parm        Parm
+	bg          balancer.IBalancerGroup
 	logger      logger.ILogger
 
 	poolMgr sync.Map
 }
 
 func (c *grpcClient) Init() {
-
+	c.bg.Init()
 }
 
 func (c *grpcClient) Run() {
-
+	c.bg.Run()
 }
 
 func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
@@ -105,15 +121,15 @@ func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
 	return caConn, nil
 }
 
-func pick(nodName string, token string, link bool) (discover.Node, error) {
+func (c *grpcClient) pick(nodName string, token string, link bool) (discover.Node, error) {
 
 	var nod discover.Node
 	var err error
 
 	if token == "" && link {
-		nod, err = balancer.Get(nodName).Random()
+		nod, err = c.bg.Pick(balancerrandom.Name, nodName)
 	} else {
-		nod, err = balancer.Get(nodName).Pick()
+		nod, err = c.bg.Pick(balancerswrr.Name, nodName)
 	}
 
 	if err != nil {
@@ -141,7 +157,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	}
 
 	if address == "" {
-		nod, err = pick(target, token, c.parm.byLink)
+		nod, err = c.pick(target, token, c.parm.byLink)
 		if err != nil {
 			c.logger.Debugf("pick warning %s", err.Error())
 			return ""
@@ -244,7 +260,7 @@ EXT:
 }
 
 func (c *grpcClient) Close() {
-
+	c.bg.Close()
 }
 
 func init() {

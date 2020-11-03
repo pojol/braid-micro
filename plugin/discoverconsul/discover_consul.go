@@ -7,7 +7,6 @@ import (
 
 	"github.com/pojol/braid/3rd/consul"
 	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
@@ -139,9 +138,6 @@ func (dc *consulDiscover) discoverImpl() {
 		}
 
 		if _, ok := dc.passingMap[service.ServiceID]; !ok { // new nod
-			// regist service
-			balancer.Get(service.ServiceName)
-
 			sn := syncNode{
 				service:    service.ServiceName,
 				id:         service.ServiceID,

@@ -7,9 +7,9 @@ import (
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid/plugin/balancergroupbase"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/pojol/braid/plugin/zaplogger"
@@ -32,9 +32,15 @@ func TestMain(m *testing.M) {
 	defer r.Close()
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
-	bb := module.GetBuilder(balancerswrr.Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{balancerswrr.Name}))
+	b, _ := bgb.Build("discover_consul_test", mb, log)
+
+	b.Init()
+	b.Run()
+	defer b.Close()
 
 	m.Run()
 }

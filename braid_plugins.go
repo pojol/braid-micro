@@ -2,7 +2,6 @@ package braid
 
 import (
 	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
@@ -23,18 +22,6 @@ func Discover(builderName string, opts ...interface{}) Plugin {
 		for _, opt := range opts {
 			builder.AddOption(opt)
 		}
-		b.builders = append(b.builders, builder)
-	}
-}
-
-// Balancer plugin
-func Balancer(builderName string, opts ...interface{}) Plugin {
-	return func(b *Braid) {
-		builder := module.GetBuilder(builderName)
-		for _, opt := range opts {
-			builder.AddOption(opt)
-		}
-		balancer.NewGroup(builder, b.mailbox, b.logger)
 		b.builders = append(b.builders, builder)
 	}
 }
