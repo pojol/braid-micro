@@ -26,10 +26,14 @@
 > 使用braid提供的接口或者订阅消息均是多线程安全的
 
 * **同步**
-> 在braid中目前只提供一个同步语义的接口,发起一次rpc调用
+> 在braid中目前只提供了这`唯一的一个`同步语义的接口,用于发起rpc调用
 
 ```go
-braid.Invoke()
+// ctx 上下文
+// targetService 目标服务 例（`login`
+// methon 请求目标函数
+// token 用户唯一凭证（可为空
+braid.Invoke(ctx, targetService, methon, token, args, reply)
 ```
 
 * **异步**
