@@ -9,35 +9,58 @@
 
 <img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
+### 微服务
+> braid 提供常用的微服务组件
 
-### Plug-ins
-**Mailbox** 异步交互组件，支持进程内以及集群中的消息订阅和发送。
+|  服务  | 简介  |
+|  ----  | ----  | 
+| **Discover**  | 发现插件，主要提供 `Add` `Rmv` `Update` 等接口 |
+| **Elector** | 选举插件，主要提供 `Wait` `Slave` `Master` 等接口 |
+| **Rpc** | RPC插件，主要用于发起RPC请求 `Invoke` 和开启RPC Server |
+| **Tracer** | 分布式追踪插件，监控分布式系统中的调用细节，目前有`grpc` `echo` `redis` 等追踪 |
+| **LinkCache** | 服务访问链路缓存插件，主要用于缓存token（用户唯一凭证）的链路信息 |
 
-**BalancerSWRR** 平滑加权负载均衡器，同时在开启link-cache后,会依据连接数进行权重的调整。
 
-**Discover** 服务发现，提供服务的`进入` `离开` `更新` 消息。
 
-**Elector** 选举，提供节点是否为 `主` 节点的消息。
+### 交互模型
+> 使用braid提供的接口或者订阅消息均是多线程安全的
 
-**Link-cache** 链路缓存，固定基于用户凭证的节点访问链路。用户可以在此基础上做一些业务逻辑优化。
+* **同步**
+> 在braid中目前只提供一个同步语义的接口,发起一次rpc调用
 
-**GRPC** client & server GRPC的封装, 支持连接池，同时可以绑定分布式追踪插件，以及链路缓存插件。
+```go
+braid.Invoke()
+```
 
-**JaegerTracer** 基于jaeger的分布式追踪服务
+* **异步**
+> braid中异步语义的简介，在内部或是将来功能的扩充，都应该优先使用异步语义
 
----
+| 共享（多个消息副本 | 竞争（只被消费一次 | 进程内 | 集群内 | 发布 | 订阅 |
+| ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+|Shared | Competition | Proc | Cluster | Pub | Sub |
 
-#### Sample
-```golang
-b, _ := braid.New(
-  NodeName,
-  mailboxnsq.WithLookupAddr([]string{nsqLookupAddr}),
-  mailboxnsq.WithNsqdAddr([]string{nsqdAddr}))
+> `范例` 在集群内`订阅`一个共享型的消息
 
+```go
+consumer := braid.Mailbox().ClusterSub(`topic`).AddShared()
+consumer.OnArrived(func (msg *mailbox.Message) error {
+  return nil
+})
+```
+
+
+
+### 构建
+> 通过注册插件，构建braid的运行环境。
+
+```go
+b, _ := braid.New(ServiceName)
+
+// 注册插件
 b.RegistPlugin(
-  braid.Discover(
-    discoverconsul.Name,
-    discoverconsul.WithConsulAddr(consulAddr)),
+  braid.Discover(         // Discover 插件
+    discoverconsul.Name,  // 插件名（基于consul实现的discover插件
+    discoverconsul.WithConsulAddr(consulAddr)), // 插件的可选项
   braid.GRPCClient(grpcclient.Name),
   braid.Elector(
     electorconsul.Name,
@@ -46,9 +69,12 @@ b.RegistPlugin(
   braid.LinkCache(linkerredis.Name),
   braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
 
-b.Run()
-defer b.Close()
+b.Init()  // 初始化注册在braid中的插件
+b.Run()   // 运行
+defer b.Close() // 释放
 ```
+
+
 
 #### Wiki
 https://github.com/pojol/braid/wiki
@@ -56,8 +82,12 @@ https://github.com/pojol/braid/wiki
 #### Sample
 https://github.com/pojol/braid-sample
 
+
+
 #### Web
-> 流向图，用于监控链路上的连接数以及分布情况
+* 流向图
+> 用于监控链路上的连接数以及分布情况
+
 ```shell
 $ docker pull braidgo/sankey:latest
 $ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
