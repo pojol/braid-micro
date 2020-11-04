@@ -81,6 +81,8 @@ defer b.Close() // 释放
 
 
 #### Wiki
+> Wiki 中提供了一个较为详细的Guide，用于帮助用户更加全面的理解braid的设计理念
+
 https://github.com/pojol/braid/wiki
 
 #### Sample
