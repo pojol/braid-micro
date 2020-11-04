@@ -49,8 +49,8 @@ type nsqSubscriber struct {
 	Channel string
 	Topic   string
 
-	lookupAddres []string
-	addres       []string
+	lookupAddress []string
+	address       []string
 
 	ephemeral   bool
 	serviceName string
@@ -110,7 +110,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 		uuid: nc.uuid,
 	})
 
-	err = consumer.ConnectToNSQLookupds(ns.lookupAddres)
+	err = consumer.ConnectToNSQLookupds(ns.lookupAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -157,12 +157,12 @@ func (ns *nsqSubscriber) AddShared() (mailbox.IConsumer, error) {
 func (nmb *nsqMailbox) ClusterSub(topic string) mailbox.ISubscriber {
 
 	s := &nsqSubscriber{
-		group:        make(map[string]mailbox.IConsumer),
-		Channel:      nmb.parm.Channel,
-		Topic:        topic,
-		lookupAddres: nmb.parm.LookupAddres,
-		addres:       nmb.parm.Addres,
-		serviceName:  nmb.parm.ServiceName,
+		group:         make(map[string]mailbox.IConsumer),
+		Channel:       nmb.parm.Channel,
+		Topic:         topic,
+		lookupAddress: nmb.parm.LookupAddress,
+		address:       nmb.parm.Address,
+		serviceName:   nmb.parm.ServiceName,
 	}
 
 	nmb.csubsrcibers = append(nmb.csubsrcibers, s)

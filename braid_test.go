@@ -1,12 +1,14 @@
 package braid
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/plugin/balancerswrr"
+	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/plugin/discoverconsul"
 	"github.com/pojol/braid/plugin/electorconsul"
 	"github.com/pojol/braid/plugin/grpcserver"
@@ -43,7 +45,6 @@ func TestPlugin(t *testing.T) {
 	)
 
 	b.RegistPlugin(
-		Balancer(balancerswrr.Name),
 		LinkCache(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
 		Discover(
 			discoverconsul.Name,
@@ -85,4 +86,45 @@ func TestServerInterface(t *testing.T) {
 
 	s = Server()
 	assert.NotEqual(t, s, nil)
+}
+
+func TestMutiMailBox(t *testing.T) {
+
+	New(
+		"test_plugin",
+		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+	)
+	topic := "TestMutiSharedProc"
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	sub := Mailbox().ProcSub(topic)
+	c1, _ := sub.AddShared()
+	c1.OnArrived(func(msg *mailbox.Message) error {
+		wg.Done()
+		return nil
+	})
+
+	for i := 0; i < 10000; i++ {
+		go func() {
+			wg.Add(1)
+			Mailbox().ProcPub(topic, &mailbox.Message{Body: []byte("msg")})
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// pass
+		fmt.Println("done")
+	case <-time.After(time.Millisecond * 500):
+		// time out
+		assert.Equal(t, false, true)
+	}
 }

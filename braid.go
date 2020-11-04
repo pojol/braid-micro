@@ -2,8 +2,6 @@ package braid
 
 import (
 	"context"
-	"fmt"
-	"runtime"
 
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
@@ -102,7 +100,8 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
 			b.clientBuilder.AddOption(grpcclient.LinkCache(lc.(linkcache.ILinkCache)))
 		}
-		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.logger)
+		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.mailbox, b.logger)
+		b.modules = append(b.modules, b.client)
 	}
 
 	if b.serverBuilder != nil {
@@ -117,21 +116,28 @@ func (b *Braid) RegistPlugin(plugins ...Plugin) error {
 	return nil
 }
 
+// Init braid init
+func (b *Braid) Init() {
+	for _, m := range b.modules {
+		m.Init()
+	}
+}
+
 // Run 运行braid
 func (b *Braid) Run() {
-
-	defer func() {
-		if r := recover(); r != nil {
-			err, ok := r.(error)
-			if !ok {
-				err = fmt.Errorf("%v", r)
+	/*
+		defer func() {
+			if r := recover(); r != nil {
+				err, ok := r.(error)
+				if !ok {
+					err = fmt.Errorf("%v", r)
+				}
+				stack := make([]byte, 4<<10) // 4kb
+				length := runtime.Stack(stack, true)
+				b.logger.Errorf("[PANIC RECOVER] %v %s", err, stack[:length])
 			}
-			stack := make([]byte, 4<<10) // 4kb
-			length := runtime.Stack(stack, true)
-			b.logger.Errorf("[PANIC RECOVER] %v %s", err, stack[:length])
-		}
-	}()
-
+		}()
+	*/
 	for _, m := range b.modules {
 		m.Run()
 	}

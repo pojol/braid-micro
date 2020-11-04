@@ -6,11 +6,12 @@ import (
 
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid/module/mailbox"
 )
 
 // Builder grpc-client builder
 type Builder interface {
-	Build(serviceName string, logger logger.ILogger) (IClient, error)
+	Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (IClient, error)
 	Name() string
 	AddOption(opt interface{})
 }

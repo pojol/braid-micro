@@ -74,6 +74,6 @@ func TestClusterMailboxParm(t *testing.T) {
 	cm := mb.(*nsqMailbox)
 
 	assert.Equal(t, cm.parm.Channel, "parm")
-	assert.Equal(t, cm.parm.LookupAddres, []string{"127.0.0.1"})
-	assert.Equal(t, cm.parm.Addres, []string{"127.0.0.2"})
+	assert.Equal(t, cm.parm.LookupAddress, []string{"127.0.0.1"})
+	assert.Equal(t, cm.parm.Address, []string{"127.0.0.2"})
 }

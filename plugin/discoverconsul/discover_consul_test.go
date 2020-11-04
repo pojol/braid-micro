@@ -7,9 +7,9 @@ import (
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid/plugin/balancergroupbase"
 	"github.com/pojol/braid/plugin/balancerswrr"
 	"github.com/pojol/braid/plugin/mailboxnsq"
 	"github.com/pojol/braid/plugin/zaplogger"
@@ -32,9 +32,15 @@ func TestMain(m *testing.M) {
 	defer r.Close()
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
-	bb := module.GetBuilder(balancerswrr.Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
-	balancer.NewGroup(bb, mb, log)
+
+	bgb := module.GetBuilder(balancergroupbase.Name)
+	bgb.AddOption(balancergroupbase.WithStrategy([]string{balancerswrr.Name}))
+	b, _ := bgb.Build("discover_consul_test", mb, log)
+
+	b.Init()
+	b.Run()
+	defer b.Close()
 
 	m.Run()
 }
@@ -45,11 +51,14 @@ func TestDiscover(t *testing.T) {
 	assert.Equal(t, b.Type(), module.TyDiscover)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	assert.Equal(t, err, nil)
+
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 	b.AddOption(WithSyncServiceInterval(time.Millisecond * 100))
 	b.AddOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	assert.Equal(t, err, nil)
 
 	d, err := b.Build("test", mb, log)
 	assert.Equal(t, err, nil)
@@ -68,12 +77,15 @@ func TestParm(t *testing.T) {
 	b := module.GetBuilder(Name)
 
 	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	assert.Equal(t, err, nil)
+
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 	b.AddOption(WithTag("TestParm"))
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	b.AddOption(WithSyncServiceInterval(time.Second))
 	b.AddOption(WithSyncServiceWeightInterval(time.Second))
 	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)
 	assert.NotEqual(t, err, nil)

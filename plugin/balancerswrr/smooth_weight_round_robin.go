@@ -1,13 +1,10 @@
 package balancerswrr
 
 import (
-	"encoding/json"
 	"errors"
-	"math/rand"
 	"sync"
-	"time"
 
-	"github.com/pojol/braid/module"
+	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
@@ -19,88 +16,23 @@ const (
 )
 
 type smoothWeightRoundrobinBuilder struct {
-	opts []interface{}
 }
 
-func newSmoothWightRoundrobinBalancer() module.Builder {
+func newSmoothWightRoundrobinBalancer() balancer.Builder {
 	return &smoothWeightRoundrobinBuilder{}
 }
 
-func (b *smoothWeightRoundrobinBuilder) AddOption(opt interface{}) {
-	b.opts = append(b.opts, opt)
-}
-
-func (b *smoothWeightRoundrobinBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+func (b *smoothWeightRoundrobinBuilder) Build(logger logger.ILogger) (balancer.IBalancer, error) {
 
 	swrr := &swrrBalancer{
-		serviceName: serviceName,
-		mb:          mb,
-		logger:      logger,
+		logger: logger,
 	}
-
-	swrr.addSub, _ = mb.ProcSub(discover.AddService).AddShared()
-	swrr.rmvSub, _ = mb.ProcSub(discover.RmvService).AddShared()
-	swrr.upSub, _ = mb.ProcSub(discover.UpdateService).AddShared()
-
-	go swrr.watcher()
 
 	return swrr, nil
 }
 
-func (wr *swrrBalancer) Init() {
-
-}
-
-func (wr *swrrBalancer) Run() {
-
-}
-
-func (wr *swrrBalancer) Close() {
-
-}
-
-func (wr *swrrBalancer) watcher() {
-
-	wr.addSub.OnArrived(func(msg *mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		if nod.Name == wr.serviceName {
-			wr.add(nod)
-		}
-
-		return nil
-	})
-
-	wr.rmvSub.OnArrived(func(msg *mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		if nod.Name == wr.serviceName {
-			wr.rmv(nod)
-		}
-
-		return nil
-	})
-
-	wr.upSub.OnArrived(func(msg *mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		if nod.Name == wr.serviceName {
-			wr.syncWeight(nod)
-		}
-
-		return nil
-	})
-}
-
 func (*smoothWeightRoundrobinBuilder) Name() string {
 	return Name
-}
-
-func (*smoothWeightRoundrobinBuilder) Type() string {
-	return module.TyBalancer
 }
 
 type weightedNod struct {
@@ -170,23 +102,9 @@ func (wr *swrrBalancer) Pick() (discover.Node, error) {
 	return wr.nods[idx].orgNod, nil
 }
 
-// Randowm ..
-func (wr *swrrBalancer) Random() (discover.Node, error) {
-	wr.Lock()
-	defer wr.Unlock()
-
-	if len(wr.nods) <= 0 {
-		return discover.Node{}, errors.New("empty")
-	}
-
-	rand.Seed(time.Now().UnixNano())
-	return wr.nods[rand.Intn(len(wr.nods))].orgNod, nil
-}
-
-func (wr *swrrBalancer) add(nod discover.Node) {
+func (wr *swrrBalancer) Add(nod discover.Node) {
 
 	if _, ok := wr.isExist(nod.ID); ok {
-		// log
 		return
 	}
 
@@ -200,7 +118,7 @@ func (wr *swrrBalancer) add(nod discover.Node) {
 	wr.logger.Debugf("add weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
-func (wr *swrrBalancer) rmv(nod discover.Node) {
+func (wr *swrrBalancer) Rmv(nod discover.Node) {
 
 	var ok bool
 	var idx int
@@ -217,7 +135,7 @@ func (wr *swrrBalancer) rmv(nod discover.Node) {
 	wr.logger.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
 }
 
-func (wr *swrrBalancer) syncWeight(nod discover.Node) {
+func (wr *swrrBalancer) Update(nod discover.Node) {
 
 	var ok bool
 	var idx int
@@ -232,5 +150,5 @@ func (wr *swrrBalancer) syncWeight(nod discover.Node) {
 }
 
 func init() {
-	module.Register(newSmoothWightRoundrobinBalancer())
+	balancer.Register(newSmoothWightRoundrobinBalancer())
 }

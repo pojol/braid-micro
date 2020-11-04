@@ -62,12 +62,7 @@ func (*zaplogBuilder) Build(lv logger.Lvl) (logger.ILogger, error) {
 		Compress:   false,       // 是否压缩
 	}
 
-	if lv == logger.ERROR {
-		ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook))
-	} else {
-		ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(&hook))
-	}
-
+	ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook))
 	core := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig), // 编码器配置
 		ws,                                    // 打印到控制台和文件

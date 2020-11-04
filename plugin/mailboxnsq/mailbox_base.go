@@ -32,9 +32,9 @@ func (nb *nsqMailboxBuilder) Name() string {
 
 func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error) {
 	p := Parm{
-		ServiceName:  serviceName,
-		LookupAddres: []string{"127.0.0.1:4161"},
-		Addres:       []string{"127.0.0.1:4150"},
+		ServiceName:   serviceName,
+		LookupAddress: []string{"127.0.0.1:4161"},
+		Address:       []string{"127.0.0.1:4150"},
 	}
 	for _, opt := range nb.opts {
 		opt.(Option)(&p)
@@ -42,8 +42,8 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 
 	rand.Seed(time.Now().UnixNano())
 
-	cps := make([]*nsq.Producer, 0, len(p.Addres))
-	for _, addr := range p.Addres {
+	cps := make([]*nsq.Producer, 0, len(p.Address))
+	for _, addr := range p.Address {
 		cp, err := nsq.NewProducer(addr, nsq.NewConfig())
 		if err != nil {
 			return nil, err

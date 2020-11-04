@@ -15,6 +15,9 @@ type Parm struct {
 	byLink bool
 	linker linkcache.ILinkCache
 
+	balancerStrategy []string
+	balancerGroup    string
+
 	PoolInitNum  int
 	PoolCapacity int
 	PoolIdle     time.Duration
@@ -56,5 +59,19 @@ func LinkCache(cache linkcache.ILinkCache) Option {
 	return func(c *Parm) {
 		c.byLink = true
 		c.linker = cache
+	}
+}
+
+// WithBalanceStrategy 添加负载均衡选用的策略
+func WithBalanceStrategy(strategies []string) Option {
+	return func(c *Parm) {
+		c.balancerStrategy = strategies
+	}
+}
+
+// WithBalanceGroup 挂载到client的负载均衡控制器
+func WithBalanceGroup(bg string) Option {
+	return func(c *Parm) {
+		c.balancerGroup = bg
 	}
 }
