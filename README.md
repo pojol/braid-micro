@@ -63,7 +63,7 @@ b, _ := braid.New(ServiceName)
 // 注册插件
 b.RegistPlugin(
   braid.Discover(         // Discover 插件
-    discoverconsul.Name,  // 插件名（基于consul实现的discover插件
+    discoverconsul.Name,  // 插件名（基于consul实现的discover插件，通过插件名可以获取到插件的构建器
     discoverconsul.WithConsulAddr(consulAddr)), // 插件的可选项
   braid.GRPCClient(grpcclient.Name),
   braid.Elector(
