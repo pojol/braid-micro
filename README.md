@@ -55,7 +55,7 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 
 
 ### 构建
-> 通过注册插件，构建braid的运行环境。
+> 通过注册插件(`注: `这里的插件并非go plugin)，构建braid的运行环境。
 
 ```go
 b, _ := braid.New(ServiceName)
