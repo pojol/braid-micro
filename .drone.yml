@@ -13,7 +13,7 @@ steps:
         - export MOCK_NSQD_ADDR="172.18.0.1:4150"
         - export MOCK_NSQ_LOOKUPD_ADDR="172.18.0.1:4161"
         - go version
-        - go test -coverprofile=coverage.out ./...
+        - go test -race -coverprofile=coverage.out ./...
 
     - name: coverage
       image: plugins/codecov

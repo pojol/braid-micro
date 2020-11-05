@@ -1,22 +1,32 @@
 package mailboxnsq
 
 import (
+	"errors"
+	"math/rand"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/pojol/braid/internal/braidsync"
 	"github.com/pojol/braid/internal/buffer"
 	"github.com/pojol/braid/module/mailbox"
 )
 
+type procMailbox struct {
+	subscribers sync.Map
+}
+
 type procSubscriber struct {
-	isShared    bool
-	competition mailbox.IConsumer
-	shared      sync.Map
+	// channel 信道名
+	channel string
+
+	// 信道的模式
+	mode string
+
+	// 这个信道上的消费者
+	consumers []mailbox.IConsumer
+	lock      sync.RWMutex
 }
 
 type procConsumer struct {
-	ID     string
 	buff   *buffer.Unbounded
 	exitCh *braidsync.Switch
 }
@@ -51,70 +61,81 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 	}()
 }
 
-func (ns *procSubscriber) AddCompetition() (mailbox.IConsumer, error) {
+func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
 
-	if ns.competition == nil {
-		ns.competition = &procConsumer{
-			ID:     uuid.New().String(),
-			buff:   buffer.NewUnbounded(),
-			exitCh: braidsync.NewSwitch(),
-		}
+	if ns.mode == mailbox.Shared {
+		return nil, errors.New("channel mode mutex")
 	}
 
-	return ns.competition, nil
-}
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
 
-func (ns *procSubscriber) AddShared() (mailbox.IConsumer, error) {
-
-	consumer := &procConsumer{
-		ID:     uuid.New().String(),
+	ns.mode = mailbox.Competition
+	competition := &procConsumer{
 		buff:   buffer.NewUnbounded(),
 		exitCh: braidsync.NewSwitch(),
 	}
+	ns.consumers = append(ns.consumers, competition)
 
-	ns.isShared = true
-
-	ns.shared.Store(consumer.ID, consumer)
-	return consumer, nil
+	return competition, nil
 }
 
-func (nmb *nsqMailbox) ProcPub(topic string, msg *mailbox.Message) {
-	ss, ok := nmb.psubsrcibers.Load(topic)
+func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
+
+	if ns.mode == mailbox.Competition {
+		return nil, errors.New("channel mode mutex")
+	}
+
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+
+	ns.mode = mailbox.Shared
+	shared := &procConsumer{
+		buff:   buffer.NewUnbounded(),
+		exitCh: braidsync.NewSwitch(),
+	}
+	ns.consumers = append(ns.consumers, shared)
+
+	return shared, nil
+}
+
+func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
+
+	s, ok := pmb.subscribers.Load(topic)
 	if !ok {
 		return
 	}
 
-	sub, ok := ss.(*procSubscriber)
+	sub, ok := s.(*procSubscriber)
 	if !ok {
 		return
 	}
 
-	if sub.isShared {
-		sub.shared.Range(func(key, value interface{}) bool {
-			consumer, _ := value.(mailbox.IConsumer)
-			if !consumer.IsExited() {
-				consumer.PutMsg(msg)
-			} else {
-				nmb.psubsrcibers.Delete(topic)
-			}
+	sub.lock.RLock()
+	defer sub.lock.RUnlock()
 
-			return true
-		})
-	} else {
-		if !sub.competition.IsExited() {
-			sub.competition.PutMsg(msg)
+	if sub.mode == mailbox.Shared {
+		for k := range sub.consumers {
+			sub.consumers[k].PutMsg(msg)
 		}
+	} else if sub.mode == mailbox.Competition {
+		sub.consumers[rand.Intn(len(sub.consumers))].PutMsg(msg)
 	}
+
 }
 
-func (nmb *nsqMailbox) ProcSub(topic string) mailbox.ISubscriber {
+func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {
 
-	ss, ok := nmb.psubsrcibers.Load(topic)
-	if !ok {
-		ss = &procSubscriber{}
-		nmb.psubsrcibers.Store(topic, ss)
+	s, ok := pmb.subscribers.Load(topic)
+	if !ok { // create
+		psub := &procSubscriber{
+			channel: topic,
+			mode:    mailbox.Undecided,
+		}
+
+		pmb.subscribers.Store(topic, psub)
+		s = psub
 	}
 
-	return ss.(mailbox.ISubscriber)
-
+	return s.(mailbox.ISubscriber)
 }

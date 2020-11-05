@@ -10,6 +10,11 @@ import (
 	"github.com/pojol/braid/module/mailbox"
 )
 
+type consumerHandler struct {
+	uuid string
+	c    *nsqConsumer
+}
+
 // Consumer 消费者
 type nsqConsumer struct {
 	consumer *nsq.Consumer
@@ -18,31 +23,7 @@ type nsqConsumer struct {
 	handle mailbox.HandlerFunc
 	uuid   string
 
-	sync.Mutex
-}
-
-type consumerHandler struct {
-	uuid string
-	ns   *nsqSubscriber
-}
-
-func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
-
-	consumerLst := ch.ns.GetConsumer(ch.uuid)
-	for _, v := range consumerLst {
-
-		// 这里不能异步消费消息（因为不能表达出消费失败，将消息回退的逻辑）待修改。
-		// 如果消息执行到这里节点宕机，nsq可以将这个消息重新塞入到队列。
-
-		err := v.PutMsg(&mailbox.Message{
-			Body: msg.Body,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	lock sync.Mutex
 }
 
 type nsqSubscriber struct {
@@ -55,15 +36,31 @@ type nsqSubscriber struct {
 	ephemeral   bool
 	serviceName string
 
-	group map[string]mailbox.IConsumer
-	sync.Mutex
+	consumer mailbox.IConsumer
+	//group map[string]mailbox.IConsumer
+	//sync.Mutex
 }
 
-func (nmb *nsqMailbox) ClusterPub(topic string, msg *mailbox.Message) {
+func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
+	ch.c.lock.Lock()
+	defer ch.c.lock.Unlock()
+
+	err := ch.c.PutMsg(&mailbox.Message{
+		Body: msg.Body,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (nmb *nsqMailbox) pub(topic string, msg *mailbox.Message) {
 	p := nmb.cproducers[rand.Intn(len(nmb.cproducers))]
 	p.Publish(topic, msg.Body)
 }
 
+/*
 func (ns *nsqSubscriber) GetConsumer(cid string) []mailbox.IConsumer {
 	c := []mailbox.IConsumer{}
 
@@ -73,9 +70,11 @@ func (ns *nsqSubscriber) GetConsumer(cid string) []mailbox.IConsumer {
 
 	return c
 }
-
+*/
 func (c *nsqConsumer) OnArrived(handler mailbox.HandlerFunc) {
+	c.lock.Lock()
 	c.handle = handler
+	c.lock.Unlock()
 }
 
 func (c *nsqConsumer) Exit() {
@@ -87,9 +86,6 @@ func (c *nsqConsumer) IsExited() bool {
 }
 
 func (c *nsqConsumer) PutMsg(msg *mailbox.Message) error {
-	c.Lock()
-	defer c.Unlock()
-
 	return c.handle(msg)
 }
 
@@ -106,7 +102,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	}
 
 	consumer.AddHandler(&consumerHandler{
-		ns:   ns,
+		c:    nc,
 		uuid: nc.uuid,
 	})
 
@@ -121,9 +117,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 }
 
 // AddCompetition 从固定的管道中竞争消息
-func (ns *nsqSubscriber) AddCompetition() (mailbox.IConsumer, error) {
-	ns.Lock()
-	defer ns.Unlock()
+func (ns *nsqSubscriber) Competition() (mailbox.IConsumer, error) {
 
 	if ns.Channel == "" {
 		ns.Channel = ns.serviceName + "-" + "competition"
@@ -133,15 +127,13 @@ func (ns *nsqSubscriber) AddCompetition() (mailbox.IConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns.group[nc.uuid] = nc
+	ns.consumer = nc
 
 	return nc, nil
 }
 
 // AddShared 从管道副本中一起消费消息，因为共享需要不同的管道，所以这里默认设置为ephemeral
-func (ns *nsqSubscriber) AddShared() (mailbox.IConsumer, error) {
-	ns.Lock()
-	defer ns.Unlock()
+func (ns *nsqSubscriber) Shared() (mailbox.IConsumer, error) {
 
 	uid := ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
 
@@ -149,15 +141,14 @@ func (ns *nsqSubscriber) AddShared() (mailbox.IConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns.group[nc.uuid] = nc
+	ns.consumer = nc
 
 	return nc, nil
 }
 
-func (nmb *nsqMailbox) ClusterSub(topic string) mailbox.ISubscriber {
+func (nmb *nsqMailbox) sub(topic string) mailbox.ISubscriber {
 
 	s := &nsqSubscriber{
-		group:         make(map[string]mailbox.IConsumer),
 		Channel:       nmb.parm.Channel,
 		Topic:         topic,
 		lookupAddress: nmb.parm.LookupAddress,

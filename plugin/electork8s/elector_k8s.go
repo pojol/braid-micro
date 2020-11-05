@@ -108,11 +108,11 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logg
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == p.NodID {
-					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+					mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 					logger.Debugf("new leader %s %s", p.NodID, identity)
 
 				} else {
-					mb.ProcPub(elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
+					mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},

@@ -2,6 +2,8 @@ package braid
 
 import (
 	"context"
+	"math/rand"
+	"time"
 
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
@@ -59,6 +61,8 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	braidGlobal = &Braid{
 		cfg: config{

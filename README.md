@@ -46,7 +46,9 @@ braid.Invoke(ctx, targetService, methon, token, args, reply)
 > `范例` 在集群内`订阅`一个共享型的消息
 
 ```go
-consumer := braid.Mailbox().ClusterSub(`topic`).AddShared()
+// 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
+consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
+// 注册消息到达函数（线程安全
 consumer.OnArrived(func (msg *mailbox.Message) error {
   return nil
 })

@@ -100,8 +100,8 @@ func TestMutiMailBox(t *testing.T) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	sub := Mailbox().ProcSub(topic)
-	c1, _ := sub.AddShared()
+	sub := Mailbox().Sub(mailbox.Proc, topic)
+	c1, _ := sub.Shared()
 	c1.OnArrived(func(msg *mailbox.Message) error {
 		wg.Done()
 		return nil
@@ -110,7 +110,7 @@ func TestMutiMailBox(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		go func() {
 			wg.Add(1)
-			Mailbox().ProcPub(topic, &mailbox.Message{Body: []byte("msg")})
+			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
 		}()
 	}
 
@@ -125,6 +125,6 @@ func TestMutiMailBox(t *testing.T) {
 		fmt.Println("done")
 	case <-time.After(time.Millisecond * 500):
 		// time out
-		assert.Equal(t, false, true)
+		t.FailNow()
 	}
 }

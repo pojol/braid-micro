@@ -1,6 +1,7 @@
 package mailboxnsq
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,26 +16,40 @@ func TestClusterShared(t *testing.T) {
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := b.Build("cluster")
-	var tick uint64
 
-	c1, _ := mb.ClusterSub("TestClusterShared").AddShared()
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
+	defer c1.Exit()
 	c1.OnArrived(func(msg *mailbox.Message) error {
-		atomic.AddUint64(&tick, 1)
+		wg.Done()
 		return nil
 	})
 
-	c2, _ := mb.ClusterSub("TestClusterShared").AddShared()
+	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
+	defer c2.Exit()
 	c2.OnArrived(func(msg *mailbox.Message) error {
-		atomic.AddUint64(&tick, 1)
+		wg.Done()
 		return nil
 	})
 
-	mb.ClusterPub("TestClusterShared", &mailbox.Message{
+	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
-	time.Sleep(time.Millisecond * 500)
+	wg.Add(2)
 
-	assert.Equal(t, tick, 2)
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		//pass
+	case <-time.After(time.Millisecond * 500):
+		t.FailNow()
+	}
 }
 
 func TestClusterCompetition(t *testing.T) {
@@ -43,37 +58,47 @@ func TestClusterCompetition(t *testing.T) {
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := b.Build("cluster")
 	var tick uint64
+	var tickmu sync.Mutex
 
-	c1, _ := mb.ClusterSub("TestClusterCompetition").AddCompetition()
+	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+	defer c1.Exit()
 	c1.OnArrived(func(msg *mailbox.Message) error {
+		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
 		return nil
 	})
 
-	c2, _ := mb.ClusterSub("TestClusterCompetition").AddCompetition()
+	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+	defer c2.Exit()
 	c2.OnArrived(func(msg *mailbox.Message) error {
+		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
 		return nil
 	})
 
-	mb.ClusterPub("TestClusterCompetition", &mailbox.Message{
+	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
-	time.Sleep(time.Millisecond * 500)
 
-	assert.Equal(t, tick, 1)
+	time.Sleep(time.Millisecond * 1000)
+	tickmu.Lock()
+	assert.Equal(t, tick, uint64(1))
+	tickmu.Unlock()
 }
 
 func TestClusterMailboxParm(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
 	b.AddOption(WithChannel("parm"))
-	b.AddOption(WithLookupAddr([]string{"127.0.0.1"}))
-	b.AddOption(WithNsqdAddr([]string{"127.0.0.2"}))
+	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 
-	mb, _ := b.Build("cluster")
+	mb, err := b.Build("cluster")
+	assert.Equal(t, err, nil)
 	cm := mb.(*nsqMailbox)
 
 	assert.Equal(t, cm.parm.Channel, "parm")
-	assert.Equal(t, cm.parm.LookupAddress, []string{"127.0.0.1"})
-	assert.Equal(t, cm.parm.Address, []string{"127.0.0.2"})
+	assert.Equal(t, cm.parm.LookupAddress, []string{mock.NSQLookupdAddr})
+	assert.Equal(t, cm.parm.Address, []string{mock.NsqdAddr})
 }

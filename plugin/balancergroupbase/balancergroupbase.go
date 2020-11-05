@@ -101,17 +101,17 @@ type baseBalancerGroup struct {
 func (bbg *baseBalancerGroup) Init() {
 	var err error
 
-	bbg.addConsumer, err = bbg.mb.ProcSub(discover.AddService).AddShared()
+	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
 	if err != nil {
 		panic(err)
 	}
 
-	bbg.rmvConsumer, err = bbg.mb.ProcSub(discover.RmvService).AddShared()
+	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
 	if err != nil {
 		panic(err)
 	}
 
-	bbg.upConsumer, err = bbg.mb.ProcSub(discover.UpdateService).AddShared()
+	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
 	if err != nil {
 		panic(err)
 	}

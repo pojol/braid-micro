@@ -42,10 +42,6 @@ type weightedNod struct {
 
 // swrrBalancer 平滑加权轮询
 type swrrBalancer struct {
-	addSub mailbox.IConsumer
-	rmvSub mailbox.IConsumer
-	upSub  mailbox.IConsumer
-
 	serviceName string
 	mb          mailbox.IMailbox
 	logger      logger.ILogger

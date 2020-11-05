@@ -2,7 +2,6 @@ package mailboxnsq
 
 import (
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/nsqio/go-nsq"
@@ -32,9 +31,7 @@ func (nb *nsqMailboxBuilder) Name() string {
 
 func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error) {
 	p := Parm{
-		ServiceName:   serviceName,
-		LookupAddress: []string{"127.0.0.1:4161"},
-		Address:       []string{"127.0.0.1:4150"},
+		ServiceName: serviceName,
 	}
 	for _, opt := range nb.opts {
 		opt.(Option)(&p)
@@ -48,11 +45,17 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 		if err != nil {
 			return nil, err
 		}
+
+		if err = cp.Ping(); err != nil {
+			return nil, err
+		}
+
 		cps = append(cps, cp)
 	}
 
 	nsqm := &nsqMailbox{
 		parm:       p,
+		proc:       &procMailbox{},
 		cproducers: cps,
 	}
 	return nsqm, nil
@@ -61,10 +64,30 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 type nsqMailbox struct {
 	parm Parm
 
-	psubsrcibers sync.Map
+	proc *procMailbox
 
 	cproducers   []*nsq.Producer
 	csubsrcibers []*nsqSubscriber
+}
+
+func (nmb *nsqMailbox) Pub(scope string, topic string, msg *mailbox.Message) {
+
+	if scope == mailbox.Proc {
+		nmb.proc.pub(topic, msg)
+	} else if scope == mailbox.Cluster {
+		nmb.pub(topic, msg)
+	}
+
+}
+
+func (nmb *nsqMailbox) Sub(scope string, topic string) mailbox.ISubscriber {
+	if scope == mailbox.Proc {
+		return nmb.proc.sub(topic)
+	} else if scope == mailbox.Cluster {
+		return nmb.sub(topic)
+	}
+
+	return nil
 }
 
 func init() {

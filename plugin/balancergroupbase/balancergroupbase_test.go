@@ -33,21 +33,21 @@ func TestParm(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 100)
 
-	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
+	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(discover.AddService, mailbox.NewMessage(discover.Node{
+	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    serviceName,
 	}))
 
-	mb.ProcPub(discover.UpdateService, mailbox.NewMessage(discover.Node{
+	mb.Pub(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  3,
@@ -55,7 +55,7 @@ func TestParm(t *testing.T) {
 	}))
 
 	time.Sleep(time.Millisecond * 100)
-	mb.ProcPub(discover.RmvService, mailbox.NewMessage(discover.Node{
+	mb.Pub(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
