@@ -49,8 +49,11 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 		for {
 			select {
 			case msg := <-c.buff.Get():
-				handler(msg.(*mailbox.Message))
 				c.buff.Load()
+				if !c.exitCh.HasOpend() {
+					break
+				}
+				handler(msg.(*mailbox.Message))
 			case <-c.exitCh.Done():
 			}
 
