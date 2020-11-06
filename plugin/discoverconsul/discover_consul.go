@@ -122,6 +122,9 @@ func (dc *consulDiscover) InBlacklist(name string) bool {
 
 func (dc *consulDiscover) discoverImpl() {
 
+	dc.lock.Lock()
+	defer dc.lock.Unlock()
+
 	services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
 	if err != nil {
 		return
@@ -253,6 +256,8 @@ func (dc *consulDiscover) Init() {
 	linknumC.OnArrived(func(msg *mailbox.Message) error {
 
 		lninfo := linkcache.DecodeLinkNumMsg(msg)
+		dc.lock.Lock()
+		defer dc.lock.Unlock()
 
 		if _, ok := dc.passingMap[lninfo.ID]; ok {
 			dc.passingMap[lninfo.ID].linknum = lninfo.Num
