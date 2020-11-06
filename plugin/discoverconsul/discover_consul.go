@@ -3,6 +3,7 @@ package discoverconsul
 import (
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/pojol/braid/3rd/consul"
@@ -93,6 +94,8 @@ type consulDiscover struct {
 
 	// service id : service nod
 	passingMap map[string]*syncNode
+
+	lock sync.Mutex
 }
 
 type syncNode struct {
@@ -179,6 +182,9 @@ func (dc *consulDiscover) discoverImpl() {
 }
 
 func (dc *consulDiscover) syncWeight() {
+	dc.lock.Lock()
+	defer dc.lock.Unlock()
+
 	for k, v := range dc.passingMap {
 		if v.linknum == 0 {
 			continue
@@ -222,7 +228,9 @@ func (dc *consulDiscover) runImpl() {
 			}
 		}()
 
+		dc.lock.Lock()
 		dc.syncWeight()
+		dc.lock.Unlock()
 	}
 
 	dc.discoverTicker = time.NewTicker(dc.parm.SyncServicesInterval)
