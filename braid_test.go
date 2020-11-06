@@ -107,7 +107,7 @@ func TestMutiMailBox(t *testing.T) {
 		return nil
 	})
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 1000; i++ {
 		go func() {
 			wg.Add(1)
 			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
