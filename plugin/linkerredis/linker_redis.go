@@ -238,6 +238,9 @@ func (l *redisLinker) Target(token string, serviceName string) (target string, e
 }
 
 func (l *redisLinker) Link(token string, target discover.Node) error {
+	l.Lock()
+	defer l.Unlock()
+
 	conn := l.getConn()
 	defer conn.Close()
 
@@ -263,6 +266,9 @@ func (l *redisLinker) Unlink(token string, target string) error {
 	if token == "" || token == "nil" {
 		return nil
 	}
+
+	l.Lock()
+	defer l.Unlock()
 
 	conn := l.getConn()
 	defer conn.Close()
