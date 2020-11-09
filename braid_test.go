@@ -93,9 +93,9 @@ func TestMutiMailBox(t *testing.T) {
 		return nil
 	})
 
+	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
 		go func() {
-			wg.Add(1)
 			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
 		}()
 	}
