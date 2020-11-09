@@ -7,37 +7,12 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/cLKDkf03/image.png" width="700">
-
-### 微服务
-> braid.Module 默认提供的微服务组件
-
-|  服务  | 简介  |
-|  ----  | ----  | 
-| **Discover**  | 发现插件，主要提供 `Add` `Rmv` `Update` 等接口 |
-| **Elector** | 选举插件，主要提供 `Wait` `Slave` `Master` 等接口 |
-| **Rpc** | RPC插件，主要用于发起RPC请求 `Invoke` 和开启RPC Server |
-| **Tracer** | 分布式追踪插件，监控分布式系统中的调用细节，目前有`grpc` `echo` `redis` 等追踪 |
-| **LinkCache** | 服务访问链路缓存插件，主要用于缓存token（用户唯一凭证）的链路信息 |
+<img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
 
 
 
 ### 交互模型
 > braid.Mailbox 统一的交互模型
-
-* **同步**
-> 在braid中目前只提供了这`唯一的一个`同步语义的接口,用于发起rpc调用
-
-```go
-// ctx 上下文
-// targetService 目标服务 例（`login`
-// methon 请求目标函数
-// token 用户唯一凭证（可为空
-braid.Invoke(ctx, targetService, methon, token, args, reply)
-```
-
-* **异步**
-> braid中异步语义的简介，在内部或是将来功能的扩充，都应该优先使用异步语义
 
 | 共享（多个消息副本 | 竞争（只被消费一次 | 进程内 | 集群内 | 发布 | 订阅 |
 | ---- | ---- | ---- | ---- | ---- | ---- |
@@ -53,6 +28,19 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
   return nil
 })
 ```
+
+
+
+### 微服务
+> braid.Module 默认提供的微服务组件
+
+**Discover** 发现模块
+**Balancer** 负载均衡模块
+**Elector** 选举模块
+**RPC** rpc模块
+**Tracer** 分布式追踪模块
+**LinkCache** 访问链路缓存模块
+
 
 
 ### 构建
