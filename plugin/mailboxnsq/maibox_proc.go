@@ -2,6 +2,7 @@ package mailboxnsq
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"sync"
 
@@ -50,7 +51,7 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 			select {
 			case msg := <-c.buff.Get():
 				c.buff.Load()
-				if !c.exitCh.HasOpend() {
+				if c.exitCh.HasOpend() {
 					break
 				}
 				handler(msg.(*mailbox.Message))
@@ -103,9 +104,9 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 }
 
 func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
-
 	s, ok := pmb.subscribers.Load(topic)
 	if !ok {
+		fmt.Println("can't find topic", topic)
 		return
 	}
 

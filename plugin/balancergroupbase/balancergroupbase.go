@@ -119,7 +119,6 @@ func (bbg *baseBalancerGroup) Init() {
 }
 
 func (bbg *baseBalancerGroup) Run() {
-
 	bbg.addConsumer.OnArrived(func(msg *mailbox.Message) error {
 
 		nod := discover.Node{}
@@ -134,6 +133,7 @@ func (bbg *baseBalancerGroup) Run() {
 				b := balancer.GetBuilder(strategy)
 				ib, _ := b.Build(bbg.logger)
 				bbg.group[strategy].targets[nod.Name] = ib
+				bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
 			}
 
 			bbg.group[strategy].targets[nod.Name].Add(nod)

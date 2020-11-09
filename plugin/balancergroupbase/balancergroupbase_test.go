@@ -31,8 +31,6 @@ func TestParm(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	time.Sleep(time.Millisecond * 100)
-
 	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
@@ -47,6 +45,7 @@ func TestParm(t *testing.T) {
 		Name:    serviceName,
 	}))
 
+	time.Sleep(time.Millisecond * 100)
 	mb.Pub(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
@@ -54,7 +53,6 @@ func TestParm(t *testing.T) {
 		Name:    serviceName,
 	}))
 
-	time.Sleep(time.Millisecond * 100)
 	mb.Pub(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
@@ -62,10 +60,12 @@ func TestParm(t *testing.T) {
 		Name:    serviceName,
 	}))
 
-	time.Sleep(time.Millisecond * 200)
+	time.Sleep(time.Millisecond * 500)
 	for i := 0; i < 10; i++ {
 		nod, err := bg.Pick(balancerrandom.Name, serviceName)
-		assert.Equal(t, err, nil)
+		if err != nil {
+			t.FailNow()
+		}
 		assert.Equal(t, nod.ID, "A")
 	}
 }
