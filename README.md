@@ -7,10 +7,10 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
+<img src="https://i.postimg.cc/cLKDkf03/image.png" width="800">
 
 ### 微服务
-> braid 提供常用的微服务组件
+> braid.Module 默认提供的微服务组件
 
 |  服务  | 简介  |
 |  ----  | ----  | 
@@ -23,7 +23,7 @@
 
 
 ### 交互模型
-> 使用braid提供的接口或者订阅消息均是多线程安全的
+> braid.Mailbox 统一的交互模型
 
 * **同步**
 > 在braid中目前只提供了这`唯一的一个`同步语义的接口,用于发起rpc调用
@@ -55,9 +55,8 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 ```
 
 
-
 ### 构建
-> 通过注册模块，构建braid的运行环境。
+> 通过注册模块(braid.Module)，构建braid的运行环境。
 
 ```go
 b, _ := braid.New(ServiceName)
