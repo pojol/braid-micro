@@ -38,7 +38,7 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 |-|-|-|-|-|-|
 |服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
 |discoverconsul|balancerrandom|electorconsul|grpc-client|jaegertracer|linkerredis|
-||balancerswrr|electork8s|grpc-server|||
+||[balancerswrr](https://github.com/pojol/braid/wiki/balancerswrr)|electork8s|grpc-server|||
 
 
 
