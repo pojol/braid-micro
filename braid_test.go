@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/modules/discoverconsul"
@@ -20,19 +19,6 @@ import (
 func TestMain(m *testing.M) {
 
 	mock.Init()
-
-	c := redis.New()
-	c.Init(redis.Config{
-		Address:        mock.RedisAddr,
-		ReadTimeOut:    time.Millisecond * time.Duration(5000),
-		WriteTimeOut:   time.Millisecond * time.Duration(5000),
-		ConnectTimeOut: time.Millisecond * time.Duration(2000),
-		IdleTimeout:    time.Millisecond * time.Duration(0),
-		MaxIdle:        16,
-		MaxActive:      128,
-	})
-	defer c.Close()
-
 	m.Run()
 }
 
