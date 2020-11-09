@@ -7,7 +7,7 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/cLKDkf03/image.png" width="800">
+<img src="https://i.postimg.cc/cLKDkf03/image.png" width="700">
 
 ### 微服务
 > braid.Module 默认提供的微服务组件
