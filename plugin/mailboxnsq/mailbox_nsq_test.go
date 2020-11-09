@@ -19,6 +19,7 @@ func TestClusterShared(t *testing.T) {
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
+	wg.Add(2)
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c1.Exit()
@@ -37,7 +38,6 @@ func TestClusterShared(t *testing.T) {
 	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
-	wg.Add(2)
 
 	go func() {
 		wg.Wait()
