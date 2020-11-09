@@ -34,12 +34,11 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 ### 微服务
 > braid.Module 默认提供的微服务组件
 
-**Discover** 发现模块
-**Balancer** 负载均衡模块
-**Elector** 选举模块
-**RPC** rpc模块
-**Tracer** 分布式追踪模块
-**LinkCache** 访问链路缓存模块
+|**Discover**|**Balancer**|**Elector**|**RPC**|**Tracer**|**LinkCache**|
+|-|-|-|-|-|-|
+|服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
+|discoverconsul|balancerrandom|electorconsul|grpc-client|jaegertracer|linkerredis|
+||balancerswrr|electork8s|grpc-server|||
 
 
 
