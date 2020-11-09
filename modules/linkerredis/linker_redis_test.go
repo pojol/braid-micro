@@ -3,6 +3,7 @@ package linkerredis
 import (
 	"math/rand"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,7 +26,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestLinkerTarget(t *testing.T) {
+	var tmu sync.Mutex
+	tmu.Lock()
+	// 用于生成测试用例使用的key前缀
 	LinkerRedisPrefix = "testlinkertarget_"
+	tmu.Unlock()
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
@@ -80,12 +85,6 @@ func TestLinkerTarget(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 500)
-}
-
-func TestDispatch(t *testing.T) {
-
-	LinkerRedisPrefix = "braid_linker-"
-
 }
 
 func BenchmarkLink(b *testing.B) {
