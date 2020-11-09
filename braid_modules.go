@@ -14,7 +14,10 @@ type config struct {
 // Module wraps
 type Module func(*Braid)
 
-// Discover plugin
+// Discover 服务发现模块，提供以下异步消息
+// 	discover.AddService 发现新的服务
+// 	discover.RmvService 某个服务下线
+// 	discover.UpdateService 更新某个服务的权重信息
 func Discover(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
@@ -26,7 +29,8 @@ func Discover(builderName string, opts ...interface{}) Module {
 	}
 }
 
-// LinkCache plugin
+// LinkCache 链路缓存模块，提供以下异步消息
+//	linkcache.ServiceLinkNum 获得服务当前的链路数量
 func LinkCache(builderName string, opts ...interface{}) Module {
 
 	return func(b *Braid) {
@@ -39,7 +43,8 @@ func LinkCache(builderName string, opts ...interface{}) Module {
 
 }
 
-// Elector plugin
+// Elector 选举模块
+// 	elector.StateChange 状态改变消息 Wait, Slave, Master
 func Elector(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 

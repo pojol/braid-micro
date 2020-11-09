@@ -36,7 +36,7 @@ func (b *grpcServerBuilder) Name() string {
 	return Name
 }
 
-func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.ISserver, error) {
+func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.IServer, error) {
 	p := Parm{
 		ListenAddr: ":14222",
 	}

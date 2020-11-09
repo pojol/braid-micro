@@ -33,7 +33,7 @@ type Braid struct {
 	client        client.IClient
 
 	serverBuilder server.Builder
-	server        server.ISserver
+	server        server.IServer
 
 	mailbox mailbox.IMailbox
 
