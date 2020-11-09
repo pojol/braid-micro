@@ -15,9 +15,9 @@ import (
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/balancergroupbase"
-	"github.com/pojol/braid/plugin/balancerrandom"
-	"github.com/pojol/braid/plugin/balancerswrr"
+	"github.com/pojol/braid/modules/balancergroupbase"
+	"github.com/pojol/braid/modules/balancerrandom"
+	"github.com/pojol/braid/modules/balancerswrr"
 	"google.golang.org/grpc"
 )
 

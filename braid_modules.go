@@ -11,11 +11,11 @@ type config struct {
 	Name string
 }
 
-// Plugin wraps
-type Plugin func(*Braid)
+// Module wraps
+type Module func(*Braid)
 
 // Discover plugin
-func Discover(builderName string, opts ...interface{}) Plugin {
+func Discover(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := module.GetBuilder(builderName)
@@ -27,7 +27,7 @@ func Discover(builderName string, opts ...interface{}) Plugin {
 }
 
 // LinkCache plugin
-func LinkCache(builderName string, opts ...interface{}) Plugin {
+func LinkCache(builderName string, opts ...interface{}) Module {
 
 	return func(b *Braid) {
 		builder := module.GetBuilder(builderName)
@@ -40,7 +40,7 @@ func LinkCache(builderName string, opts ...interface{}) Plugin {
 }
 
 // Elector plugin
-func Elector(builderName string, opts ...interface{}) Plugin {
+func Elector(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := module.GetBuilder(builderName)
@@ -52,7 +52,7 @@ func Elector(builderName string, opts ...interface{}) Plugin {
 }
 
 // GRPCClient rpc-client
-func GRPCClient(builderName string, opts ...interface{}) Plugin {
+func GRPCClient(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := client.GetBuilder(builderName)
@@ -65,7 +65,7 @@ func GRPCClient(builderName string, opts ...interface{}) Plugin {
 }
 
 // GRPCServer rpc-server
-func GRPCServer(builderName string, opts ...interface{}) Plugin {
+func GRPCServer(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := server.GetBuilder(builderName)
@@ -78,7 +78,7 @@ func GRPCServer(builderName string, opts ...interface{}) Plugin {
 }
 
 // JaegerTracing jt
-func JaegerTracing(protoOpt tracer.Option, opts ...tracer.Option) Plugin {
+func JaegerTracing(protoOpt tracer.Option, opts ...tracer.Option) Module {
 	return func(b *Braid) {
 
 		t, err := tracer.New(b.cfg.Name, protoOpt, opts...)

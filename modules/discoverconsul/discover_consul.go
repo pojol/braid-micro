@@ -12,7 +12,7 @@ import (
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/plugin/linkerredis"
+	"github.com/pojol/braid/modules/linkerredis"
 )
 
 const (

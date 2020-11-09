@@ -12,9 +12,9 @@ import (
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/mailboxnsq"
-	"github.com/pojol/braid/plugin/zaplogger"
+	"github.com/pojol/braid/modules/electorconsul"
+	"github.com/pojol/braid/modules/mailboxnsq"
+	"github.com/pojol/braid/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 

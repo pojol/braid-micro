@@ -10,8 +10,8 @@ import (
 
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/plugin/grpcclient/bproto"
-	"github.com/pojol/braid/plugin/zaplogger"
+	"github.com/pojol/braid/modules/grpcclient/bproto"
+	"github.com/pojol/braid/modules/zaplogger"
 	"google.golang.org/grpc"
 )
 

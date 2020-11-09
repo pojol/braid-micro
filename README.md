@@ -1,5 +1,5 @@
 ## Braid
-**Braid** 提供统一的`模块` `服务`交互模型，通过注册`插件`（支持自定义），构建属于自己的微服务。
+**Braid** 提供统一的交互模型，通过注册`模块`（支持自定义），构建属于自己的微服务。
 
 ---
 
@@ -57,13 +57,13 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 
 
 ### 构建
-> 通过注册插件(`注: `这里的插件并非go plugin)，构建braid的运行环境。
+> 通过注册模块，构建braid的运行环境。
 
 ```go
 b, _ := braid.New(ServiceName)
 
 // 注册插件
-b.RegistPlugin(
+b.RegistModule(
   braid.Discover(         // Discover 插件
     discoverconsul.Name,  // 插件名（基于consul实现的discover插件，通过插件名可以获取到插件的构建器
     discoverconsul.WithConsulAddr(consulAddr)), // 插件的可选项

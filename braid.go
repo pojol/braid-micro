@@ -12,10 +12,10 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/grpcclient"
-	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/mailboxnsq"
-	"github.com/pojol/braid/plugin/zaplogger"
+	"github.com/pojol/braid/modules/grpcclient"
+	"github.com/pojol/braid/modules/grpcserver"
+	"github.com/pojol/braid/modules/mailboxnsq"
+	"github.com/pojol/braid/modules/zaplogger"
 )
 
 // Braid framework instance
@@ -57,7 +57,7 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	}
 
 	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build(logger.ERROR)
+	log, err := zlb.Build(logger.DEBUG)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +76,10 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	return braidGlobal, nil
 }
 
-// RegistPlugin 注册插件
-func (b *Braid) RegistPlugin(plugins ...Plugin) error {
+// RegistModule 注册模块
+func (b *Braid) RegistModule(modules ...Module) error {
 	//
-	for _, plugin := range plugins {
+	for _, plugin := range modules {
 		plugin(braidGlobal)
 	}
 

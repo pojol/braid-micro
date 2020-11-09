@@ -9,11 +9,11 @@ import (
 	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/plugin/discoverconsul"
-	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/linkerredis"
-	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/modules/discoverconsul"
+	"github.com/pojol/braid/modules/electorconsul"
+	"github.com/pojol/braid/modules/grpcserver"
+	"github.com/pojol/braid/modules/linkerredis"
+	"github.com/pojol/braid/modules/mailboxnsq"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +44,7 @@ func TestPlugin(t *testing.T) {
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
 	)
 
-	b.RegistPlugin(
+	b.RegistModule(
 		LinkCache(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
 		Discover(
 			discoverconsul.Name,
@@ -64,7 +64,7 @@ func TestPlugin(t *testing.T) {
 func TestWithClient(t *testing.T) {
 	/*
 		b := New("test")
-		b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
+		b.RegistModule(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
 			BalancerBySwrr(),
 			GRPCClient(grpcclient.WithPoolCapacity(128)))
 
@@ -80,7 +80,7 @@ func TestServerInterface(t *testing.T) {
 	assert.Equal(t, s, nil)
 
 	b, _ := New("testserverinterface")
-	b.RegistPlugin(GRPCServer(
+	b.RegistModule(GRPCServer(
 		grpcserver.Name,
 		grpcserver.WithListen(":14222")))
 
