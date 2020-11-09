@@ -64,9 +64,9 @@ b, _ := braid.New(ServiceName)
 
 // 注册插件
 b.RegistModule(
-  braid.Discover(         // Discover 插件
-    discoverconsul.Name,  // 插件名（基于consul实现的discover插件，通过插件名可以获取到插件的构建器
-    discoverconsul.WithConsulAddr(consulAddr)), // 插件的可选项
+  braid.Discover(         // Discover 模块
+    discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
+    discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
   braid.GRPCClient(grpcclient.Name),
   braid.Elector(
     electorconsul.Name,
@@ -75,7 +75,7 @@ b.RegistModule(
   braid.LinkCache(linkerredis.Name),
   braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
 
-b.Init()  // 初始化注册在braid中的插件
+b.Init()  // 初始化注册在braid中的模块
 b.Run()   // 运行
 defer b.Close() // 释放
 ```
