@@ -2,6 +2,8 @@ package braid
 
 import (
 	"context"
+	"math/rand"
+	"time"
 
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
@@ -10,10 +12,10 @@ import (
 	"github.com/pojol/braid/module/rpc/client"
 	"github.com/pojol/braid/module/rpc/server"
 	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/plugin/grpcclient"
-	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/mailboxnsq"
-	"github.com/pojol/braid/plugin/zaplogger"
+	"github.com/pojol/braid/modules/grpcclient"
+	"github.com/pojol/braid/modules/grpcserver"
+	"github.com/pojol/braid/modules/mailboxnsq"
+	"github.com/pojol/braid/modules/zaplogger"
 )
 
 // Braid framework instance
@@ -31,7 +33,7 @@ type Braid struct {
 	client        client.IClient
 
 	serverBuilder server.Builder
-	server        server.ISserver
+	server        server.IServer
 
 	mailbox mailbox.IMailbox
 
@@ -60,6 +62,8 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 		return nil, err
 	}
 
+	rand.Seed(time.Now().UnixNano())
+
 	braidGlobal = &Braid{
 		cfg: config{
 			Name: name,
@@ -72,10 +76,10 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	return braidGlobal, nil
 }
 
-// RegistPlugin 注册插件
-func (b *Braid) RegistPlugin(plugins ...Plugin) error {
+// RegistModule 注册模块
+func (b *Braid) RegistModule(modules ...Module) error {
 	//
-	for _, plugin := range plugins {
+	for _, plugin := range modules {
 		plugin(braidGlobal)
 	}
 

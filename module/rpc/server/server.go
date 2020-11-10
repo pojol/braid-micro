@@ -9,13 +9,13 @@ import (
 
 // Builder 构建器接口
 type Builder interface {
-	Build(serviceName string, logger logger.ILogger) (ISserver, error)
+	Build(serviceName string, logger logger.ILogger) (IServer, error)
 	Name() string
 	AddOption(opt interface{})
 }
 
-// ISserver rpc-server interface
-type ISserver interface {
+// IServer rpc-server interface
+type IServer interface {
 	module.IModule
 
 	// ...

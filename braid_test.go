@@ -6,33 +6,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/redis"
 	"github.com/pojol/braid/mock"
 	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/plugin/discoverconsul"
-	"github.com/pojol/braid/plugin/electorconsul"
-	"github.com/pojol/braid/plugin/grpcserver"
-	"github.com/pojol/braid/plugin/linkerredis"
-	"github.com/pojol/braid/plugin/mailboxnsq"
+	"github.com/pojol/braid/modules/discoverconsul"
+	"github.com/pojol/braid/modules/electorconsul"
+	"github.com/pojol/braid/modules/grpcserver"
+	"github.com/pojol/braid/modules/linkerredis"
+	"github.com/pojol/braid/modules/mailboxnsq"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 
 	mock.Init()
-
-	c := redis.New()
-	c.Init(redis.Config{
-		Address:        mock.RedisAddr,
-		ReadTimeOut:    time.Millisecond * time.Duration(5000),
-		WriteTimeOut:   time.Millisecond * time.Duration(5000),
-		ConnectTimeOut: time.Millisecond * time.Duration(2000),
-		IdleTimeout:    time.Millisecond * time.Duration(0),
-		MaxIdle:        16,
-		MaxActive:      128,
-	})
-	defer c.Close()
-
 	m.Run()
 }
 
@@ -44,7 +30,7 @@ func TestPlugin(t *testing.T) {
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
 	)
 
-	b.RegistPlugin(
+	b.RegistModule(
 		LinkCache(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
 		Discover(
 			discoverconsul.Name,
@@ -64,7 +50,7 @@ func TestPlugin(t *testing.T) {
 func TestWithClient(t *testing.T) {
 	/*
 		b := New("test")
-		b.RegistPlugin(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
+		b.RegistModule(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
 			BalancerBySwrr(),
 			GRPCClient(grpcclient.WithPoolCapacity(128)))
 
@@ -80,7 +66,7 @@ func TestServerInterface(t *testing.T) {
 	assert.Equal(t, s, nil)
 
 	b, _ := New("testserverinterface")
-	b.RegistPlugin(GRPCServer(
+	b.RegistModule(GRPCServer(
 		grpcserver.Name,
 		grpcserver.WithListen(":14222")))
 
@@ -100,17 +86,17 @@ func TestMutiMailBox(t *testing.T) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	sub := Mailbox().ProcSub(topic)
-	c1, _ := sub.AddShared()
+	sub := Mailbox().Sub(mailbox.Proc, topic)
+	c1, _ := sub.Shared()
 	c1.OnArrived(func(msg *mailbox.Message) error {
 		wg.Done()
 		return nil
 	})
 
-	for i := 0; i < 10000; i++ {
+	wg.Add(1000)
+	for i := 0; i < 1000; i++ {
 		go func() {
-			wg.Add(1)
-			Mailbox().ProcPub(topic, &mailbox.Message{Body: []byte("msg")})
+			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
 		}()
 	}
 
@@ -125,6 +111,6 @@ func TestMutiMailBox(t *testing.T) {
 		fmt.Println("done")
 	case <-time.After(time.Millisecond * 500):
 		// time out
-		assert.Equal(t, false, true)
+		t.FailNow()
 	}
 }

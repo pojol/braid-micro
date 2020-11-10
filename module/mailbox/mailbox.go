@@ -20,6 +20,25 @@ type Message struct {
 	Timestamp int64
 }
 
+const (
+	// Proc 发布一个进程内消息
+	Proc = "mailbox.proc"
+
+	// Cluster 发布一个集群消息
+	Cluster = "mailbox.cluster"
+)
+
+const (
+	// Undecided 暂未决定的
+	Undecided = "mailbox.undecided"
+
+	// Competition 竞争型的信道（只被消费一次
+	Competition = "mailbox.competition"
+
+	// Shared 共享型的信道, 消息副本会传递到多个消费者
+	Shared = "mailbox.shared"
+)
+
 // NewMessage 构建消息体
 func NewMessage(body interface{}) *Message {
 
@@ -48,19 +67,17 @@ type IConsumer interface {
 	IsExited() bool
 }
 
-// ISubscriber subscriber
+// ISubscriber 订阅者
 type ISubscriber interface {
-	AddShared() (IConsumer, error)
-	AddCompetition() (IConsumer, error)
+	Shared() (IConsumer, error)
+	Competition() (IConsumer, error)
 }
 
 // IMailbox mailbox
 type IMailbox interface {
-	ProcPub(topic string, msg *Message)
-	ProcSub(topic string) ISubscriber
+	Pub(scope string, topic string, msg *Message)
 
-	ClusterPub(topic string, msg *Message)
-	ClusterSub(topic string) ISubscriber
+	Sub(scope string, topic string) ISubscriber
 }
 
 var (
