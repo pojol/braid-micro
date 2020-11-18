@@ -7,7 +7,7 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
+<img src="https://i.postimg.cc/sgFmMJY0/image.png" width="600">
 
 
 
