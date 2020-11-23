@@ -4,7 +4,7 @@
 ---
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid)](https://goreportcard.com/report/github.com/pojol/braid)
-[![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
+[![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
 <img src="https://i.postimg.cc/wB1K7w0Z/braid.png" width="700">
