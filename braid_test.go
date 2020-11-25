@@ -88,7 +88,7 @@ func TestMutiMailBox(t *testing.T) {
 
 	sub := Mailbox().Sub(mailbox.Proc, topic)
 	c1, _ := sub.Shared()
-	c1.OnArrived(func(msg *mailbox.Message) error {
+	c1.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
 		return nil
 	})

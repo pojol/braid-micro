@@ -23,14 +23,14 @@ func TestClusterShared(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c1.Exit()
-	c1.OnArrived(func(msg *mailbox.Message) error {
+	c1.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
 		return nil
 	})
 
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c2.Exit()
-	c2.OnArrived(func(msg *mailbox.Message) error {
+	c2.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
 		return nil
 	})
@@ -62,7 +62,7 @@ func TestClusterCompetition(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c1.Exit()
-	c1.OnArrived(func(msg *mailbox.Message) error {
+	c1.OnArrived(func(msg mailbox.Message) error {
 		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
 		tickmu.Unlock()
@@ -71,7 +71,7 @@ func TestClusterCompetition(t *testing.T) {
 
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c2.Exit()
-	c2.OnArrived(func(msg *mailbox.Message) error {
+	c2.OnArrived(func(msg mailbox.Message) error {
 		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
 		tickmu.Unlock()

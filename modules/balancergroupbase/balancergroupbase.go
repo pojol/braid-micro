@@ -119,7 +119,7 @@ func (bbg *baseBalancerGroup) Init() {
 }
 
 func (bbg *baseBalancerGroup) Run() {
-	bbg.addConsumer.OnArrived(func(msg *mailbox.Message) error {
+	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
 
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
@@ -142,7 +142,7 @@ func (bbg *baseBalancerGroup) Run() {
 		return nil
 	})
 
-	bbg.rmvConsumer.OnArrived(func(msg *mailbox.Message) error {
+	bbg.rmvConsumer.OnArrived(func(msg mailbox.Message) error {
 
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
@@ -165,7 +165,7 @@ func (bbg *baseBalancerGroup) Run() {
 		return nil
 	})
 
-	bbg.upConsumer.OnArrived(func(msg *mailbox.Message) error {
+	bbg.upConsumer.OnArrived(func(msg mailbox.Message) error {
 
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)

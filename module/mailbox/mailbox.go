@@ -55,7 +55,7 @@ func NewMessage(body interface{}) *Message {
 }
 
 // HandlerFunc msg handler
-type HandlerFunc func(message *Message) error
+type HandlerFunc func(message Message) error
 
 // IConsumer consumer
 type IConsumer interface {

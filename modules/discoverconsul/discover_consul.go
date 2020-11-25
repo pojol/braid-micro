@@ -253,9 +253,9 @@ func (dc *consulDiscover) runImpl() {
 
 func (dc *consulDiscover) Init() {
 	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
-	linknumC.OnArrived(func(msg *mailbox.Message) error {
+	linknumC.OnArrived(func(msg mailbox.Message) error {
 
-		lninfo := linkcache.DecodeLinkNumMsg(msg)
+		lninfo := linkcache.DecodeLinkNumMsg(&msg)
 		dc.lock.Lock()
 		defer dc.lock.Unlock()
 

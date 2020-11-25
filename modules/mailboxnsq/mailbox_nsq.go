@@ -86,7 +86,7 @@ func (c *nsqConsumer) IsExited() bool {
 }
 
 func (c *nsqConsumer) PutMsg(msg *mailbox.Message) error {
-	return c.handle(msg)
+	return c.handle(*msg)
 }
 
 func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
