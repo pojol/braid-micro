@@ -60,8 +60,8 @@ b.RegistModule(
   braid.LinkCache(linkerredis.Name),
   braid.Tracing(
     jaegertracing.Name,
-    tracer.WithHTTP(jaegerAddr), 
-    tracer.WithProbabilistic(0.01)))
+    jaegertracing.WithHTTP(jaegerAddr), 
+    jaegertracing.WithProbabilistic(0.01)))
 
 b.Init()  // 初始化注册在braid中的模块
 b.Run()   // 运行
