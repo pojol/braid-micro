@@ -58,7 +58,10 @@ b.RegistModule(
     electorconsul.WithConsulAddr(consulAddr),
   ),
   braid.LinkCache(linkerredis.Name),
-  braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
+  braid.Tracing(
+    jaegertracing.Name,
+    tracer.WithHTTP(jaegerAddr), 
+    tracer.WithProbabilistic(0.01)))
 
 b.Init()  // 初始化注册在braid中的模块
 b.Run()   // 运行
