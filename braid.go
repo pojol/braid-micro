@@ -107,12 +107,12 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		if b.tracer != nil {
 			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
 			if ok {
-				b.clientBuilder.AddOption(grpcclient.OpenTracing(opent))
+				b.clientBuilder.AddOption(grpcclient.AutoOpenTracing(opent))
 			}
 		}
 
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
-			b.clientBuilder.AddOption(grpcclient.LinkCache(lc.(linkcache.ILinkCache)))
+			b.clientBuilder.AddOption(grpcclient.AutoLinkCache(lc.(linkcache.ILinkCache)))
 		}
 		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.mailbox, b.logger)
 		b.modules = append(b.modules, b.client)
@@ -122,7 +122,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		if b.tracer != nil {
 			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
 			if ok {
-				b.serverBuilder.AddOption(grpcserver.OpenTracing(opent))
+				b.serverBuilder.AddOption(grpcserver.AutoOpenTracing(opent))
 			}
 		}
 
