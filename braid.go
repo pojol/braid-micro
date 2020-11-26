@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
@@ -35,9 +36,10 @@ type Braid struct {
 	serverBuilder server.Builder
 	server        server.IServer
 
-	mailbox mailbox.IMailbox
+	tracerBuilder tracer.Builder
+	tracer        tracer.ITracer
 
-	tracer *tracer.Tracer
+	mailbox mailbox.IMailbox
 }
 
 var (
@@ -96,9 +98,17 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		b.modules = append(b.modules, m)
 	}
 
+	if b.tracerBuilder != nil {
+		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name)
+		b.modules = append(b.modules, b.tracer)
+	}
+
 	if b.clientBuilder != nil {
 		if b.tracer != nil {
-			b.clientBuilder.AddOption(grpcclient.Tracing())
+			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
+			if ok {
+				b.clientBuilder.AddOption(grpcclient.OpenTracing(opent))
+			}
 		}
 
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
@@ -110,7 +120,10 @@ func (b *Braid) RegistModule(modules ...Module) error {
 
 	if b.serverBuilder != nil {
 		if b.tracer != nil {
-			b.serverBuilder.AddOption(grpcserver.WithTracing())
+			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
+			if ok {
+				b.serverBuilder.AddOption(grpcserver.OpenTracing(opent))
+			}
 		}
 
 		b.server, _ = b.serverBuilder.Build(b.cfg.Name, b.logger)
@@ -167,6 +180,11 @@ func Server() interface{} {
 // Mailbox pub-sub
 func Mailbox() mailbox.IMailbox {
 	return braidGlobal.mailbox
+}
+
+// Tracer tracing
+func Tracer() tracer.ITracer {
+	return braidGlobal.tracer
 }
 
 // Close 关闭braid

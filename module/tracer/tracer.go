@@ -1,121 +1,50 @@
 package tracer
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"time"
+	"strings"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/uber/jaeger-client-go"
-	jaegerCfg "github.com/uber/jaeger-client-go/config"
-	"github.com/uber/jaeger-client-go/transport"
-	"github.com/uber/jaeger-lib/metrics"
+	"github.com/pojol/braid/module"
 )
 
-type (
-	// Tracer tracer struct
-	Tracer struct {
-		closer  io.Closer
-		tracing opentracing.Tracer
-		cfg     tconfig
-	}
-)
+// SpanFactory span 工厂
+type SpanFactory func(interface{}) (ISpan, error)
 
-const (
-	optionHTTPRequest = "Request"
-	opRequestLimit    = "RequestLimit"
-)
+// Builder tracer build
+type Builder interface {
+	Build(name string) (ITracer, error)
+	Name() string
+	AddOption(opt interface{})
+	AddFactory(strategy string, factory SpanFactory)
+}
 
-// TraceKey 主键类型
-type TraceKey int
+// ISpan span interface
+type ISpan interface {
+	Begin(ctx interface{})
+	End(ctx interface{})
+}
 
-const (
-	// RequestKey 请求的键值
-	RequestKey TraceKey = 1000 + iota
-)
+// ITracer tracer interface
+type ITracer interface {
+	module.IModule
+
+	GetSpan(strategy string) (ISpan, error)
+
+	GetTracing() interface{}
+}
 
 var (
-
-	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
-
-	tracer *Tracer
+	m = make(map[string]Builder)
 )
 
-func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
-	switch {
-	case rc.CollectorEndpoint != "":
-		httpOptions := []transport.HTTPOption{transport.HTTPBatchSize(1), transport.HTTPHeaders(rc.HTTPHeaders)}
-		if rc.User != "" && rc.Password != "" {
-			httpOptions = append(httpOptions, transport.HTTPBasicAuth(rc.User, rc.Password))
-		}
-		return transport.NewHTTPTransport(rc.CollectorEndpoint, httpOptions...), nil
-	default:
-		return jaeger.NewUDPTransport(rc.LocalAgentHostPort, 0)
-	}
+// Register 注册tracer
+func Register(b Builder) {
+	m[strings.ToLower(b.Name())] = b
 }
 
-// New 创建 jaeger traing
-func New(name string, protoOpt Option, opts ...Option) (*Tracer, error) {
-
-	const (
-		defaultProbabilistic = 1
-		defaultSlowRequest   = time.Millisecond * 200
-		defaultSlowSpan      = time.Millisecond * 50
-	)
-
-	tracer = &Tracer{
-		cfg: tconfig{
-			Probabilistic: defaultProbabilistic,
-			Name:          name,
-			SlowRequest:   defaultSlowRequest,
-			SlowSpan:      defaultSlowSpan,
-		},
+// GetBuilder 获取构建器
+func GetBuilder(name string) Builder {
+	if b, ok := m[strings.ToLower(name)]; ok {
+		return b
 	}
-
-	protoOpt(tracer)
-
-	for _, opt := range opts {
-		opt(tracer)
-	}
-
-	jcfg := jaegerCfg.Configuration{
-		Sampler: &jaegerCfg.SamplerConfig{
-			Type:  jaeger.SamplerTypeConst,
-			Param: 1,
-		},
-		Reporter: &jaegerCfg.ReporterConfig{
-			LogSpans:           true,
-			CollectorEndpoint:  tracer.cfg.CollectorEndpoint, //with http
-			LocalAgentHostPort: tracer.cfg.LocalAgentHostPort,
-		},
-		ServiceName: tracer.cfg.Name,
-	}
-
-	sender, err := newTransport(jcfg.Reporter)
-	if err != nil {
-		fmt.Printf("new tracer transport err %s\n", err.Error())
-		return nil, err
-	}
-
-	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, tracer.cfg.Probabilistic))
-	m := jaegerCfg.Metrics(metrics.NullFactory)
-
-	jtracing, closer, err := jcfg.NewTracer(r, m)
-	if err != nil {
-		fmt.Printf("new tracer err %s\n", err.Error())
-		return nil, err
-	}
-
-	tracer.tracing = jtracing
-	tracer.closer = closer
-	opentracing.SetGlobalTracer(tracer.tracing)
-
-	return tracer, nil
-}
-
-// Close 关闭tracing
-func (t *Tracer) Close() {
-	t.closer.Close()
+	return nil
 }

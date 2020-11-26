@@ -1,4 +1,4 @@
-package tracer
+package jaegertracing
 
 import (
 	"context"
@@ -82,8 +82,8 @@ func ClientInterceptor(tracer opentracing.Tracer) grpc.UnaryClientInterceptor {
 }
 
 // GetGRPCServerTracer 获取GRPC Server拦截器
-func GetGRPCServerTracer() grpc.ServerOption {
-	interceptor := serverInterceptor(opentracing.GlobalTracer())
+func GetGRPCServerTracer(tracer opentracing.Tracer) grpc.ServerOption {
+	interceptor := serverInterceptor(tracer)
 	return grpc.UnaryInterceptor(interceptor)
 }
 

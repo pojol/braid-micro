@@ -1,4 +1,4 @@
-package tracer
+package jaegertracing
 
 import (
 	"sync"
@@ -141,12 +141,12 @@ func (r *slowReporter) processQueue() {
 				span := item.span
 				var sample bool
 
-				if span.Duration() > (time.Millisecond*tracer.cfg.SlowSpan) && span.OperationName() != optionHTTPRequest {
-					//log.SysSlow(span.OperationName(), span.SpanContext().TraceID().String(), int(span.Duration().Milliseconds()), "slow span")
-					sample = true
-				} else {
-					sample, _ = r.sampler.IsSampled(span.SpanContext().TraceID(), span.OperationName())
-				}
+				//if span.Duration() > (time.Millisecond*tracer.cfg.SlowSpan) && span.OperationName() != optionHTTPRequest {
+				//log.SysSlow(span.OperationName(), span.SpanContext().TraceID().String(), int(span.Duration().Milliseconds()), "slow span")
+				//	sample = true
+				//} else {
+				sample, _ = r.sampler.IsSampled(span.SpanContext().TraceID(), span.OperationName())
+				//}
 
 				if sample {
 					if flushed, err := r.sender.Append(span); err != nil {

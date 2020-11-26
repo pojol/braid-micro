@@ -1,9 +1,11 @@
 package grpcserver
 
+import "github.com/opentracing/opentracing-go"
+
 // Parm Service 配置
 type Parm struct {
 	ListenAddr string
-	isTracing  bool
+	tracer     opentracing.Tracer
 }
 
 // Option config wraps
@@ -16,9 +18,9 @@ func WithListen(address string) Option {
 	}
 }
 
-// WithTracing with tracing
-func WithTracing() Option {
+// OpenTracing with tracing
+func OpenTracing(tracer opentracing.Tracer) Option {
 	return func(c *Parm) {
-		c.isTracing = true
+		c.tracer = tracer
 	}
 }

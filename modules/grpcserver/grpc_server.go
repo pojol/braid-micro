@@ -6,7 +6,7 @@ import (
 
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid/modules/jaegertracing"
 	"google.golang.org/grpc"
 )
 
@@ -50,13 +50,15 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 		serviceName: serviceName,
 	}
 
-	if p.isTracing {
-		s.rpc = grpc.NewServer(tracer.GetGRPCServerTracer())
+	var istracing bool
+	if p.tracer != nil {
+		istracing = true
+		s.rpc = grpc.NewServer(jaegertracing.GetGRPCServerTracer(p.tracer))
 	} else {
 		s.rpc = grpc.NewServer()
 	}
 
-	s.logger.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, p.isTracing)
+	s.logger.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, istracing)
 	return s, nil
 }
 

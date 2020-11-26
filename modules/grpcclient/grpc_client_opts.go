@@ -3,6 +3,7 @@ package grpcclient
 import (
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/module/linkcache"
 )
 
@@ -10,7 +11,7 @@ import (
 type Parm struct {
 	Name string
 
-	isTracing bool
+	tracer opentracing.Tracer
 
 	byLink bool
 	linker linkcache.ILinkCache
@@ -47,10 +48,10 @@ func WithPoolIdle(second int) Option {
 	}
 }
 
-// Tracing open tracing (auto register)
-func Tracing() Option {
+// OpenTracing open tracing (auto register)
+func OpenTracing(tracer opentracing.Tracer) Option {
 	return func(c *Parm) {
-		c.isTracing = true
+		c.tracer = tracer
 	}
 }
 

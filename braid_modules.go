@@ -82,15 +82,14 @@ func GRPCServer(builderName string, opts ...interface{}) Module {
 	}
 }
 
-// JaegerTracing jt
-func JaegerTracing(protoOpt tracer.Option, opts ...tracer.Option) Module {
+// Tracing 分布式追踪模块
+func Tracing(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
-
-		t, err := tracer.New(b.cfg.Name, protoOpt, opts...)
-		if err != nil {
-			panic(err)
+		builder := tracer.GetBuilder(builderName)
+		for _, opt := range opts {
+			builder.AddOption(opt)
 		}
 
-		b.tracer = t
+		b.tracerBuilder = builder
 	}
 }
