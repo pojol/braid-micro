@@ -45,7 +45,7 @@ func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
+func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) error {
 	go func() {
 		for {
 			select {
@@ -64,6 +64,8 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
