@@ -168,8 +168,8 @@ func Invoke(ctx context.Context, nodeName, methon, token string, args, reply int
 	}
 }
 
-// Server iserver.server
-func Server() interface{} {
+// GetServer iserver.server
+func GetServer() interface{} {
 	if braidGlobal != nil && braidGlobal.server != nil {
 		return braidGlobal.server.Server()
 	}

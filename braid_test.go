@@ -62,15 +62,15 @@ func TestWithClient(t *testing.T) {
 }
 
 func TestServerInterface(t *testing.T) {
-	s := Server()
+	s := GetServer()
 	assert.Equal(t, s, nil)
 
 	b, _ := New("testserverinterface")
-	b.RegistModule(GRPCServer(
+	b.RegistModule(Server(
 		grpcserver.Name,
 		grpcserver.WithListen(":14222")))
 
-	s = Server()
+	s = GetServer()
 	assert.NotEqual(t, s, nil)
 }
 

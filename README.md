@@ -52,7 +52,7 @@ b.RegistModule(
   braid.Discover(         // Discover 模块
     discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
     discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
-  braid.GRPCClient(grpcclient.Name),
+  braid.Client(grpcclient.Name),
   braid.Elector(
     electorconsul.Name,
     electorconsul.WithConsulAddr(consulAddr),

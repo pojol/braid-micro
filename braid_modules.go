@@ -56,8 +56,8 @@ func Elector(builderName string, opts ...interface{}) Module {
 	}
 }
 
-// GRPCClient rpc-client
-func GRPCClient(builderName string, opts ...interface{}) Module {
+// Client rpc-client
+func Client(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := client.GetBuilder(builderName)
@@ -69,8 +69,8 @@ func GRPCClient(builderName string, opts ...interface{}) Module {
 	}
 }
 
-// GRPCServer rpc-server
-func GRPCServer(builderName string, opts ...interface{}) Module {
+// Server rpc-server
+func Server(builderName string, opts ...interface{}) Module {
 	return func(b *Braid) {
 
 		builder := server.GetBuilder(builderName)
