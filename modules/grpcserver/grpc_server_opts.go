@@ -1,9 +1,11 @@
 package grpcserver
 
+import "github.com/opentracing/opentracing-go"
+
 // Parm Service 配置
 type Parm struct {
 	ListenAddr string
-	isTracing  bool
+	tracer     opentracing.Tracer
 }
 
 // Option config wraps
@@ -16,9 +18,11 @@ func WithListen(address string) Option {
 	}
 }
 
-// WithTracing with tracing
-func WithTracing() Option {
+// AutoOpenTracing 打开tracing
+//
+// 当 tracing 被注册到braid中后，braid在构建过程中会自动引用这个函数，将tracer自动绑定到server模块
+func AutoOpenTracing(tracer opentracing.Tracer) Option {
 	return func(c *Parm) {
-		c.isTracing = true
+		c.tracer = tracer
 	}
 }

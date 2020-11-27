@@ -112,8 +112,8 @@ func TestInvokeByLink(t *testing.T) {
 	lb.AddOption(linkerredis.WithRedisAddr(mock.RedisAddr))
 	lc, _ := lb.Build("TestInvokeByLink", mb, log)
 
-	b.AddOption(LinkCache(lc.(linkcache.ILinkCache)))
-	b.AddOption(Tracing())
+	b.AddOption(AutoLinkCache(lc.(linkcache.ILinkCache)))
+	//b.AddOption(Tracing())
 	cb, _ := b.Build("TestInvokeByLink", mb, log)
 
 	cb.Init()
@@ -150,8 +150,8 @@ func TestParm(t *testing.T) {
 	b.AddOption(WithPoolInitNum(100))
 	b.AddOption(WithPoolCapacity(101))
 	b.AddOption(WithPoolIdle(120))
-	b.AddOption(Tracing())
-	b.AddOption(LinkCache(nil))
+	//b.AddOption(Tracing())
+	b.AddOption(AutoLinkCache(nil))
 
 	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
 	cb, _ := b.Build("TestCaller", mb, log)
@@ -160,7 +160,7 @@ func TestParm(t *testing.T) {
 	assert.Equal(t, gc.parm.PoolInitNum, 100)
 	assert.Equal(t, gc.parm.PoolCapacity, 101)
 	assert.Equal(t, gc.parm.PoolIdle, time.Second*120)
-	assert.Equal(t, gc.parm.isTracing, true)
+	//assert.Equal(t, gc.parm.isTracing, true)
 	assert.Equal(t, gc.parm.byLink, true)
 
 }

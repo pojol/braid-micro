@@ -3,6 +3,7 @@ package grpcclient
 import (
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/module/linkcache"
 )
 
@@ -10,7 +11,7 @@ import (
 type Parm struct {
 	Name string
 
-	isTracing bool
+	tracer opentracing.Tracer
 
 	byLink bool
 	linker linkcache.ILinkCache
@@ -21,6 +22,9 @@ type Parm struct {
 	PoolInitNum  int
 	PoolCapacity int
 	PoolIdle     time.Duration
+
+	//callopts []grpc.CallOption
+	//dialopts []grpc.DialOption
 }
 
 // Option config wraps
@@ -47,15 +51,19 @@ func WithPoolIdle(second int) Option {
 	}
 }
 
-// Tracing open tracing (auto register)
-func Tracing() Option {
+// AutoOpenTracing 打开tracing
+//
+// 当 tracing 被注册到braid中后，braid在构建过程中会自动引用这个函数，将tracer自动绑定到client模块
+func AutoOpenTracing(tracer opentracing.Tracer) Option {
 	return func(c *Parm) {
-		c.isTracing = true
+		c.tracer = tracer
 	}
 }
 
-// LinkCache with link-cache (auto register)
-func LinkCache(cache linkcache.ILinkCache) Option {
+// AutoLinkCache 绑定链路缓存
+//
+// 当linkcache 被注册到braid中后，braid在构建过程中会自动引用这个函数，将linkcache自动绑定到client模块
+func AutoLinkCache(cache linkcache.ILinkCache) Option {
 	return func(c *Parm) {
 		c.byLink = true
 		c.linker = cache

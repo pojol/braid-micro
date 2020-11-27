@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/linkcache"
 	"github.com/pojol/braid/module/logger"
@@ -35,9 +36,10 @@ type Braid struct {
 	serverBuilder server.Builder
 	server        server.IServer
 
-	mailbox mailbox.IMailbox
+	tracerBuilder tracer.Builder
+	tracer        tracer.ITracer
 
-	tracer *tracer.Tracer
+	mailbox mailbox.IMailbox
 }
 
 var (
@@ -57,7 +59,7 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	}
 
 	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build(logger.ERROR)
+	log, err := zlb.Build(logger.INFO)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +98,21 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		b.modules = append(b.modules, m)
 	}
 
+	if b.tracerBuilder != nil {
+		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name)
+		b.modules = append(b.modules, b.tracer)
+	}
+
 	if b.clientBuilder != nil {
 		if b.tracer != nil {
-			b.clientBuilder.AddOption(grpcclient.Tracing())
+			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
+			if ok {
+				b.clientBuilder.AddOption(grpcclient.AutoOpenTracing(opent))
+			}
 		}
 
 		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
-			b.clientBuilder.AddOption(grpcclient.LinkCache(lc.(linkcache.ILinkCache)))
+			b.clientBuilder.AddOption(grpcclient.AutoLinkCache(lc.(linkcache.ILinkCache)))
 		}
 		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.mailbox, b.logger)
 		b.modules = append(b.modules, b.client)
@@ -110,7 +120,10 @@ func (b *Braid) RegistModule(modules ...Module) error {
 
 	if b.serverBuilder != nil {
 		if b.tracer != nil {
-			b.serverBuilder.AddOption(grpcserver.WithTracing())
+			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
+			if ok {
+				b.serverBuilder.AddOption(grpcserver.AutoOpenTracing(opent))
+			}
 		}
 
 		b.server, _ = b.serverBuilder.Build(b.cfg.Name, b.logger)
@@ -155,8 +168,8 @@ func Invoke(ctx context.Context, nodeName, methon, token string, args, reply int
 	}
 }
 
-// Server iserver.server
-func Server() interface{} {
+// GetServer iserver.server
+func GetServer() interface{} {
 	if braidGlobal != nil && braidGlobal.server != nil {
 		return braidGlobal.server.Server()
 	}
@@ -167,6 +180,11 @@ func Server() interface{} {
 // Mailbox pub-sub
 func Mailbox() mailbox.IMailbox {
 	return braidGlobal.mailbox
+}
+
+// Tracer tracing
+func Tracer() tracer.ITracer {
+	return braidGlobal.tracer
 }
 
 // Close 关闭braid

@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
@@ -14,10 +13,10 @@ import (
 	"github.com/pojol/braid/module/logger"
 	"github.com/pojol/braid/module/mailbox"
 	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/module/tracer"
 	"github.com/pojol/braid/modules/balancergroupbase"
 	"github.com/pojol/braid/modules/balancerrandom"
 	"github.com/pojol/braid/modules/balancerswrr"
+	"github.com/pojol/braid/modules/jaegertracing"
 	"google.golang.org/grpc"
 )
 
@@ -226,8 +225,8 @@ func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
 		var conn *grpc.ClientConn
 		var err error
 
-		if c.parm.isTracing {
-			interceptor := tracer.ClientInterceptor(opentracing.GlobalTracer())
+		if c.parm.tracer != nil {
+			interceptor := jaegertracing.ClientInterceptor(c.parm.tracer)
 			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		} else {
 			conn, err = grpc.Dial(address, grpc.WithInsecure())

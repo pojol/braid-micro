@@ -2,7 +2,6 @@ package mailboxnsq
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -45,7 +44,7 @@ func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
+func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) error {
 	go func() {
 		for {
 			select {
@@ -54,7 +53,8 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 				if c.exitCh.HasOpend() {
 					break
 				}
-				handler(msg.(*mailbox.Message))
+				pmsg := msg.(*mailbox.Message)
+				handler(*pmsg)
 			case <-c.exitCh.Done():
 			}
 
@@ -63,6 +63,8 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
@@ -104,9 +106,9 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 }
 
 func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
+
 	s, ok := pmb.subscribers.Load(topic)
 	if !ok {
-		fmt.Println("can't find topic", topic)
 		return
 	}
 
@@ -119,13 +121,14 @@ func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
 	defer sub.lock.RUnlock()
 
 	if sub.mode == mailbox.Shared {
+
 		for k := range sub.consumers {
 			sub.consumers[k].PutMsg(msg)
 		}
+
 	} else if sub.mode == mailbox.Competition {
 		sub.consumers[rand.Intn(len(sub.consumers))].PutMsg(msg)
 	}
-
 }
 
 func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {

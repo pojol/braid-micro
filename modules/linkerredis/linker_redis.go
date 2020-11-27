@@ -164,16 +164,16 @@ func (l *redisLinker) Run() {
 func (l *redisLinker) watcher() {
 
 	l.unlink, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicUnlink).Competition()
-	l.unlink.OnArrived(func(msg *mailbox.Message) error {
+	l.unlink.OnArrived(func(msg mailbox.Message) error {
 		l.logger.Debugf("recv unlink msg %s", string(msg.Body))
 		l.Unlink(string(msg.Body), "")
 		return nil
 	})
 
 	l.down, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicDown).Competition()
-	l.down.OnArrived(func(msg *mailbox.Message) error {
+	l.down.OnArrived(func(msg mailbox.Message) error {
 
-		dmsg := linkcache.DecodeDownMsg(msg)
+		dmsg := linkcache.DecodeDownMsg(&msg)
 		if dmsg.Service == "" {
 			return nil
 		}

@@ -4,11 +4,10 @@
 ---
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid)](https://goreportcard.com/report/github.com/pojol/braid)
-[![drone](http://123.207.198.57:8001/api/badges/pojol/braid/status.svg?branch=develop)](dev)
+[![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/B6b6CMjM/image.png" width="600">
-
+<img src="https://i.postimg.cc/3N8jJPqJ/image.png" width="700">
 
 
 ### 交互模型
@@ -48,18 +47,21 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 ```go
 b, _ := braid.New(ServiceName)
 
-// 注册插件
+// 将模块注册到braid
 b.RegistModule(
   braid.Discover(         // Discover 模块
     discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
     discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
-  braid.GRPCClient(grpcclient.Name),
+  braid.Client(grpcclient.Name),
   braid.Elector(
     electorconsul.Name,
     electorconsul.WithConsulAddr(consulAddr),
   ),
   braid.LinkCache(linkerredis.Name),
-  braid.JaegerTracing(tracer.WithHTTP(jaegerAddr), tracer.WithProbabilistic(0.01)))
+  braid.Tracing(
+    jaegertracing.Name,
+    jaegertracing.WithHTTP(jaegerAddr), 
+    jaegertracing.WithProbabilistic(0.01)))
 
 b.Init()  // 初始化注册在braid中的模块
 b.Run()   // 运行
