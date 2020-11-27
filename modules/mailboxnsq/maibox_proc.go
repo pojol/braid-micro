@@ -2,7 +2,6 @@ package mailboxnsq
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -110,7 +109,6 @@ func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
 
 	s, ok := pmb.subscribers.Load(topic)
 	if !ok {
-		fmt.Println("can't find topic", topic)
 		return
 	}
 
