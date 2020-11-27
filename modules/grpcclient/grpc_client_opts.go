@@ -22,6 +22,9 @@ type Parm struct {
 	PoolInitNum  int
 	PoolCapacity int
 	PoolIdle     time.Duration
+
+	//callopts []grpc.CallOption
+	//dialopts []grpc.DialOption
 }
 
 // Option config wraps
