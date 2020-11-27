@@ -82,18 +82,7 @@ type consulElection struct {
 	parm Parm
 }
 
-func (e *consulElection) runImpl() {
-
-	refushSession := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				e.logger.Errorf("discover refush err %v", err)
-			}
-		}()
-
-		consul.RefushSession(e.parm.ConsulAddr, e.sessionID)
-	}
-
+func (e *consulElection) watch() {
 	watchLock := func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -114,17 +103,37 @@ func (e *consulElection) runImpl() {
 	}
 
 	watchLock()
-	// time.Millisecond * 1000 * 5
-	e.refushTicker = time.NewTicker(e.parm.RefushSessionTick)
+
 	// time.Millisecond * 2000
 	e.lockTicker = time.NewTicker(e.parm.LockTick)
 
 	for {
 		select {
-		case <-e.refushTicker.C:
-			refushSession()
 		case <-e.lockTicker.C:
 			watchLock()
+		}
+	}
+}
+
+func (e *consulElection) refush() {
+
+	refushSession := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				e.logger.Errorf("discover refush err %v", err)
+			}
+		}()
+
+		consul.RefushSession(e.parm.ConsulAddr, e.sessionID)
+	}
+
+	// time.Millisecond * 1000 * 5
+	e.refushTicker = time.NewTicker(e.parm.RefushSessionTick)
+
+	for {
+		select {
+		case <-e.refushTicker.C:
+			refushSession()
 		}
 	}
 }
@@ -136,7 +145,11 @@ func (e *consulElection) Init() {
 // Run session 状态检查
 func (e *consulElection) Run() {
 	go func() {
-		e.runImpl()
+		e.refush()
+	}()
+
+	go func() {
+		e.watch()
 	}()
 }
 

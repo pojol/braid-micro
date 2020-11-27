@@ -151,7 +151,7 @@ func (dc *consulDiscover) discoverImpl() {
 				dyncWeight: 0,
 				physWeight: defaultWeight,
 			}
-			dc.logger.Debugf("new service %s addr %s", service.ServiceName, sn.address)
+			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
 			dc.mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
@@ -166,7 +166,7 @@ func (dc *consulDiscover) discoverImpl() {
 
 	for k := range dc.passingMap {
 		if _, ok := services[k]; !ok { // rmv nod
-			dc.logger.Debugf("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
+			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
 			dc.mb.Pub(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
@@ -213,7 +213,7 @@ func (dc *consulDiscover) syncWeight() {
 	}
 }
 
-func (dc *consulDiscover) runImpl() {
+func (dc *consulDiscover) discover() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -224,20 +224,7 @@ func (dc *consulDiscover) runImpl() {
 		dc.discoverImpl()
 	}
 
-	syncWeight := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				dc.logger.Errorf("consul discover syncWeight err %v", err)
-			}
-		}()
-
-		dc.lock.Lock()
-		dc.syncWeight()
-		dc.lock.Unlock()
-	}
-
 	dc.discoverTicker = time.NewTicker(dc.parm.SyncServicesInterval)
-	dc.syncWeightTicker = time.NewTicker(dc.parm.SyncServiceWeightInterval)
 
 	dc.discoverImpl()
 
@@ -245,6 +232,25 @@ func (dc *consulDiscover) runImpl() {
 		select {
 		case <-dc.discoverTicker.C:
 			syncService()
+		}
+	}
+}
+
+func (dc *consulDiscover) weight() {
+	syncWeight := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				dc.logger.Errorf("consul discover syncWeight err %v", err)
+			}
+		}()
+
+		dc.syncWeight()
+	}
+
+	dc.syncWeightTicker = time.NewTicker(dc.parm.SyncServiceWeightInterval)
+
+	for {
+		select {
 		case <-dc.syncWeightTicker.C:
 			syncWeight()
 		}
@@ -270,7 +276,11 @@ func (dc *consulDiscover) Init() {
 // Discover 运行管理器
 func (dc *consulDiscover) Run() {
 	go func() {
-		dc.runImpl()
+		dc.discover()
+	}()
+
+	go func() {
+		dc.weight()
 	}()
 }
 
