@@ -47,7 +47,7 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 ```go
 b, _ := braid.New(ServiceName)
 
-// 注册插件
+// 将模块注册到braid
 b.RegistModule(
   braid.Discover(         // Discover 模块
     discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
