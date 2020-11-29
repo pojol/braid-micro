@@ -7,7 +7,6 @@
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
-<img src="https://i.postimg.cc/3N8jJPqJ/image.png" width="700">
 
 
 ### 交互模型
