@@ -36,9 +36,7 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 |-|-|-|-|-|-|
 |服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
 |discoverconsul|balancerrandom|electorconsul|grpc-client|jaegertracer|linkerredis|
-||[balancerswrr](https://github.com/pojol/braid/wiki/balancerswrr)|electork8s|grpc-server|||
-
-
+||[balancerswrr](https://github.com/pojol/braid-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
 
 ### 构建
 > 通过注册模块(braid.Module)，构建braid的运行环境。
