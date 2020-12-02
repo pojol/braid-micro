@@ -35,7 +35,7 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 |**Discover**|**Balancer**|**Elector**|**RPC**|**Tracer**|**LinkCache**|
 |-|-|-|-|-|-|
 |服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|linkerredis|
+|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|[linkerredis](https://github.com/pojol/braid-go/wiki/Guide-4.-%E4%BD%BF%E7%94%A8Link-cahe)|
 ||[balancerswrr](https://github.com/pojol/braid-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
 
 ### 构建
