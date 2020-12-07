@@ -22,7 +22,7 @@
 // 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
 consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
 // 注册消息到达函数（线程安全
-consumer.OnArrived(func (msg *mailbox.Message) error {
+consumer.OnArrived(func (msg mailbox.Message) error {
   return nil
 })
 ```
