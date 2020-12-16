@@ -3,6 +3,7 @@ package mailbox
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -52,6 +53,57 @@ func NewMessage(body interface{}) *Message {
 		Body:      byt,
 		Timestamp: time.Now().UnixNano(),
 	}
+}
+
+// MessageBuffer 仅用于 mailbox 的 unbounded
+type MessageBuffer struct {
+	c       chan *Message
+	backlog []*Message
+
+	sync.Mutex
+}
+
+// NewMessageBuffer 构建 unbounded message buffer
+func NewMessageBuffer() *MessageBuffer {
+	return &MessageBuffer{
+		c: make(chan *Message, 1),
+	}
+}
+
+// Put put msg
+func (mbuffer *MessageBuffer) Put(msg *Message) {
+	mbuffer.Lock()
+	defer mbuffer.Unlock()
+
+	if len(mbuffer.backlog) == 0 {
+		select {
+		case mbuffer.c <- msg:
+			return
+		default:
+		}
+	}
+
+	mbuffer.backlog = append(mbuffer.backlog, msg)
+}
+
+// Load 将积压队列中的头部数据提取到channel，并将队列整体前移一位。
+func (mbuffer *MessageBuffer) Load() {
+	mbuffer.Lock()
+	defer mbuffer.Unlock()
+
+	if len(mbuffer.backlog) > 0 {
+		select {
+		case mbuffer.c <- mbuffer.backlog[0]:
+			mbuffer.backlog[0] = nil
+			mbuffer.backlog = mbuffer.backlog[1:]
+		default:
+		}
+	}
+}
+
+// Get 获取 read channel
+func (mbuffer *MessageBuffer) Get() <-chan *Message {
+	return mbuffer.c
 }
 
 // HandlerFunc msg handler

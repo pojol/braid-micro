@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/pojol/braid/internal/braidsync"
-	"github.com/pojol/braid/internal/buffer"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -27,7 +26,7 @@ type procSubscriber struct {
 }
 
 type procConsumer struct {
-	buff   *buffer.Unbounded
+	buff   *mailbox.MessageBuffer
 	exitCh *braidsync.Switch
 }
 
@@ -53,8 +52,7 @@ func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) error {
 				if c.exitCh.HasOpend() {
 					break
 				}
-				pmsg := msg.(*mailbox.Message)
-				handler(*pmsg)
+				handler(*msg)
 			case <-c.exitCh.Done():
 			}
 
@@ -78,7 +76,7 @@ func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Competition
 	competition := &procConsumer{
-		buff:   buffer.NewUnbounded(),
+		buff:   mailbox.NewMessageBuffer(),
 		exitCh: braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, competition)
@@ -97,7 +95,7 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Shared
 	shared := &procConsumer{
-		buff:   buffer.NewUnbounded(),
+		buff:   mailbox.NewMessageBuffer(),
 		exitCh: braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, shared)
