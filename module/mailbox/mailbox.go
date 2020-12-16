@@ -73,23 +73,23 @@ func NewMessageBuffer() *MessageBuffer {
 // Put put msg
 func (mbuffer *MessageBuffer) Put(msg *Message) {
 	mbuffer.Lock()
-	defer mbuffer.Unlock()
 
 	if len(mbuffer.backlog) == 0 {
 		select {
 		case mbuffer.c <- msg:
+			mbuffer.Unlock()
 			return
 		default:
 		}
 	}
 
 	mbuffer.backlog = append(mbuffer.backlog, msg)
+	mbuffer.Unlock()
 }
 
 // Load 将积压队列中的头部数据提取到channel，并将队列整体前移一位。
 func (mbuffer *MessageBuffer) Load() {
 	mbuffer.Lock()
-	defer mbuffer.Unlock()
 
 	if len(mbuffer.backlog) > 0 {
 		select {
@@ -99,6 +99,8 @@ func (mbuffer *MessageBuffer) Load() {
 		default:
 		}
 	}
+
+	mbuffer.Unlock()
 }
 
 // Get 获取 read channel

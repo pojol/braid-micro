@@ -102,12 +102,12 @@ func BenchmarkShared(b *testing.B) {
 	c1.OnArrived(func(msg mailbox.Message) error {
 		return nil
 	})
-	/*
-		c2, _ := sub.Shared()
-		c2.OnArrived(func(msg mailbox.Message) error {
-			return nil
-		})
-	*/
+
+	c2, _ := sub.Shared()
+	c2.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: body})
