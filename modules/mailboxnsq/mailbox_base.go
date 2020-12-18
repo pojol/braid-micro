@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"github.com/pojol/braid/internal/buffer"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -54,10 +55,15 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 	}
 
 	nsqm := &nsqMailbox{
-		parm:       p,
-		proc:       &procMailbox{},
+		parm: p,
+		proc: &procMailbox{
+			subscribers: make(map[string]*procSubscriber),
+			recvBuff:    buffer.NewUnbounded(),
+			exitChan:    make(chan int),
+		},
 		cproducers: cps,
 	}
+	go nsqm.proc.router()
 	return nsqm, nil
 }
 

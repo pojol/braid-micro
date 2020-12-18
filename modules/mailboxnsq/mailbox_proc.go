@@ -6,11 +6,21 @@ import (
 	"sync"
 
 	"github.com/pojol/braid/internal/braidsync"
+	"github.com/pojol/braid/internal/buffer"
 	"github.com/pojol/braid/module/mailbox"
 )
 
+type procMsg struct {
+	msg     *mailbox.Message
+	channel string
+}
+
 type procMailbox struct {
-	subscribers sync.Map
+	subscribers map[string]*procSubscriber
+	recvBuff    *buffer.Unbounded
+
+	exitChan chan int
+	guard    sync.Mutex
 }
 
 type procSubscriber struct {
@@ -26,12 +36,17 @@ type procSubscriber struct {
 }
 
 type procConsumer struct {
-	buff   *mailbox.MessageBuffer
+	guard  sync.Mutex
+	handle mailbox.HandlerFunc
 	exitCh *braidsync.Switch
 }
 
 func (c *procConsumer) PutMsg(msg *mailbox.Message) error {
-	c.buff.Put(msg)
+
+	if c.handle != nil {
+		c.handle(*msg)
+	}
+
 	return nil
 }
 
@@ -44,23 +59,10 @@ func (c *procConsumer) IsExited() bool {
 }
 
 func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) error {
-	go func() {
-		for {
-			select {
-			case msg := <-c.buff.Get():
-				c.buff.Load()
-				if c.exitCh.HasOpend() {
-					break
-				}
-				handler(*msg)
-			case <-c.exitCh.Done():
-			}
 
-			if c.exitCh.HasOpend() {
-				return
-			}
-		}
-	}()
+	c.guard.Lock()
+	c.handle = handler
+	c.guard.Unlock()
 
 	return nil
 }
@@ -76,7 +78,6 @@ func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Competition
 	competition := &procConsumer{
-		buff:   mailbox.NewMessageBuffer(),
 		exitCh: braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, competition)
@@ -95,7 +96,6 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Shared
 	shared := &procConsumer{
-		buff:   mailbox.NewMessageBuffer(),
 		exitCh: braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, shared)
@@ -103,44 +103,68 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 	return shared, nil
 }
 
+func (pmb *procMailbox) router() {
+
+	for {
+		select {
+		case msg := <-pmb.recvBuff.Get():
+			pmsg := msg.(*procMsg)
+			pmb.recvBuff.Load()
+
+			s, ok := pmb.subscribers[pmsg.channel]
+			if ok {
+
+				if s.mode == mailbox.Shared {
+
+					for k := range s.consumers {
+						if !s.consumers[k].IsExited() {
+							s.consumers[k].PutMsg(pmsg.msg)
+						}
+					}
+
+				} else if s.mode == mailbox.Competition {
+					s.consumers[rand.Intn(len(s.consumers))].PutMsg(pmsg.msg)
+				}
+			}
+
+		}
+	}
+
+}
+
 func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
 
-	s, ok := pmb.subscribers.Load(topic)
-	if !ok {
-		return
+	pmsg := &procMsg{
+		msg:     msg,
+		channel: topic,
 	}
 
-	sub, ok := s.(*procSubscriber)
-	if !ok {
-		return
-	}
+	pmb.recvBuff.Put(pmsg)
 
-	sub.lock.RLock()
-	defer sub.lock.RUnlock()
-
-	if sub.mode == mailbox.Shared {
-
-		for k := range sub.consumers {
-			sub.consumers[k].PutMsg(msg)
+	/*
+		select {
+		case pmb.recvBuff <- pmsg:
+		case <-pmb.exitChan:
+			// return err
 		}
-
-	} else if sub.mode == mailbox.Competition {
-		sub.consumers[rand.Intn(len(sub.consumers))].PutMsg(msg)
-	}
+	*/
 }
 
 func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {
 
-	s, ok := pmb.subscribers.Load(topic)
-	if !ok { // create
-		psub := &procSubscriber{
-			channel: topic,
-			mode:    mailbox.Undecided,
-		}
+	pmb.guard.Lock()
+	defer pmb.guard.Unlock()
 
-		pmb.subscribers.Store(topic, psub)
-		s = psub
+	s, ok := pmb.subscribers[topic]
+	if ok {
+		return s
 	}
 
-	return s.(mailbox.ISubscriber)
+	s = &procSubscriber{
+		channel: topic,
+		mode:    mailbox.Undecided,
+	}
+	pmb.subscribers[topic] = s
+
+	return s
 }

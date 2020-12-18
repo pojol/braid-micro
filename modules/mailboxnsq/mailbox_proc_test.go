@@ -57,6 +57,7 @@ func TestSharedProc(t *testing.T) {
 	case <-time.After(time.Millisecond * 500):
 		t.FailNow()
 	}
+
 }
 
 func TestCompetition(t *testing.T) {
@@ -83,7 +84,7 @@ func TestCompetition(t *testing.T) {
 	})
 
 	mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
-	time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Second)
 
 	race.Lock()
 	assert.Equal(t, carrived, uint64(1))
