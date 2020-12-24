@@ -258,19 +258,25 @@ func (dc *consulDiscover) weight() {
 }
 
 func (dc *consulDiscover) Init() {
+
 	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
-	linknumC.OnArrived(func(msg mailbox.Message) error {
 
-		lninfo := linkcache.DecodeLinkNumMsg(&msg)
-		dc.lock.Lock()
-		defer dc.lock.Unlock()
+	go func() {
+		for {
+			select {
+			case msg := <-linknumC.OnArrived():
+				linknumC.Done()
+				lninfo := linkcache.DecodeLinkNumMsg(&msg)
+				dc.lock.Lock()
+				defer dc.lock.Unlock()
 
-		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+				if _, ok := dc.passingMap[lninfo.ID]; ok {
+					dc.passingMap[lninfo.ID].linknum = lninfo.Num
+				}
+			}
 		}
+	}()
 
-		return nil
-	})
 }
 
 // Discover 运行管理器

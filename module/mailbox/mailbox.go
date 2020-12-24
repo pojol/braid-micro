@@ -3,8 +3,6 @@ package mailbox
 import (
 	"encoding/json"
 	"strings"
-	"sync"
-	"time"
 )
 
 // Builder 构建器接口
@@ -16,9 +14,7 @@ type Builder interface {
 
 // Message 消息体
 type Message struct {
-	ID        string
-	Body      []byte
-	Timestamp int64
+	Body []byte
 }
 
 const (
@@ -49,63 +45,8 @@ func NewMessage(body interface{}) *Message {
 	}
 
 	return &Message{
-		ID:        "",
-		Body:      byt,
-		Timestamp: time.Now().UnixNano(),
+		Body: byt,
 	}
-}
-
-// MessageBuffer 仅用于 mailbox 的 unbounded
-type MessageBuffer struct {
-	c       chan *Message
-	backlog []*Message
-
-	sync.Mutex
-}
-
-// NewMessageBuffer 构建 unbounded message buffer
-func NewMessageBuffer() *MessageBuffer {
-	return &MessageBuffer{
-		c: make(chan *Message, 1),
-	}
-}
-
-// Put put msg
-func (mbuffer *MessageBuffer) Put(msg *Message) {
-	mbuffer.Lock()
-
-	if len(mbuffer.backlog) == 0 {
-		select {
-		case mbuffer.c <- msg:
-			mbuffer.Unlock()
-			return
-		default:
-		}
-	}
-
-	mbuffer.backlog = append(mbuffer.backlog, msg)
-	mbuffer.Unlock()
-}
-
-// Load 将积压队列中的头部数据提取到channel，并将队列整体前移一位。
-func (mbuffer *MessageBuffer) Load() {
-	mbuffer.Lock()
-
-	if len(mbuffer.backlog) > 0 {
-		select {
-		case mbuffer.c <- mbuffer.backlog[0]:
-			mbuffer.backlog[0] = nil
-			mbuffer.backlog = mbuffer.backlog[1:]
-		default:
-		}
-	}
-
-	mbuffer.Unlock()
-}
-
-// Get 获取 read channel
-func (mbuffer *MessageBuffer) Get() <-chan *Message {
-	return mbuffer.c
 }
 
 // HandlerFunc msg handler
@@ -113,9 +54,10 @@ type HandlerFunc func(message Message) error
 
 // IConsumer consumer
 type IConsumer interface {
-	OnArrived(handler HandlerFunc) error
+	OnArrived() <-chan Message
 
-	PutMsg(msg *Message) error
+	PutMsg(msg *Message)
+	Done()
 
 	Exit()
 	IsExited() bool

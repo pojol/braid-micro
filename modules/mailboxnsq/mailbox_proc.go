@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/pojol/braid/internal/braidsync"
-	"github.com/pojol/braid/internal/buffer"
 	"github.com/pojol/braid/module/mailbox"
 )
 
@@ -17,10 +16,8 @@ type procMsg struct {
 
 type procMailbox struct {
 	subscribers map[string]*procSubscriber
-	recvBuff    *buffer.Unbounded
-
-	exitChan chan int
-	guard    sync.Mutex
+	exitChan    chan int
+	guard       sync.RWMutex
 }
 
 type procSubscriber struct {
@@ -36,35 +33,52 @@ type procSubscriber struct {
 }
 
 type procConsumer struct {
-	guard  sync.Mutex
-	handle mailbox.HandlerFunc
 	exitCh *braidsync.Switch
+
+	// buffer
+	recvBuff chan mailbox.Message
+	backlog  []mailbox.Message
+	sync.Mutex
 }
 
-func (c *procConsumer) PutMsg(msg *mailbox.Message) error {
-
-	if c.handle != nil {
-		c.handle(*msg)
+func (c *procConsumer) PutMsg(msg *mailbox.Message) {
+	c.Lock()
+	if len(c.backlog) == 0 {
+		select {
+		case c.recvBuff <- *msg:
+			c.Unlock()
+			return
+		default:
+		}
 	}
 
-	return nil
+	c.backlog = append(c.backlog, *msg)
+	c.Unlock()
 }
 
 func (c *procConsumer) Exit() {
 	c.exitCh.Open()
 }
 
+func (c *procConsumer) Done() {
+	c.Lock()
+	if len(c.backlog) > 0 {
+		select {
+		case c.recvBuff <- c.backlog[0]:
+			c.backlog[0] = mailbox.Message{}
+			c.backlog = c.backlog[1:]
+		default:
+		}
+	}
+	c.Unlock()
+}
+
 func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) OnArrived(handler mailbox.HandlerFunc) error {
-
-	c.guard.Lock()
-	c.handle = handler
-	c.guard.Unlock()
-
-	return nil
+func (c *procConsumer) OnArrived() <-chan mailbox.Message {
+	return c.recvBuff
 }
 
 func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
@@ -78,7 +92,8 @@ func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Competition
 	competition := &procConsumer{
-		exitCh: braidsync.NewSwitch(),
+		recvBuff: make(chan mailbox.Message, 1),
+		exitCh:   braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, competition)
 
@@ -96,62 +111,38 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 
 	ns.mode = mailbox.Shared
 	shared := &procConsumer{
-		exitCh: braidsync.NewSwitch(),
+		recvBuff: make(chan mailbox.Message, 1),
+		exitCh:   braidsync.NewSwitch(),
 	}
 	ns.consumers = append(ns.consumers, shared)
 
 	return shared, nil
 }
 
-func (pmb *procMailbox) router() {
-
-	for {
-		select {
-		case msg := <-pmb.recvBuff.Get():
-			pmsg := msg.(*procMsg)
-			pmb.recvBuff.Load()
-
-			s, ok := pmb.subscribers[pmsg.channel]
-			if ok {
-
-				if s.mode == mailbox.Shared {
-
-					for k := range s.consumers {
-						if !s.consumers[k].IsExited() {
-							s.consumers[k].PutMsg(pmsg.msg)
-						}
-					}
-
-				} else if s.mode == mailbox.Competition {
-					s.consumers[rand.Intn(len(s.consumers))].PutMsg(pmsg.msg)
-				}
-			}
-
-		}
-	}
-
-}
-
 func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
 
-	pmsg := &procMsg{
-		msg:     msg,
-		channel: topic,
+	pmb.guard.RLock()
+	defer pmb.guard.RUnlock()
+
+	s, ok := pmb.subscribers[topic]
+	if !ok {
+		return
 	}
 
-	pmb.recvBuff.Put(pmsg)
+	if s.mode == mailbox.Shared {
 
-	/*
-		select {
-		case pmb.recvBuff <- pmsg:
-		case <-pmb.exitChan:
-			// return err
+		for k := range s.consumers {
+			if !s.consumers[k].IsExited() {
+				s.consumers[k].PutMsg(msg)
+			}
 		}
-	*/
+
+	} else if s.mode == mailbox.Competition {
+		s.consumers[rand.Intn(len(s.consumers))].PutMsg(msg)
+	}
 }
 
 func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {
-
 	pmb.guard.Lock()
 	defer pmb.guard.Unlock()
 
@@ -167,4 +158,5 @@ func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {
 	pmb.subscribers[topic] = s
 
 	return s
+
 }

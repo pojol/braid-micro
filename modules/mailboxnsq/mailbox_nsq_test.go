@@ -12,6 +12,7 @@ import (
 )
 
 func TestClusterShared(t *testing.T) {
+
 	b := mailbox.GetBuilder(Name)
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
@@ -23,17 +24,21 @@ func TestClusterShared(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c1.Exit()
-	c1.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		return nil
-	})
-
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c2.Exit()
-	c2.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		return nil
-	})
+
+	go func() {
+		for {
+			select {
+			case <-c1.OnArrived():
+				wg.Done()
+				c1.Done()
+			case <-c2.OnArrived():
+				wg.Done()
+				c2.Done()
+			}
+		}
+	}()
 
 	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
@@ -47,12 +52,14 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(time.Millisecond * 1000):
 		t.FailNow()
 	}
+
 }
 
 func TestClusterCompetition(t *testing.T) {
+
 	b := mailbox.GetBuilder(Name)
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
@@ -62,21 +69,25 @@ func TestClusterCompetition(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c1.Exit()
-	c1.OnArrived(func(msg mailbox.Message) error {
-		tickmu.Lock()
-		atomic.AddUint64(&tick, 1)
-		tickmu.Unlock()
-		return nil
-	})
-
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c2.Exit()
-	c2.OnArrived(func(msg mailbox.Message) error {
-		tickmu.Lock()
-		atomic.AddUint64(&tick, 1)
-		tickmu.Unlock()
-		return nil
-	})
+
+	go func() {
+		for {
+			select {
+			case <-c1.OnArrived():
+				tickmu.Lock()
+				atomic.AddUint64(&tick, 1)
+				c1.Done()
+				tickmu.Unlock()
+			case <-c2.OnArrived():
+				tickmu.Lock()
+				atomic.AddUint64(&tick, 1)
+				c2.Done()
+				tickmu.Unlock()
+			}
+		}
+	}()
 
 	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),
@@ -86,6 +97,7 @@ func TestClusterCompetition(t *testing.T) {
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
+
 }
 
 func TestClusterMailboxParm(t *testing.T) {

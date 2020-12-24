@@ -88,10 +88,14 @@ func TestMutiMailBox(t *testing.T) {
 
 	sub := Mailbox().Sub(mailbox.Proc, topic)
 	c1, _ := sub.Shared()
-	c1.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		return nil
-	})
+	go func() {
+		for {
+			select {
+			case <-c1.OnArrived():
+				wg.Done()
+			}
+		}
+	}()
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {

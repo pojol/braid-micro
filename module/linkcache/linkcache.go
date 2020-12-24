@@ -27,7 +27,6 @@ func EncodeLinkNumMsg(id string, num int) *mailbox.Message {
 	})
 
 	return &mailbox.Message{
-		ID:   "",
 		Body: byt,
 	}
 }
