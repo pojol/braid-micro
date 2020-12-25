@@ -23,7 +23,8 @@
 consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
 // 抓取消息
 select {
-  case <-consumer.OnArrived():
+  case <-consumer.OnArrived():  // <- mailbox.Message
+    consumer.Done() // 标记为完成
 }
 
 ```
