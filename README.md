@@ -21,11 +21,16 @@
 ```go
 // 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
 consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
-// 抓取消息
-select {
-  case <-consumer.OnArrived():  // <- mailbox.Message
-    consumer.Done() // 标记为完成
-}
+
+// 收取消息
+consumer.OnArrived(func(msg mailbox.Message) error {
+  return nil
+})
+
+// 发送（串行
+braid.Mailbox().Pub("topic", message)
+// 发送（并行
+braid.Mailbox().PubAsync("topic", message)
 
 ```
 
