@@ -35,33 +35,43 @@ type procSubscriber struct {
 type procConsumer struct {
 	exitCh *braidsync.Switch
 
+	handle mailbox.HandlerFunc
+	guard  sync.Mutex
+
 	// buffer
 	recvBuff chan mailbox.Message
 	backlog  []mailbox.Message
-	sync.Mutex
+	blmu     sync.Mutex
 }
 
-func (c *procConsumer) PutMsg(msg *mailbox.Message) {
-	c.Lock()
+func (c *procConsumer) PutMsgAsync(msg *mailbox.Message) {
+	c.blmu.Lock()
 	if len(c.backlog) == 0 {
 		select {
 		case c.recvBuff <- *msg:
-			c.Unlock()
+			c.blmu.Unlock()
 			return
 		default:
 		}
 	}
 
 	c.backlog = append(c.backlog, *msg)
-	c.Unlock()
+	c.blmu.Unlock()
+}
+
+func (c *procConsumer) PutMsg(msg *mailbox.Message) error {
+	c.guard.Lock()
+	defer c.guard.Unlock()
+
+	return c.handle(*msg)
 }
 
 func (c *procConsumer) Exit() {
 	c.exitCh.Open()
 }
 
-func (c *procConsumer) Done() {
-	c.Lock()
+func (c *procConsumer) done() {
+	c.blmu.Lock()
 	if len(c.backlog) > 0 {
 		select {
 		case c.recvBuff <- c.backlog[0]:
@@ -70,15 +80,33 @@ func (c *procConsumer) Done() {
 		default:
 		}
 	}
-	c.Unlock()
+	c.blmu.Unlock()
 }
 
 func (c *procConsumer) IsExited() bool {
 	return c.exitCh.HasOpend()
 }
 
-func (c *procConsumer) OnArrived() <-chan mailbox.Message {
-	return c.recvBuff
+func (c *procConsumer) OnArrived(handle mailbox.HandlerFunc) error {
+
+	c.guard.Lock()
+	defer c.guard.Unlock()
+
+	if c.handle == nil {
+		c.handle = handle
+
+		go func() {
+			for {
+				select {
+				case msg := <-c.recvBuff:
+					c.handle(msg)
+					c.done()
+				}
+			}
+		}()
+	}
+
+	return nil
 }
 
 func (ns *procSubscriber) Competition() (mailbox.IConsumer, error) {
@@ -119,7 +147,7 @@ func (ns *procSubscriber) Shared() (mailbox.IConsumer, error) {
 	return shared, nil
 }
 
-func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
+func (pmb *procMailbox) pubasync(topic string, msg *mailbox.Message) {
 
 	pmb.guard.RLock()
 	defer pmb.guard.RUnlock()
@@ -133,13 +161,41 @@ func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) {
 
 		for k := range s.consumers {
 			if !s.consumers[k].IsExited() {
-				s.consumers[k].PutMsg(msg)
+				s.consumers[k].PutMsgAsync(msg)
 			}
 		}
 
 	} else if s.mode == mailbox.Competition {
-		s.consumers[rand.Intn(len(s.consumers))].PutMsg(msg)
+		s.consumers[rand.Intn(len(s.consumers))].PutMsgAsync(msg)
 	}
+}
+
+func (pmb *procMailbox) pub(topic string, msg *mailbox.Message) error {
+
+	pmb.guard.Lock()
+	defer pmb.guard.Unlock()
+
+	var err error
+
+	s, ok := pmb.subscribers[topic]
+	if !ok {
+		return errors.New("Can't find topic")
+	}
+
+	if s.mode == mailbox.Shared {
+		for k := range s.consumers {
+			if !s.consumers[k].IsExited() {
+				err = s.consumers[k].PutMsg(msg)
+				if err != nil {
+					break
+				}
+			}
+		}
+	} else if s.mode == mailbox.Competition {
+		err = s.consumers[rand.Intn(len(s.consumers))].PutMsg(msg)
+	}
+
+	return err
 }
 
 func (pmb *procMailbox) sub(topic string) mailbox.ISubscriber {

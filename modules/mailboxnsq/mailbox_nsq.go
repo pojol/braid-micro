@@ -19,12 +19,14 @@ type consumerHandler struct {
 type nsqConsumer struct {
 	consumer *nsq.Consumer
 
-	exitCh   *braidsync.Switch
-	recvBuff chan mailbox.Message
-	backlog  []mailbox.Message
+	exitCh *braidsync.Switch
+	handle mailbox.HandlerFunc
 	sync.Mutex
 
-	uuid string
+	connected bool
+
+	lookupAddress []string
+	uuid          string
 }
 
 type nsqSubscriber struct {
@@ -49,13 +51,31 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 	return nil
 }
 
-func (nmb *nsqMailbox) pub(topic string, msg *mailbox.Message) {
-	p := nmb.cproducers[rand.Intn(len(nmb.cproducers))]
-	p.Publish(topic, msg.Body)
+func (nmb *nsqMailbox) pubasync(topic string, msg *mailbox.Message) {
+	nmb.pub(topic, msg)
 }
 
-func (c *nsqConsumer) OnArrived() <-chan mailbox.Message {
-	return c.recvBuff
+func (nmb *nsqMailbox) pub(topic string, msg *mailbox.Message) error {
+	p := nmb.cproducers[rand.Intn(len(nmb.cproducers))]
+	return p.Publish(topic, msg.Body)
+}
+
+func (c *nsqConsumer) OnArrived(handle mailbox.HandlerFunc) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.handle == nil {
+		c.handle = handle
+
+		err := c.consumer.ConnectToNSQLookupds(c.lookupAddress)
+		if err != nil {
+			return err
+		}
+
+		c.connected = true
+	}
+
+	return nil
 }
 
 func (c *nsqConsumer) Exit() {
@@ -66,40 +86,23 @@ func (c *nsqConsumer) IsExited() bool {
 	return false
 }
 
-func (c *nsqConsumer) PutMsg(msg *mailbox.Message) {
-	c.Lock()
-	if len(c.backlog) == 0 {
-		select {
-		case c.recvBuff <- *msg:
-			c.Unlock()
-			return
-		default:
-		}
-	}
+func (c *nsqConsumer) PutMsgAsync(msg *mailbox.Message) {
 
-	c.backlog = append(c.backlog, *msg)
-	c.Unlock()
 }
 
-func (c *nsqConsumer) Done() {
+func (c *nsqConsumer) PutMsg(msg *mailbox.Message) error {
 	c.Lock()
-	if len(c.backlog) > 0 {
-		select {
-		case c.recvBuff <- c.backlog[0]:
-			c.backlog[0] = mailbox.Message{}
-			c.backlog = c.backlog[1:]
-		default:
-		}
-	}
-	c.Unlock()
+	defer c.Unlock()
+
+	return c.handle(*msg)
 }
 
 func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	config := nsq.NewConfig()
 	nc := &nsqConsumer{
-		exitCh:   braidsync.NewSwitch(),
-		uuid:     channel,
-		recvBuff: make(chan mailbox.Message, 1),
+		exitCh:        braidsync.NewSwitch(),
+		uuid:          channel,
+		lookupAddress: ns.lookupAddress,
 	}
 
 	consumer, err := nsq.NewConsumer(ns.Topic, nc.uuid, config)
@@ -111,11 +114,6 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 		c:    nc,
 		uuid: nc.uuid,
 	})
-
-	err = consumer.ConnectToNSQLookupds(ns.lookupAddress)
-	if err != nil {
-		return nil, err
-	}
 
 	nc.consumer = consumer
 

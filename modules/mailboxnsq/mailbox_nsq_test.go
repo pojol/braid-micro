@@ -27,18 +27,15 @@ func TestClusterShared(t *testing.T) {
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c2.Exit()
 
-	go func() {
-		for {
-			select {
-			case <-c1.OnArrived():
-				wg.Done()
-				c1.Done()
-			case <-c2.OnArrived():
-				wg.Done()
-				c2.Done()
-			}
-		}
-	}()
+	c1.OnArrived(func(msg mailbox.Message) error {
+		wg.Done()
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
+		wg.Done()
+		return nil
+	})
 
 	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
@@ -72,22 +69,19 @@ func TestClusterCompetition(t *testing.T) {
 	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c2.Exit()
 
-	go func() {
-		for {
-			select {
-			case <-c1.OnArrived():
-				tickmu.Lock()
-				atomic.AddUint64(&tick, 1)
-				c1.Done()
-				tickmu.Unlock()
-			case <-c2.OnArrived():
-				tickmu.Lock()
-				atomic.AddUint64(&tick, 1)
-				c2.Done()
-				tickmu.Unlock()
-			}
-		}
-	}()
+	c1.OnArrived(func(msg mailbox.Message) error {
+		tickmu.Lock()
+		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
+		tickmu.Lock()
+		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
+		return nil
+	})
 
 	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),

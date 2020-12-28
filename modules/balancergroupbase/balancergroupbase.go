@@ -120,71 +120,67 @@ func (bbg *baseBalancerGroup) Init() {
 
 func (bbg *baseBalancerGroup) Run() {
 
-	go func() {
+	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
 
-		for {
-			select {
-			case msg := <-bbg.addConsumer.OnArrived():
-				bbg.addConsumer.Done()
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
+		bbg.lock.Lock()
+		for strategy := range bbg.group {
 
-				bbg.lock.Lock()
-				for strategy := range bbg.group {
+			if !bbg.group[strategy].exist(nod.Name) {
+				b := balancer.GetBuilder(strategy)
+				ib, _ := b.Build(bbg.logger)
+				bbg.group[strategy].targets[nod.Name] = ib
+				bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
+			}
 
-					if !bbg.group[strategy].exist(nod.Name) {
-						b := balancer.GetBuilder(strategy)
-						ib, _ := b.Build(bbg.logger)
-						bbg.group[strategy].targets[nod.Name] = ib
-						bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
-					}
+			bbg.group[strategy].targets[nod.Name].Add(nod)
+		}
+		bbg.lock.Unlock()
+		return nil
+	})
 
-					bbg.group[strategy].targets[nod.Name].Add(nod)
+	bbg.rmvConsumer.OnArrived(func(msg mailbox.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		bbg.lock.Lock()
+
+		for k := range bbg.group {
+			if _, ok := bbg.group[k]; ok {
+				b, err := bbg.group[k].get(nod.Name)
+				if err != nil {
+					bbg.logger.Errorf("remove service err %s", err.Error())
+					break
 				}
-				bbg.lock.Unlock()
 
-			case msg := <-bbg.rmvConsumer.OnArrived():
-				bbg.rmvConsumer.Done()
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-
-				bbg.lock.Lock()
-
-				for k := range bbg.group {
-					if _, ok := bbg.group[k]; ok {
-						b, err := bbg.group[k].get(nod.Name)
-						if err != nil {
-							bbg.logger.Errorf("remove service err %s", err.Error())
-							break
-						}
-
-						b.Rmv(nod)
-					}
-				}
-				bbg.lock.Unlock()
-			case msg := <-bbg.upConsumer.OnArrived():
-				bbg.upConsumer.Done()
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-
-				bbg.lock.Lock()
-
-				for k := range bbg.group {
-					if _, ok := bbg.group[k]; ok {
-						b, err := bbg.group[k].get(nod.Name)
-						if err != nil {
-							bbg.logger.Errorf("update service err %s", err.Error())
-							break
-						}
-
-						b.Update(nod)
-					}
-				}
-				bbg.lock.Unlock()
+				b.Rmv(nod)
 			}
 		}
+		bbg.lock.Unlock()
+		return nil
+	})
 
-	}()
+	bbg.upConsumer.OnArrived(func(msg mailbox.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		bbg.lock.Lock()
+
+		for k := range bbg.group {
+			if _, ok := bbg.group[k]; ok {
+				b, err := bbg.group[k].get(nod.Name)
+				if err != nil {
+					bbg.logger.Errorf("update service err %s", err.Error())
+					break
+				}
+
+				b.Update(nod)
+			}
+		}
+		bbg.lock.Unlock()
+		return nil
+	})
 
 }
 

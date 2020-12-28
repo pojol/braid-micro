@@ -34,20 +34,20 @@ func TestSharedProc(t *testing.T) {
 	c2, _ := sub.Shared()
 	defer c2.Exit()
 
+	c1.OnArrived(func(msg mailbox.Message) error {
+		wg.Done()
+		fmt.Printf("%p %s\n", &msg, msg.Body)
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
+		wg.Done()
+		fmt.Printf("%p %s\n", &msg, msg.Body)
+		return nil
+	})
+
 	wg.Add(2)
 	mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
-
-	select {
-	case m1 := <-c1.OnArrived():
-		c1.Done()
-		wg.Done()
-		fmt.Printf("%p %s\n", &m1, m1.Body)
-	case m2 := <-c2.OnArrived():
-		c2.Done()
-		wg.Done()
-		fmt.Printf("%p %s\n", &m2, m2.Body)
-	default:
-	}
 
 	go func() {
 		wg.Wait()
@@ -74,19 +74,19 @@ func TestCompetition(t *testing.T) {
 	c1, _ := sub.Competition()
 	c2, _ := sub.Competition()
 
-	select {
-	case <-c1.OnArrived():
-		c1.Done()
+	c1.OnArrived(func(msg mailbox.Message) error {
 		race.Lock()
 		atomic.AddUint64(&carrived, 1)
 		race.Unlock()
-	case <-c2.OnArrived():
-		c2.Done()
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
 		race.Lock()
 		atomic.AddUint64(&carrived, 1)
 		race.Unlock()
-	default:
-	}
+		return nil
+	})
 
 	mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
 	time.Sleep(time.Second)
@@ -98,9 +98,6 @@ func TestCompetition(t *testing.T) {
 
 // BenchmarkShared-8   	 2102298	       527 ns/op	      94 B/op	       2 allocs/op
 func BenchmarkShared(b *testing.B) {
-
-	//runtime.GOMAXPROCS(1)
-
 	mbb := mailbox.GetBuilder(Name)
 	mb, _ := mbb.Build("BenchmarkShared")
 	topic := "BenchmarkShared"
@@ -110,16 +107,12 @@ func BenchmarkShared(b *testing.B) {
 	c1, _ := sub.Shared()
 	c2, _ := sub.Shared()
 
-	go func() {
-		for {
-			select {
-			case <-c1.OnArrived():
-				c1.Done()
-			case <-c2.OnArrived():
-				c2.Done()
-			}
-		}
-	}()
+	c1.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+	c2.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -127,9 +120,35 @@ func BenchmarkShared(b *testing.B) {
 	}
 }
 
+func BenchmarkSharedAsync(b *testing.B) {
+	mbb := mailbox.GetBuilder(Name)
+	mb, _ := mbb.Build("BenchmarkShared")
+	topic := "BenchmarkShared"
+	body := []byte("msg")
+
+	sub := mb.Sub(mailbox.Proc, topic)
+	c1, _ := sub.Shared()
+	c2, _ := sub.Shared()
+
+	c1.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+	c2.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+
+	b.SetParallelism(8)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			mb.PubAsync(mailbox.Proc, topic, &mailbox.Message{Body: body})
+		}
+	})
+
+}
+
 //BenchmarkCompetition-8   	 3238792	       335 ns/op	      79 B/op	       2 allocs/op
 func BenchmarkCompetition(b *testing.B) {
-
 	mbb := mailbox.GetBuilder(Name)
 	mb, _ := mbb.Build("BenchmarkCompetition")
 	topic := "BenchmarkCompetition"
@@ -139,20 +158,43 @@ func BenchmarkCompetition(b *testing.B) {
 	c1, _ := sub.Competition()
 	c2, _ := sub.Competition()
 
-	go func() {
-		for {
-			select {
-			case <-c1.OnArrived():
-				c1.Done()
-			case <-c2.OnArrived():
-				c2.Done()
-			}
-		}
-	}()
+	c1.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: body})
 	}
+}
 
+func BenchmarkCompetitionAsync(b *testing.B) {
+	mbb := mailbox.GetBuilder(Name)
+	mb, _ := mbb.Build("BenchmarkCompetition")
+	topic := "BenchmarkCompetition"
+	body := []byte("msg")
+
+	sub := mb.Sub(mailbox.Proc, topic)
+	c1, _ := sub.Competition()
+	c2, _ := sub.Competition()
+
+	c1.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+
+	c2.OnArrived(func(msg mailbox.Message) error {
+		return nil
+	})
+
+	b.SetParallelism(8)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			mb.PubAsync(mailbox.Proc, topic, &mailbox.Message{Body: body})
+		}
+	})
 }

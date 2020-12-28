@@ -1,6 +1,7 @@
 package mailboxnsq
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
@@ -73,12 +74,23 @@ type nsqMailbox struct {
 	csubsrcibers []*nsqSubscriber
 }
 
-func (nmb *nsqMailbox) Pub(scope string, topic string, msg *mailbox.Message) {
+func (nmb *nsqMailbox) Pub(scope string, topic string, msg *mailbox.Message) error {
 
 	if scope == mailbox.Proc {
-		nmb.proc.pub(topic, msg)
+		return nmb.proc.pub(topic, msg)
 	} else if scope == mailbox.Cluster {
-		nmb.pub(topic, msg)
+		return nmb.pub(topic, msg)
+	}
+
+	return errors.New("Can't find scope")
+}
+
+func (nmb *nsqMailbox) PubAsync(scope string, topic string, msg *mailbox.Message) {
+
+	if scope == mailbox.Proc {
+		nmb.proc.pubasync(topic, msg)
+	} else if scope == mailbox.Cluster {
+		nmb.pubasync(topic, msg)
 	}
 
 }

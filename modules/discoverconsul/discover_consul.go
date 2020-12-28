@@ -173,7 +173,7 @@ func (dc *consulDiscover) discoverImpl() {
 				Name: dc.passingMap[k].service,
 			}))
 
-			dc.mb.Pub(mailbox.Cluster, linkerredis.LinkerTopicDown, linkcache.EncodeDownMsg(
+			dc.mb.PubAsync(mailbox.Cluster, linkerredis.LinkerTopicDown, linkcache.EncodeDownMsg(
 				dc.passingMap[k].id,
 				dc.passingMap[k].service,
 				dc.passingMap[k].address,
@@ -261,21 +261,16 @@ func (dc *consulDiscover) Init() {
 
 	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
 
-	go func() {
-		for {
-			select {
-			case msg := <-linknumC.OnArrived():
-				linknumC.Done()
-				lninfo := linkcache.DecodeLinkNumMsg(&msg)
-				dc.lock.Lock()
-				defer dc.lock.Unlock()
+	linknumC.OnArrived(func(msg mailbox.Message) error {
+		lninfo := linkcache.DecodeLinkNumMsg(&msg)
+		dc.lock.Lock()
+		defer dc.lock.Unlock()
 
-				if _, ok := dc.passingMap[lninfo.ID]; ok {
-					dc.passingMap[lninfo.ID].linknum = lninfo.Num
-				}
-			}
+		if _, ok := dc.passingMap[lninfo.ID]; ok {
+			dc.passingMap[lninfo.ID].linknum = lninfo.Num
 		}
-	}()
+		return nil
+	})
 
 }
 

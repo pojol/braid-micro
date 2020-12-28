@@ -54,10 +54,10 @@ type HandlerFunc func(message Message) error
 
 // IConsumer consumer
 type IConsumer interface {
-	OnArrived() <-chan Message
+	OnArrived(handle HandlerFunc) error
 
-	PutMsg(msg *Message)
-	Done()
+	PutMsgAsync(msg *Message)
+	PutMsg(msg *Message) error
 
 	Exit()
 	IsExited() bool
@@ -71,7 +71,9 @@ type ISubscriber interface {
 
 // IMailbox mailbox
 type IMailbox interface {
-	Pub(scope string, topic string, msg *Message)
+	// publish goroutine -> channel -> consumer goroutine
+	PubAsync(scope string, topic string, msg *Message)
+	Pub(scope string, topic string, msg *Message) error
 
 	Sub(scope string, topic string) ISubscriber
 }
