@@ -119,14 +119,12 @@ func (bbg *baseBalancerGroup) Init() {
 }
 
 func (bbg *baseBalancerGroup) Run() {
-	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
 
+	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
 		bbg.lock.Lock()
-		defer bbg.lock.Unlock()
-
 		for strategy := range bbg.group {
 
 			if !bbg.group[strategy].exist(nod.Name) {
@@ -138,17 +136,15 @@ func (bbg *baseBalancerGroup) Run() {
 
 			bbg.group[strategy].targets[nod.Name].Add(nod)
 		}
-
+		bbg.lock.Unlock()
 		return nil
 	})
 
 	bbg.rmvConsumer.OnArrived(func(msg mailbox.Message) error {
-
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
 		bbg.lock.Lock()
-		defer bbg.lock.Unlock()
 
 		for k := range bbg.group {
 			if _, ok := bbg.group[k]; ok {
@@ -161,17 +157,15 @@ func (bbg *baseBalancerGroup) Run() {
 				b.Rmv(nod)
 			}
 		}
-
+		bbg.lock.Unlock()
 		return nil
 	})
 
 	bbg.upConsumer.OnArrived(func(msg mailbox.Message) error {
-
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
 		bbg.lock.Lock()
-		defer bbg.lock.Unlock()
 
 		for k := range bbg.group {
 			if _, ok := bbg.group[k]; ok {
@@ -184,7 +178,7 @@ func (bbg *baseBalancerGroup) Run() {
 				b.Update(nod)
 			}
 		}
-
+		bbg.lock.Unlock()
 		return nil
 	})
 

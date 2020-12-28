@@ -12,6 +12,7 @@ import (
 )
 
 func TestClusterShared(t *testing.T) {
+
 	b := mailbox.GetBuilder(Name)
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
@@ -23,13 +24,14 @@ func TestClusterShared(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
 	defer c1.Exit()
+	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
+	defer c2.Exit()
+
 	c1.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
 		return nil
 	})
 
-	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterShared").Shared()
-	defer c2.Exit()
 	c2.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
 		return nil
@@ -47,12 +49,14 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(time.Millisecond * 1000):
 		t.FailNow()
 	}
+
 }
 
 func TestClusterCompetition(t *testing.T) {
+
 	b := mailbox.GetBuilder(Name)
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
@@ -62,6 +66,9 @@ func TestClusterCompetition(t *testing.T) {
 
 	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
 	defer c1.Exit()
+	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+	defer c2.Exit()
+
 	c1.OnArrived(func(msg mailbox.Message) error {
 		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
@@ -69,8 +76,6 @@ func TestClusterCompetition(t *testing.T) {
 		return nil
 	})
 
-	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
-	defer c2.Exit()
 	c2.OnArrived(func(msg mailbox.Message) error {
 		tickmu.Lock()
 		atomic.AddUint64(&tick, 1)
@@ -86,6 +91,7 @@ func TestClusterCompetition(t *testing.T) {
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
+
 }
 
 func TestClusterMailboxParm(t *testing.T) {

@@ -16,17 +16,23 @@
 | ---- | ---- | ---- | ---- | ---- | ---- |
 |Shared | Competition | Proc | Cluster | Pub | Sub |
 
-> `范例` 在集群内`订阅`一个共享型的消息
+> `范例` 在当前进程内`订阅`一个共享型的消息
 
 ```go
 // 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
 consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
-// 注册消息到达函数（线程安全
-consumer.OnArrived(func (msg *mailbox.Message) error {
+
+// 收取消息
+consumer.OnArrived(func(msg mailbox.Message) error {
   return nil
 })
-```
 
+// 发送（串行
+braid.Mailbox().Pub("topic", message)
+// 发送（并行
+braid.Mailbox().PubAsync("topic", message)
+
+```
 
 
 ### 微服务
@@ -35,10 +41,8 @@ consumer.OnArrived(func (msg *mailbox.Message) error {
 |**Discover**|**Balancer**|**Elector**|**RPC**|**Tracer**|**LinkCache**|
 |-|-|-|-|-|-|
 |服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|jaegertracer|linkerredis|
-||[balancerswrr](https://github.com/pojol/braid/wiki/balancerswrr)|electork8s|grpc-server|||
-
-
+|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|[linkerredis](https://github.com/pojol/braid-go/wiki/Guide-4.-%E4%BD%BF%E7%94%A8Link-cahe)|
+||[balancerswrr](https://github.com/pojol/braid-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
 
 ### 构建
 > 通过注册模块(braid.Module)，构建braid的运行环境。

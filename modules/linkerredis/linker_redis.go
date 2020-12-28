@@ -128,8 +128,8 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		client:       client,
 	}
 
-	lc.mb.Pub(mailbox.Cluster, LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
-	lc.mb.Pub(mailbox.Cluster, LinkerTopicDown, linkcache.EncodeDownMsg("", "", ""))
+	lc.mb.PubAsync(mailbox.Cluster, LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
+	lc.mb.PubAsync(mailbox.Cluster, LinkerTopicDown, linkcache.EncodeDownMsg("", "", ""))
 
 	go lc.watcher()
 	go lc.dispatch()
@@ -164,18 +164,17 @@ func (l *redisLinker) Run() {
 func (l *redisLinker) watcher() {
 
 	l.unlink, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicUnlink).Competition()
+	l.down, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicDown).Competition()
+
 	l.unlink.OnArrived(func(msg mailbox.Message) error {
 		l.logger.Debugf("recv unlink msg %s", string(msg.Body))
-		l.Unlink(string(msg.Body), "")
-		return nil
+		return l.Unlink(string(msg.Body), "")
 	})
 
-	l.down, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicDown).Competition()
 	l.down.OnArrived(func(msg mailbox.Message) error {
-
 		dmsg := linkcache.DecodeDownMsg(&msg)
 		if dmsg.Service == "" {
-			return nil
+			return errors.New("Can't find service")
 		}
 
 		return l.Down(discover.Node{
@@ -183,7 +182,6 @@ func (l *redisLinker) watcher() {
 			Name:    dmsg.Service,
 			Address: dmsg.Addr,
 		})
-
 	})
 
 }

@@ -3,7 +3,6 @@ package mailbox
 import (
 	"encoding/json"
 	"strings"
-	"time"
 )
 
 // Builder 构建器接口
@@ -15,9 +14,7 @@ type Builder interface {
 
 // Message 消息体
 type Message struct {
-	ID        string
-	Body      []byte
-	Timestamp int64
+	Body []byte
 }
 
 const (
@@ -48,9 +45,7 @@ func NewMessage(body interface{}) *Message {
 	}
 
 	return &Message{
-		ID:        "",
-		Body:      byt,
-		Timestamp: time.Now().UnixNano(),
+		Body: byt,
 	}
 }
 
@@ -59,8 +54,9 @@ type HandlerFunc func(message Message) error
 
 // IConsumer consumer
 type IConsumer interface {
-	OnArrived(handler HandlerFunc) error
+	OnArrived(handle HandlerFunc) error
 
+	PutMsgAsync(msg *Message)
 	PutMsg(msg *Message) error
 
 	Exit()
@@ -75,7 +71,9 @@ type ISubscriber interface {
 
 // IMailbox mailbox
 type IMailbox interface {
-	Pub(scope string, topic string, msg *Message)
+	// publish goroutine -> channel -> consumer goroutine
+	PubAsync(scope string, topic string, msg *Message)
+	Pub(scope string, topic string, msg *Message) error
 
 	Sub(scope string, topic string) ISubscriber
 }

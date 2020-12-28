@@ -18,13 +18,15 @@ type consumerHandler struct {
 // Consumer 消费者
 type nsqConsumer struct {
 	consumer *nsq.Consumer
-	exitCh   *braidsync.Switch
 
-	handle        mailbox.HandlerFunc
-	uuid          string
+	exitCh *braidsync.Switch
+	handle mailbox.HandlerFunc
+	sync.Mutex
+
+	connected bool
+
 	lookupAddress []string
-
-	lock sync.Mutex
+	uuid          string
 }
 
 type nsqSubscriber struct {
@@ -38,63 +40,60 @@ type nsqSubscriber struct {
 	serviceName string
 
 	consumer mailbox.IConsumer
-	//group map[string]mailbox.IConsumer
-	//sync.Mutex
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
-	ch.c.lock.Lock()
-	defer ch.c.lock.Unlock()
 
-	err := ch.c.PutMsg(&mailbox.Message{
+	ch.c.PutMsg(&mailbox.Message{
 		Body: msg.Body,
 	})
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
 
-func (nmb *nsqMailbox) pub(topic string, msg *mailbox.Message) {
+func (nmb *nsqMailbox) pubasync(topic string, msg *mailbox.Message) {
+	nmb.pub(topic, msg)
+}
+
+func (nmb *nsqMailbox) pub(topic string, msg *mailbox.Message) error {
 	p := nmb.cproducers[rand.Intn(len(nmb.cproducers))]
-	p.Publish(topic, msg.Body)
+	return p.Publish(topic, msg.Body)
 }
 
-/*
-func (ns *nsqSubscriber) GetConsumer(cid string) []mailbox.IConsumer {
-	c := []mailbox.IConsumer{}
+func (c *nsqConsumer) OnArrived(handle mailbox.HandlerFunc) error {
+	c.Lock()
+	defer c.Unlock()
 
-	if _, ok := ns.group[cid]; ok {
-		c = append(c, ns.group[cid])
-	}
+	if c.handle == nil {
+		c.handle = handle
 
-	return c
-}
-*/
-func (c *nsqConsumer) OnArrived(handler mailbox.HandlerFunc) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+		err := c.consumer.ConnectToNSQLookupds(c.lookupAddress)
+		if err != nil {
+			return err
+		}
 
-	c.handle = handler
-
-	err := c.consumer.ConnectToNSQLookupds(c.lookupAddress)
-	if err != nil {
-		return err
+		c.connected = true
 	}
 
 	return nil
 }
 
 func (c *nsqConsumer) Exit() {
-	c.exitCh.Done()
+	c.exitCh.Open()
 }
 
 func (c *nsqConsumer) IsExited() bool {
 	return false
 }
 
+func (c *nsqConsumer) PutMsgAsync(msg *mailbox.Message) {
+
+}
+
 func (c *nsqConsumer) PutMsg(msg *mailbox.Message) error {
+	c.Lock()
+	defer c.Unlock()
+
 	return c.handle(*msg)
 }
 
