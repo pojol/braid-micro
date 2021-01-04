@@ -154,7 +154,7 @@ func (dc *consulDiscover) discoverImpl() {
 			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
+			dc.mb.PubAsync(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -168,7 +168,7 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.mb.Pub(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
+			dc.mb.PubAsync(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
 				ID:   dc.passingMap[k].id,
 				Name: dc.passingMap[k].service,
 			}))
@@ -205,7 +205,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.mb.Pub(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
+		dc.mb.PubAsync(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
 			ID:     v.id,
 			Name:   v.service,
 			Weight: nweight,

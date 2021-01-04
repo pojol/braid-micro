@@ -1,7 +1,6 @@
 package braid
 
 import (
-	"context"
 	"math/rand"
 	"time"
 
@@ -59,7 +58,7 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	}
 
 	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build(logger.INFO)
+	log, err := zlb.Build(logger.DEBUG)
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +160,12 @@ func (b *Braid) Run() {
 
 }
 
-// Invoke iclient.invoke
-func Invoke(ctx context.Context, nodeName, methon, token string, args, reply interface{}) {
+// GetClient get client interface
+func GetClient() client.IClient {
 	if braidGlobal != nil && braidGlobal.client != nil {
-		braidGlobal.client.Invoke(ctx, nodeName, methon, token, args, reply)
+		return braidGlobal.client
 	}
+	return nil
 }
 
 // GetServer iserver.server
