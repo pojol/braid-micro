@@ -16,7 +16,7 @@
 | ---- | ---- | ---- | ---- | ---- | ---- |
 |Shared | Competition | Proc | Cluster | Pub | Sub |
 
-> `范例` 在当前进程内`订阅`一个共享型的消息
+> `范例` 发布订阅消息
 
 ```go
 // 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
@@ -34,6 +34,22 @@ braid.Mailbox().PubAsync("topic", message)
 
 ```
 
+> `范例` 发起一次rpc请求
+
+```go
+// ctx 用于分布式追踪，存储调用链路的上下文信息
+// target 目标服务节点 例("mail")
+// methon 目标节点支持的方法 列("api.mail/send")
+// token 调用者的唯一平局（用于链路缓存
+// args 输入参数
+// reply 回复参数
+// opts 调用的额外参数选项
+err := braid.GetClient().Invoke(ctx, target, methon, token, args, reply, opts...)
+if err != nil {
+  // todo ...
+}
+
+```
 
 ### 微服务
 > braid.Module 默认提供的微服务组件
