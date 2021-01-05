@@ -43,6 +43,7 @@ func TestPlugin(t *testing.T) {
 		),
 	)
 
+	b.Init()
 	b.Run()
 	defer b.Close()
 }
