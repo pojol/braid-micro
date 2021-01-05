@@ -39,8 +39,8 @@ braid.Mailbox().PubAsync("topic", message)
 ```go
 // ctx 用于分布式追踪，存储调用链路的上下文信息
 // target 目标服务节点 例("mail")
-// methon 目标节点支持的方法 列("api.mail/send")
-// token 调用者的唯一平局（用于链路缓存
+// methon 目标节点支持的方法 例("api.mail/send")
+// token 调用者的唯一凭据（用于链路缓存
 // args 输入参数
 // reply 回复参数
 // opts 调用的额外参数选项
