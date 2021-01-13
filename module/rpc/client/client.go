@@ -19,13 +19,12 @@ type Builder interface {
 // IClient rpc-client interface
 type IClient interface {
 	module.IModule
-	// ctx 链路的上下文，主要用于tracing
-	// nodeName 逻辑节点名称, 用于查找目标节点地址
-	// methon 方法名，用于定位到具体的rpc 执行函数
-	// token 用户身份id
-	// args request
-	// reply result
-	Invoke(ctx context.Context, nodeName, methon, token string, args, reply interface{})
+
+	//
+	Invoke(
+		ctx context.Context, target, methon, token string,
+		args, reply interface{},
+		opts ...interface{}) error
 }
 
 var (

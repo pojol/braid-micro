@@ -51,6 +51,10 @@ func TestLinkerTarget(t *testing.T) {
 	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(t, err, nil)
 
+	lc.Init()
+	lc.Run()
+	defer lc.Close()
+
 	nods := []discover.Node{
 		{
 			ID:      "a001",
@@ -109,6 +113,10 @@ func BenchmarkLink(b *testing.B) {
 	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(b, err, nil)
 	rand.Seed(time.Now().UnixNano())
+
+	lc.Init()
+	lc.Run()
+	defer lc.Close()
 
 	baseTargets := []discover.Node{
 		{

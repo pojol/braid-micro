@@ -2,11 +2,12 @@ package grpcclient
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/internal/pool"
 	"github.com/pojol/braid/module"
 	"github.com/pojol/braid/module/balancer"
 	"github.com/pojol/braid/module/discover"
@@ -18,6 +19,7 @@ import (
 	"github.com/pojol/braid/modules/balancerswrr"
 	"github.com/pojol/braid/modules/jaegertracing"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 var (
@@ -76,6 +78,7 @@ func (b *grpcClientBuilder) Build(serviceName string, mb mailbox.IMailbox, logge
 		bg:          bg.(balancer.IBalancerGroup),
 		parm:        p,
 		logger:      logger,
+		mb:          mb,
 	}
 
 	return c, nil
@@ -88,36 +91,124 @@ type grpcClient struct {
 	bg          balancer.IBalancerGroup
 	logger      logger.ILogger
 
-	poolMgr sync.Map
+	mb                mailbox.IMailbox
+	addTargetConsumer mailbox.IConsumer
+	rmvTargetConsumer mailbox.IConsumer
+
+	connmap sync.Map
+}
+
+func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var conn *grpc.ClientConn
+	var err error
+
+	if c.parm.tracer != nil {
+		interceptor := jaegertracing.ClientInterceptor(c.parm.tracer)
+		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
+	} else {
+		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure())
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w %v", err, "failed to dial to gRPC server")
+	}
+
+	return conn, err
+}
+
+func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	doneCh := make(chan error)
+	go func() {
+		var result error
+		if err := conn.Close(); err != nil {
+			result = fmt.Errorf("%w %v", err, "failed to close gRPC client")
+		}
+		doneCh <- result
+	}()
+
+	select {
+	case <-ctx.Done():
+		return errors.New("failed to close gRPC client because of timeout")
+	case err := <-doneCh:
+		return err
+	}
 }
 
 func (c *grpcClient) Init() {
+	var err error
 	c.bg.Init()
+
+	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.AddService).Shared()
+	if err != nil {
+		panic(err)
+	}
+	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
+
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		_, ok := c.connmap.Load(nod.Address)
+		if !ok {
+			conn, err := c.newconn(nod.Address)
+			if err != nil {
+				c.logger.Errorf("new grpc conn err %s", err.Error())
+			} else {
+				c.connmap.Store(nod.Address, conn)
+			}
+		}
+
+		return nil
+	})
+
+	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
+	if err != nil {
+		panic(err)
+	}
+	c.rmvTargetConsumer.OnArrived(func(msg mailbox.Message) error {
+
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		mc, ok := c.connmap.Load(nod.Address)
+		if ok {
+			conn := mc.(*grpc.ClientConn)
+			err = c.closeconn(conn)
+			if err != nil {
+				c.logger.Errorf("close grpc conn err %s", err.Error())
+			} else {
+				c.connmap.Delete(nod.Address)
+			}
+		}
+
+		return nil
+	})
 }
 
 func (c *grpcClient) Run() {
 	c.bg.Run()
 }
 
-func (c *grpcClient) getConn(address string) (*pool.ClientConn, error) {
-	var caConn *pool.ClientConn
-	var caPool *pool.GRPCPool
-
-	caPool, err := c.pool(address)
-	if err != nil {
-		c.logger.Debugf("get rpc pool err %s", err.Error())
-		return nil, err
+func (c *grpcClient) getConn(address string) (*grpc.ClientConn, error) {
+	mc, ok := c.connmap.Load(address)
+	if !ok {
+		return nil, errors.New("gRPC client Can't find target")
 	}
 
-	connCtx, connCancel := context.WithTimeout(context.Background(), time.Second)
-	defer connCancel()
-	caConn, err = caPool.Get(connCtx)
-	if err != nil {
-		c.logger.Debugf("get conn by rpc pool err %s", err.Error())
-		return nil, err
+	conn, ok := mc.(*grpc.ClientConn)
+	if !ok {
+		return nil, fmt.Errorf("gRPC client failed address : %s", address)
 	}
 
-	return caConn, nil
+	if conn.GetState() == connectivity.TransientFailure {
+		conn.ResetConnectBackoff()
+	}
+
+	return conn, nil
 }
 
 func (c *grpcClient) pick(nodName string, token string, link bool) (discover.Node, error) {
@@ -174,88 +265,42 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	return address
 }
 
-// Invoke 执行远程调用
-// ctx 链路的上下文，主要用于tracing
-// nodName 逻辑节点名称, 用于查找目标节点地址
-// methon 方法名，用于定位到具体的rpc 执行函数
-// token 用户身份id
-// args request
-// reply result
-func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, args, reply interface{}) {
+// Invoke grpc call
+func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, args, reply interface{}, opts ...interface{}) error {
 
 	var address string
-	var err error
-
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
+	var grpcopts []grpc.CallOption
 
 	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
-		c.logger.Debugf("find target warning %s %s", token, nodName)
-		return
+		return fmt.Errorf("find target warning %s %s", token, nodName)
 	}
 
 	conn, err := c.getConn(address)
 	if err != nil {
 		c.logger.Debugf("client get conn warning %s", err.Error())
-		return
+		return err
 	}
-	defer conn.Put()
 
-	//opts...
-	err = conn.ClientConn.Invoke(ctx, methon, args, reply)
+	if len(opts) != 0 {
+		for _, v := range opts {
+			callopt, ok := v.(grpc.CallOption)
+			if !ok {
+
+			}
+			grpcopts = append(grpcopts, callopt)
+		}
+	}
+
+	err = conn.Invoke(ctx, methon, args, reply, grpcopts...)
 	if err != nil {
 		c.logger.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
 		if c.parm.byLink {
 			c.parm.linker.Unlink(token, nodName)
 		}
-
-		conn.Unhealthy()
 	}
 
-}
-
-// Pool 获取grpc连接池
-func (c *grpcClient) pool(address string) (p *pool.GRPCPool, err error) {
-
-	factory := func() (*grpc.ClientConn, error) {
-		var conn *grpc.ClientConn
-		var err error
-
-		if c.parm.tracer != nil {
-			interceptor := jaegertracing.ClientInterceptor(c.parm.tracer)
-			conn, err = grpc.Dial(address, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
-		} else {
-			conn, err = grpc.Dial(address, grpc.WithInsecure())
-		}
-
-		if err != nil {
-			c.logger.Debugf("rpc pool factory err %s", err.Error())
-			return nil, err
-		}
-
-		return conn, nil
-	}
-
-	pi, ok := c.poolMgr.Load(address)
-	if !ok {
-		p, err = pool.NewGRPCPool(factory, c.parm.PoolInitNum, c.parm.PoolCapacity, c.parm.PoolIdle)
-		if err != nil {
-			c.logger.Debugf("new grpc pool err %s", err.Error())
-			goto EXT
-		}
-
-		c.poolMgr.Store(address, p)
-		pi = p
-	}
-
-	p = pi.(*pool.GRPCPool)
-
-EXT:
-	return p, err
+	return err
 }
 
 func (c *grpcClient) Close() {
