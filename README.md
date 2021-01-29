@@ -28,7 +28,7 @@ consumer.OnArrived(func(msg mailbox.Message) error {
 })
 
 // 发送（串行
-braid.Mailbox().Pub("topic", message)
+err := braid.Mailbox().Pub("topic", message)
 // 发送（并行
 braid.Mailbox().PubAsync("topic", message)
 
