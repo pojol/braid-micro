@@ -18,6 +18,7 @@ steps:
     - name: coverage
       image: plugins/codecov
       settings:
-        token: 465725eb-a558-480c-9528-77392f194aba
+        token: 
+          from_secret: CODECOV_TOKEN
         files:
           - coverage.out

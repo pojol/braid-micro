@@ -95,7 +95,7 @@ defer b.Close() // 释放
 https://github.com/pojol/braid/wiki
 
 #### Sample
-https://github.com/pojol/braid-sample
+https://github.com/pojol/braidgo-sample
 
 
 
