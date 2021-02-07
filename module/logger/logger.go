@@ -15,8 +15,9 @@ const (
 
 // Builder grpc-client builder
 type Builder interface {
-	Build(lv Lvl) (ILogger, error)
+	Build() (ILogger, error)
 	Name() string
+	AddOption(opt interface{})
 }
 
 // ILogger logger

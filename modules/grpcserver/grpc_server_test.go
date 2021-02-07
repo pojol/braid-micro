@@ -34,7 +34,7 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 
 func TestNew(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	b := server.GetBuilder(Name)
 	b.AddOption(WithListen(":14111"))

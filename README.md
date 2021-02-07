@@ -28,7 +28,7 @@ consumer.OnArrived(func(msg mailbox.Message) error {
 })
 
 // 发送（串行
-braid.Mailbox().Pub("topic", message)
+err := braid.Mailbox().Pub("topic", message)
 // 发送（并行
 braid.Mailbox().PubAsync("topic", message)
 
@@ -95,7 +95,7 @@ defer b.Close() // 释放
 https://github.com/pojol/braid/wiki
 
 #### Sample
-https://github.com/pojol/braid-sample
+https://github.com/pojol/braidgo-sample
 
 
 

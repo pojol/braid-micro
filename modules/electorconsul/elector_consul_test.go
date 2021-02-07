@@ -25,7 +25,7 @@ func TestElection(t *testing.T) {
 	eb := module.GetBuilder(Name)
 	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	e, _ := eb.Build("test_elector_with_consul", mb, log)
 
@@ -43,7 +43,7 @@ func TestParm(t *testing.T) {
 	eb.AddOption(WithLockTick(time.Second))
 	eb.AddOption(WithSessionTick(time.Second))
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	e, _ := eb.Build("test_elector_with_consul", mb, log)
 

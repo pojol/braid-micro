@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := mbb.Build("TestMain")
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	db := module.GetBuilder(discoverconsul.Name)
 	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
@@ -78,7 +78,7 @@ func TestInvoke(t *testing.T) {
 	mb, _ := mbb.Build("TestInvoke")
 
 	b := client.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	cb, _ := b.Build("TestInvoke", mb, log)
 
 	cb.Init()
@@ -101,7 +101,7 @@ func TestInvoke(t *testing.T) {
 
 func TestInvokeByLink(t *testing.T) {
 	b := client.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
@@ -153,7 +153,7 @@ func TestParm(t *testing.T) {
 	//b.AddOption(Tracing())
 	b.AddOption(AutoLinkCache(nil))
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	cb, _ := b.Build("TestCaller", mb, log)
 	gc := cb.(*grpcClient)
 

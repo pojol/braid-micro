@@ -58,7 +58,7 @@ func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 	}
 
 	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build(logger.DEBUG)
+	log, err := zlb.Build()
 	if err != nil {
 		return nil, err
 	}
