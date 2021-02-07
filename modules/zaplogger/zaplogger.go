@@ -15,26 +15,43 @@ var (
 )
 
 type zaplogBuilder struct {
+	opts []interface{}
 }
 
 func newZapLogger() logger.Builder {
 	return &zaplogBuilder{}
 }
 
-func (*zaplogBuilder) Name() string {
+func (zb *zaplogBuilder) Name() string {
 	return Name
 }
 
-func (*zaplogBuilder) Build(lv logger.Lvl) (logger.ILogger, error) {
+func (zb *zaplogBuilder) AddOption(opt interface{}) {
+	zb.opts = append(zb.opts, opt)
+}
+
+func (zb *zaplogBuilder) Build() (logger.ILogger, error) {
+
+	p := Parm{
+		filename:    "log.braid",
+		lv:          logger.DEBUG,
+		maxFileSize: 64,
+		maxBackups:  30,
+		maxAge:      7,
+	}
+
+	for _, opt := range zb.opts {
+		opt.(Option)(&p)
+	}
 
 	var atom zap.AtomicLevel
 	var ws zapcore.WriteSyncer
 
-	if lv == logger.DEBUG {
+	if p.lv == logger.DEBUG {
 		atom = zap.NewAtomicLevelAt(zap.DebugLevel)
-	} else if lv == logger.INFO {
+	} else if p.lv == logger.INFO {
 		atom = zap.NewAtomicLevelAt(zap.InfoLevel)
-	} else if lv == logger.WARN {
+	} else if p.lv == logger.WARN {
 		atom = zap.NewAtomicLevelAt(zap.WarnLevel)
 	} else {
 		atom = zap.NewAtomicLevelAt(zap.ErrorLevel)
@@ -55,11 +72,11 @@ func (*zaplogBuilder) Build(lv logger.Lvl) (logger.ILogger, error) {
 	}
 
 	hook := lumberjack.Logger{
-		Filename:   "log.braid", // 日志文件路径
-		MaxSize:    64,          // 每个日志文件保存的最大尺寸 单位：M
-		MaxBackups: 30,          // 日志文件最多保存多少个备份
-		MaxAge:     7,           // 文件最多保存多少天
-		Compress:   false,       // 是否压缩
+		Filename:   p.filename,    // 日志文件路径
+		MaxSize:    p.maxFileSize, // 每个日志文件保存的最大尺寸 单位：M
+		MaxBackups: p.maxBackups,  // 日志文件最多保存多少个备份
+		MaxAge:     p.maxAge,      // 文件最多保存多少天
+		Compress:   false,         // 是否压缩
 	}
 
 	ws = zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout), zapcore.AddSync(&hook))

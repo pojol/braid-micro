@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	defer r.Close()
 
 	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	bgb := module.GetBuilder(balancergroupbase.Name)
 	bgb.AddOption(balancergroupbase.WithStrategy([]string{balancerswrr.Name}))
@@ -57,7 +57,7 @@ func TestDiscover(t *testing.T) {
 	b.AddOption(WithSyncServiceInterval(time.Millisecond * 100))
 	b.AddOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
 	b.AddOption(WithBlacklist([]string{"gate"}))
-	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, err := logger.GetBuilder(zaplogger.Name).Build()
 	assert.Equal(t, err, nil)
 
 	d, err := b.Build("test", mb, log)
@@ -84,7 +84,7 @@ func TestParm(t *testing.T) {
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	b.AddOption(WithSyncServiceInterval(time.Second))
 	b.AddOption(WithSyncServiceWeightInterval(time.Second))
-	log, err := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, err := logger.GetBuilder(zaplogger.Name).Build()
 	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)

@@ -37,7 +37,7 @@ func TestLinkerTarget(t *testing.T) {
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := mbb.Build("testlinkertarget")
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
@@ -94,7 +94,7 @@ func TestLinkerTarget(t *testing.T) {
 func BenchmarkLink(b *testing.B) {
 	LinkerRedisPrefix = "benchmarklink"
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build(logger.DEBUG)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
