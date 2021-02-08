@@ -15,6 +15,8 @@ const (
 	TyElector       = "elector"
 	TyLinkCache     = "link-cache"
 	TyTracer        = "tracer"
+	TyClient        = "client"
+	TyServer        = "server"
 )
 
 // Builder builder
