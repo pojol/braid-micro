@@ -27,7 +27,6 @@ type Braid struct {
 	builders []module.Builder
 
 	moduleMap map[string]module.IModule
-	modules   []module.IModule
 
 	clientBuilder client.Builder
 	client        client.IClient
@@ -94,12 +93,11 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		}
 
 		b.moduleMap[builder.Type()] = m
-		b.modules = append(b.modules, m)
 	}
 
 	if b.tracerBuilder != nil {
 		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name)
-		b.modules = append(b.modules, b.tracer)
+		b.moduleMap[module.TyTracer] = b.tracer
 	}
 
 	if b.clientBuilder != nil {
@@ -114,7 +112,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 			b.clientBuilder.AddOption(grpcclient.AutoLinkCache(lc.(linkcache.ILinkCache)))
 		}
 		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.mailbox, b.logger)
-		b.modules = append(b.modules, b.client)
+		b.moduleMap[module.TyClient] = b.client
 	}
 
 	if b.serverBuilder != nil {
@@ -126,7 +124,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		}
 
 		b.server, _ = b.serverBuilder.Build(b.cfg.Name, b.logger)
-		b.modules = append(b.modules, b.server)
+		b.moduleMap[module.TyServer] = b.server
 	}
 
 	return nil
@@ -134,9 +132,12 @@ func (b *Braid) RegistModule(modules ...Module) error {
 
 // Init braid init
 func (b *Braid) Init() {
-	for _, m := range b.modules {
-		m.Init()
+
+	for k := range b.moduleMap {
+		b.logger.Debugf("%v module init", k)
+		b.moduleMap[k].Init()
 	}
+
 }
 
 // Run 运行braid
@@ -154,8 +155,10 @@ func (b *Braid) Run() {
 			}
 		}()
 	*/
-	for _, m := range b.modules {
-		m.Run()
+
+	for k := range b.moduleMap {
+		b.logger.Debugf("%v module running", k)
+		b.moduleMap[k].Run()
 	}
 
 }
@@ -190,8 +193,9 @@ func Tracer() tracer.ITracer {
 // Close 关闭braid
 func (b *Braid) Close() {
 
-	for _, m := range b.modules {
-		m.Close()
+	for k := range b.moduleMap {
+		b.logger.Debugf("%v module closed", k)
+		b.moduleMap[k].Close()
 	}
 
 }
