@@ -86,6 +86,7 @@ func linkInfo() *charts.Sankey {
 func linkHandler(w http.ResponseWriter, _ *http.Request) {
 
 	connPage := charts.NewPage(charts.RouterOpts{URL: host + "/link", Text: "连接流向图"})
+	connPage.InitOpts.PageTitle = "braid-web"
 	connPage.Add(
 		linkInfo(),
 	)
