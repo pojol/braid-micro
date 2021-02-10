@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/modules/grpcclient/bproto"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/grpcclient/bproto"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )

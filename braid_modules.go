@@ -1,10 +1,10 @@
 package braid
 
 import (
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/module/tracer"
 )
 
 type config struct {

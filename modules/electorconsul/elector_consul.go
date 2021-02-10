@@ -4,11 +4,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (

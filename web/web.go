@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/go-echarts/go-echarts/charts"
-	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/modules/linkerredis"
+	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/3rd/redis"
+	"github.com/pojol/braid-go/modules/linkerredis"
 )
 
 var (

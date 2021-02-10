@@ -3,8 +3,8 @@ package elector
 import (
 	"encoding/json"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (

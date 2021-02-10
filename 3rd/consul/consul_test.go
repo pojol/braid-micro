@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid-go/mock"
 )
 
 func TestMain(m *testing.M) {

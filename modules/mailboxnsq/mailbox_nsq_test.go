@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/mailbox"
 	"github.com/stretchr/testify/assert"
 )
 

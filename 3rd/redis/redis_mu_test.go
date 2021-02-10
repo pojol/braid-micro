@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid-go/mock"
 	"github.com/stretchr/testify/assert"
 )
 

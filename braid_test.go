@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/modules/discoverconsul"
-	"github.com/pojol/braid/modules/electorconsul"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/linkerredis"
-	"github.com/pojol/braid/modules/mailboxnsq"
+	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/discoverconsul"
+	"github.com/pojol/braid-go/modules/electorconsul"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/linkerredis"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
 	"github.com/stretchr/testify/assert"
 )
 

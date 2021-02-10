@@ -3,8 +3,8 @@ package module
 import (
 	"strings"
 
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 // module type

@@ -5,17 +5,17 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/modules/grpcclient"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/mailboxnsq"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/module/tracer"
+	"github.com/pojol/braid-go/modules/grpcclient"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
 )
 
 // Braid framework instance

@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/balancer"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/logger"
 )
 
 const (

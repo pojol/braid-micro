@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (

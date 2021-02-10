@@ -5,8 +5,8 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/pojol/braid/internal/braidsync"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/internal/braidsync"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 type procMsg struct {

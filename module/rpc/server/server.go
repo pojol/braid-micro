@@ -3,8 +3,8 @@ package server
 import (
 	"strings"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/logger"
 )
 
 // Builder 构建器接口

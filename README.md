@@ -3,7 +3,7 @@
 
 ---
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid)](https://goreportcard.com/report/github.com/pojol/braid)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid-go)](https://goreportcard.com/report/github.com/pojol/braid-go)
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 
@@ -57,8 +57,8 @@ if err != nil {
 |**Discover**|**Balancer**|**Elector**|**RPC**|**Tracer**|**LinkCache**|
 |-|-|-|-|-|-|
 |服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|[linkerredis](https://github.com/pojol/braid-go/wiki/Guide-4.-%E4%BD%BF%E7%94%A8Link-cahe)|
-||[balancerswrr](https://github.com/pojol/braid-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
+|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|[linkerredis](https://github.com/pojol/braid-go-go/wiki/Guide-4.-%E4%BD%BF%E7%94%A8Link-cahe)|
+||[balancerswrr](https://github.com/pojol/braid-go-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
 
 ### 构建
 > 通过注册模块(braid.Module)，构建braid的运行环境。
@@ -92,10 +92,10 @@ defer b.Close() // 释放
 #### Wiki
 > Wiki 中提供了一个较为详细的Guide，用于帮助用户更加全面的理解braid的设计理念
 
-https://github.com/pojol/braid/wiki
+https://github.com/pojol/braid-go/wiki
 
 #### Sample
-https://github.com/pojol/braidgo-sample
+https://github.com/pojol/braid-gogo-sample
 
 
 

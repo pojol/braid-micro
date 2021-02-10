@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net"
 
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/modules/jaegertracing"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/jaegertracing"
 	"google.golang.org/grpc"
 )
 

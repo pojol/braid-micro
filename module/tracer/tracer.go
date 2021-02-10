@@ -3,7 +3,7 @@ package tracer
 import (
 	"strings"
 
-	"github.com/pojol/braid/module"
+	"github.com/pojol/braid-go/module"
 )
 
 // SpanFactory span 工厂
