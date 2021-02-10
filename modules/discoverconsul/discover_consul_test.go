@@ -88,7 +88,7 @@ func TestParm(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)
-	assert.NotEqual(t, err, nil)
+	assert.Equal(t, err, nil)
 
 	cd := discv.(*consulDiscover)
 	assert.Equal(t, cd.parm.Address, mock.ConsulAddr)
