@@ -1,9 +1,9 @@
 FROM alpine
 
-COPY ./sankey_linux /tmp/app/
+COPY ./web_linux /home/app/
 
-WORKDIR /tmp/app
+WORKDIR /home/app
 
 EXPOSE 8888
 
-ENTRYPOINT ./sankey_linux $0 $@
+ENTRYPOINT ./web_linux $0 $@
