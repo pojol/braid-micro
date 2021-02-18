@@ -39,6 +39,8 @@ func TestMain(m *testing.M) {
 	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1205"))
 	s, _ := sb.Build("test", log)
+	s.Init()
+
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	time.Sleep(time.Millisecond * 10)

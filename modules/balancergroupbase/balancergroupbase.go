@@ -3,6 +3,7 @@ package balancergroupbase
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/pojol/braid-go/module"
@@ -98,24 +99,25 @@ type baseBalancerGroup struct {
 	lock sync.RWMutex
 }
 
-func (bbg *baseBalancerGroup) Init() {
+func (bbg *baseBalancerGroup) Init() error {
 	var err error
 
 	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.AddService)
 	}
 
 	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.RmvService)
 	}
 
 	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.UpdateService)
 	}
 
+	return nil
 }
 
 func (bbg *baseBalancerGroup) Run() {

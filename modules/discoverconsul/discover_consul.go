@@ -2,6 +2,7 @@ package discoverconsul
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -66,12 +67,6 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 		opt.(Option)(&p)
 	}
 
-	// check address
-	_, err := consul.GetCatalogServices(p.Address, p.Tag)
-	if err != nil {
-		return nil, err
-	}
-
 	e := &consulDiscover{
 		parm:       p,
 		mb:         mb,
@@ -80,6 +75,30 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 	}
 
 	return e, nil
+}
+
+func (dc *consulDiscover) Init() error {
+
+	// check address
+	_, err := consul.GetConsulLeader(dc.parm.Address)
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "consul", dc.parm.Address)
+	}
+
+	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
+
+	linknumC.OnArrived(func(msg mailbox.Message) error {
+		lninfo := linkcache.DecodeLinkNumMsg(&msg)
+		dc.lock.Lock()
+		defer dc.lock.Unlock()
+
+		if _, ok := dc.passingMap[lninfo.ID]; ok {
+			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+		}
+		return nil
+	})
+
+	return nil
 }
 
 // Discover 发现管理braid相关的节点
@@ -255,23 +274,6 @@ func (dc *consulDiscover) weight() {
 			syncWeight()
 		}
 	}
-}
-
-func (dc *consulDiscover) Init() {
-
-	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
-
-	linknumC.OnArrived(func(msg mailbox.Message) error {
-		lninfo := linkcache.DecodeLinkNumMsg(&msg)
-		dc.lock.Lock()
-		defer dc.lock.Unlock()
-
-		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			dc.passingMap[lninfo.ID].linknum = lninfo.Num
-		}
-		return nil
-	})
-
 }
 
 // Discover 运行管理器

@@ -66,16 +66,8 @@ func (b *grpcClientBuilder) Build(serviceName string, mb mailbox.IMailbox, logge
 		opt.(Option)(&p)
 	}
 
-	bgb := module.GetBuilder(p.balancerGroup)
-	bgb.AddOption(balancergroupbase.WithStrategy(p.balancerStrategy))
-	bg, err := bgb.Build(serviceName, mb, logger)
-	if err != nil {
-		panic(err)
-	}
-
 	c := &grpcClient{
 		serviceName: serviceName,
-		bg:          bg.(balancer.IBalancerGroup),
 		parm:        p,
 		logger:      logger,
 		mb:          mb,
@@ -139,16 +131,27 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 	}
 }
 
-func (c *grpcClient) Init() {
+func (c *grpcClient) Init() error {
 	var err error
-	c.bg.Init()
+	bgb := module.GetBuilder(c.parm.balancerGroup)
+	bgb.AddOption(balancergroupbase.WithStrategy(c.parm.balancerStrategy))
+	bg, err := bgb.Build(c.serviceName, c.mb, c.logger)
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "balancer", err.Error())
+	}
+
+	c.bg = bg.(balancer.IBalancerGroup)
+	err = c.bg.Init()
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "balancer", err.Error())
+	}
 
 	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.AddService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.AddService)
 	}
-	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
 
+	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
 		nod := discover.Node{}
 		json.Unmarshal(msg.Body, &nod)
 
@@ -167,7 +170,7 @@ func (c *grpcClient) Init() {
 
 	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.RmvService)
 	}
 	c.rmvTargetConsumer.OnArrived(func(msg mailbox.Message) error {
 
@@ -187,6 +190,8 @@ func (c *grpcClient) Init() {
 
 		return nil
 	})
+
+	return nil
 }
 
 func (c *grpcClient) Run() {

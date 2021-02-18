@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/pojol/braid-go/module/logger"
@@ -50,15 +51,12 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 		serviceName: serviceName,
 	}
 
-	var istracing bool
 	if p.tracer != nil {
-		istracing = true
 		s.rpc = grpc.NewServer(jaegertracing.GetGRPCServerTracer(p.tracer))
 	} else {
 		s.rpc = grpc.NewServer()
 	}
 
-	s.logger.Debugf("build grpc-server listen: %s tracing: %t", p.ListenAddr, istracing)
 	return s, nil
 }
 
@@ -67,12 +65,21 @@ type grpcServer struct {
 	rpc         *grpc.Server
 	serviceName string
 
+	listen net.Listener
 	logger logger.ILogger
 	parm   Parm
 }
 
-func (s *grpcServer) Init() {
+func (s *grpcServer) Init() error {
 
+	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "tcp", s.parm.ListenAddr)
+	}
+
+	s.listen = rpcListen
+
+	return nil
 }
 
 // Get 获取rpc 服务器
@@ -83,13 +90,8 @@ func (s *grpcServer) Server() interface{} {
 // Run 运行
 func (s *grpcServer) Run() {
 
-	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
-	if err != nil {
-		s.logger.Errorf("server listen err %s %s", err.Error(), s.parm.ListenAddr)
-	}
-
 	go func() {
-		if err := s.rpc.Serve(rpcListen); err != nil {
+		if err := s.rpc.Serve(s.listen); err != nil {
 			s.logger.Errorf("run server err %s", err.Error())
 		}
 	}()

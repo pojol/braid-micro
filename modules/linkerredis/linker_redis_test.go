@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/3rd/redis"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
@@ -50,6 +51,18 @@ func TestLinkerTarget(t *testing.T) {
 	lk, err := b.Build("gate", mb, log)
 	lc := lk.(linkcache.ILinkCache)
 	assert.Equal(t, err, nil)
+
+	rclient := redis.New()
+	rclient.Init(redis.Config{
+		Address:        mock.RedisAddr,
+		ReadTimeOut:    5 * time.Second,
+		WriteTimeOut:   5 * time.Second,
+		ConnectTimeOut: 2 * time.Second,
+		MaxIdle:        16,
+		MaxActive:      128,
+		IdleTimeout:    0,
+	})
+	rclient.Del(LinkerRedisPrefix + "*")
 
 	lc.Init()
 	lc.Run()

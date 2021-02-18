@@ -2,6 +2,7 @@ package linkerredis
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -131,7 +132,6 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 	lc.mb.PubAsync(mailbox.Cluster, LinkerTopicUnlink, &mailbox.Message{Body: []byte("nil")})
 	lc.mb.PubAsync(mailbox.Cluster, LinkerTopicDown, linkcache.EncodeDownMsg("", "", ""))
 
-	logger.Debugf("build link-cache by redis & nsq")
 	return lc, nil
 }
 
@@ -150,9 +150,19 @@ type redisLinker struct {
 	sync.Mutex
 }
 
-func (l *redisLinker) Init() {
-	l.unlink, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicUnlink).Competition()
-	l.down, _ = l.mb.Sub(mailbox.Cluster, LinkerTopicDown).Competition()
+func (l *redisLinker) Init() error {
+	var err error
+	l.unlink, err = l.mb.Sub(mailbox.Cluster, LinkerTopicUnlink).Competition()
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", LinkerTopicUnlink)
+	}
+
+	l.down, err = l.mb.Sub(mailbox.Cluster, LinkerTopicDown).Competition()
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", LinkerTopicDown)
+	}
+
+	return nil
 }
 
 func (l *redisLinker) Run() {

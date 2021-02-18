@@ -39,9 +39,9 @@ func TestNew(t *testing.T) {
 	b := server.GetBuilder(Name)
 	b.AddOption(WithListen(":14111"))
 	s, _ := b.Build("TestNew", log)
+	s.Init()
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
-
 	s.Run()
 	defer s.Close()
 	time.Sleep(time.Millisecond * 10)

@@ -96,45 +96,45 @@ func (jtb *jaegerTracingBuilder) Build(name string) (tracer.ITracer, error) {
 
 	jt := &jaegerTracing{
 		parm:    p,
+		jcfg:    jcfg,
 		factory: make(map[string]tracer.SpanFactory, len(jtb.factory)),
-	}
-
-	sender, err := newTransport(jcfg.Reporter)
-	if err != nil {
-		fmt.Printf("new tracer transport err %s\n", err.Error())
-		return nil, err
-	}
-
-	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, p.Probabilistic))
-	m := jaegerCfg.Metrics(metrics.NullFactory)
-
-	jtracing, closer, err := jcfg.NewTracer(r, m)
-	if err != nil {
-		fmt.Printf("new tracer err %s\n", err.Error())
-		return nil, err
-	}
-
-	jt.tracing = jtracing
-	jt.closer = closer
-
-	for k, v := range jtb.factory {
-		jt.factory[k] = v
 	}
 
 	return jt, nil
 }
 
+func (jt *jaegerTracing) Init() error {
+	sender, err := newTransport(jt.jcfg.Reporter)
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "jaegertracing", err.Error())
+	}
+
+	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, jt.parm.Probabilistic))
+	m := jaegerCfg.Metrics(metrics.NullFactory)
+
+	jtracing, closer, err := jt.jcfg.NewTracer(r, m)
+	if err != nil {
+		return fmt.Errorf("Dependency check error %v [%v]", "jaegertracing", err.Error())
+	}
+
+	jt.tracing = jtracing
+	jt.closer = closer
+
+	for k, v := range jt.factory {
+		jt.factory[k] = v
+	}
+
+	return nil
+}
+
 type jaegerTracing struct {
 	parm Parm
+	jcfg jaegerCfg.Configuration
 
 	closer  io.Closer
 	tracing opentracing.Tracer
 
 	factory map[string]tracer.SpanFactory
-}
-
-func (jt *jaegerTracing) Init() {
-
 }
 
 func (jt *jaegerTracing) Run() {

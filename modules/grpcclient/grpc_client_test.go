@@ -57,6 +57,7 @@ func TestMain(m *testing.M) {
 	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1216"))
 	s, _ := sb.Build("testgrpcclient", log)
+	s.Init()
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 
