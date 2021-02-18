@@ -3,7 +3,7 @@ name: braid
 
 steps:
     - name: build
-      image: golang:1.13.3
+      image: golang:1.15.8
       commands:
         - pwd
         - export GOPROXY=https://goproxy.io
