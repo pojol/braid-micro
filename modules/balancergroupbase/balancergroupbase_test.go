@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/modules/balancerrandom"
-	"github.com/pojol/braid/modules/mailboxnsq"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/balancerrandom"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 

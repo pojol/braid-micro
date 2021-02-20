@@ -1,6 +1,6 @@
 package discover
 
-import "github.com/pojol/braid/module"
+import "github.com/pojol/braid-go/module"
 
 // discover
 const (

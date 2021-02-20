@@ -3,10 +3,10 @@ name: braid
 
 steps:
     - name: build
-      image: golang:1.13.3
+      image: golang:1.15.8
       commands:
         - pwd
-        - export GOPROXY=https://goproxy.io
+        - export GOPROXY=https://goproxy.cn
         - export MOCK_REDIS_ADDR=redis://172.18.0.1:6379/0
         - export MOCK_CONSUL_ADDR=http://172.18.0.1:8900
         - export MOCK_JAEGER_ADDR=http://172.18.0.1:9411/api/v2/spans

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/pojol/braid/module/balancer"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module/balancer"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (

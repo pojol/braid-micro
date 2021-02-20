@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/modules/grpcclient/bproto"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/grpcclient/bproto"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"google.golang.org/grpc"
 )
 
@@ -39,9 +39,9 @@ func TestNew(t *testing.T) {
 	b := server.GetBuilder(Name)
 	b.AddOption(WithListen(":14111"))
 	s, _ := b.Build("TestNew", log)
+	s.Init()
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
-
 	s.Run()
 	defer s.Close()
 	time.Sleep(time.Millisecond * 10)

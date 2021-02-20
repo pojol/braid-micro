@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/go-echarts/go-echarts/charts"
-	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/modules/linkerredis"
+	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/3rd/redis"
+	"github.com/pojol/braid-go/modules/linkerredis"
 )
 
 var (
@@ -86,6 +86,7 @@ func linkInfo() *charts.Sankey {
 func linkHandler(w http.ResponseWriter, _ *http.Request) {
 
 	connPage := charts.NewPage(charts.RouterOpts{URL: host + "/link", Text: "连接流向图"})
+	connPage.InitOpts.PageTitle = "braid-web"
 	connPage.Add(
 		linkInfo(),
 	)

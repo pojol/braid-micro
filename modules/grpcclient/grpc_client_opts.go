@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid/module/linkcache"
+	"github.com/pojol/braid-go/module/linkcache"
 )
 
 // Parm 调用器配置项

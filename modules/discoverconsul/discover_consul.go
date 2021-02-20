@@ -2,17 +2,17 @@ package discoverconsul
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/modules/linkerredis"
+	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (
@@ -30,7 +30,7 @@ var (
 
 	// 权重预设值，可以约等于节点支持的最大连接数
 	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1权重
-	defaultWeight = 1000
+	defaultWeight = 1024
 )
 
 type consulDiscoverBuilder struct {
@@ -66,12 +66,6 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 		opt.(Option)(&p)
 	}
 
-	// check address
-	_, err := consul.GetCatalogServices(p.Address, p.Tag)
-	if err != nil {
-		return nil, err
-	}
-
 	e := &consulDiscover{
 		parm:       p,
 		mb:         mb,
@@ -80,6 +74,30 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 	}
 
 	return e, nil
+}
+
+func (dc *consulDiscover) Init() error {
+
+	// check address
+	_, err := consul.GetConsulLeader(dc.parm.Address)
+	if err != nil {
+		return fmt.Errorf("%v Dependency check error %v [%v]", dc.parm.Name, "consul", dc.parm.Address)
+	}
+
+	linknumC, _ := dc.mb.Sub(mailbox.Cluster, linkcache.ServiceLinkNum).Shared()
+
+	linknumC.OnArrived(func(msg mailbox.Message) error {
+		lninfo := linkcache.DecodeLinkNumMsg(&msg)
+		dc.lock.Lock()
+		defer dc.lock.Unlock()
+
+		if _, ok := dc.passingMap[lninfo.ID]; ok {
+			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+		}
+		return nil
+	})
+
+	return nil
 }
 
 // Discover 发现管理braid相关的节点
@@ -173,7 +191,7 @@ func (dc *consulDiscover) discoverImpl() {
 				Name: dc.passingMap[k].service,
 			}))
 
-			dc.mb.PubAsync(mailbox.Cluster, linkerredis.LinkerTopicDown, linkcache.EncodeDownMsg(
+			dc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg(
 				dc.passingMap[k].id,
 				dc.passingMap[k].service,
 				dc.passingMap[k].address,
@@ -255,23 +273,6 @@ func (dc *consulDiscover) weight() {
 			syncWeight()
 		}
 	}
-}
-
-func (dc *consulDiscover) Init() {
-
-	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
-
-	linknumC.OnArrived(func(msg mailbox.Message) error {
-		lninfo := linkcache.DecodeLinkNumMsg(&msg)
-		dc.lock.Lock()
-		defer dc.lock.Unlock()
-
-		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			dc.passingMap[lninfo.ID].linknum = lninfo.Num
-		}
-		return nil
-	})
-
 }
 
 // Discover 运行管理器

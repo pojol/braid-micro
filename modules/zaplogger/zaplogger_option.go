@@ -1,6 +1,6 @@
 package zaplogger
 
-import "github.com/pojol/braid/module/logger"
+import "github.com/pojol/braid-go/module/logger"
 
 // Parm nsq config
 type Parm struct {

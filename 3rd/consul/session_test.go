@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid-go/mock"
 )
 
 func TestSession(t *testing.T) {

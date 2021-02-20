@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/modules/grpcclient/bproto"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/grpcclient/bproto"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -39,6 +39,8 @@ func TestMain(m *testing.M) {
 	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1205"))
 	s, _ := sb.Build("test", log)
+	s.Init()
+
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	time.Sleep(time.Millisecond * 10)

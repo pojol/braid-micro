@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/3rd/redis"
-	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/modules/balancergroupbase"
-	"github.com/pojol/braid/modules/balancerswrr"
-	"github.com/pojol/braid/modules/mailboxnsq"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/3rd/redis"
+	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/balancergroupbase"
+	"github.com/pojol/braid-go/modules/balancerswrr"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -88,7 +88,7 @@ func TestParm(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)
-	assert.NotEqual(t, err, nil)
+	assert.Equal(t, err, nil)
 
 	cd := discv.(*consulDiscover)
 	assert.Equal(t, cd.parm.Address, mock.ConsulAddr)

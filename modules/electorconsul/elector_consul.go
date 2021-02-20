@@ -2,13 +2,14 @@ package electorconsul
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
-	"github.com/pojol/braid/3rd/consul"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (
@@ -51,14 +52,18 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, 
 		logger: logger,
 	}
 
+	return e, nil
+}
+
+func (e *consulElection) Init() error {
 	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
 	if err != nil {
-		e.logger.Debugf("create session with consul err %s, addr %s", err.Error(), e.parm.ConsulAddr)
-		return nil, err
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "consul", e.parm.ConsulAddr)
 	}
 
 	e.sessionID = sid
-	return e, nil
+
+	return nil
 }
 
 func (*consulElectionBuilder) Name() string {
@@ -136,10 +141,6 @@ func (e *consulElection) refush() {
 			refushSession()
 		}
 	}
-}
-
-func (e *consulElection) Init() {
-
 }
 
 // Run session 状态检查

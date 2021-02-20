@@ -1,8 +1,8 @@
 package balancer
 
 import (
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/discover"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/discover"
 )
 
 // IBalancerGroup balancer group interface

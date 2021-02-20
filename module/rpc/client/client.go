@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 // Builder grpc-client builder

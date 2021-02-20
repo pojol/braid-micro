@@ -6,7 +6,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	"github.com/pojol/braid/module/tracer"
+	"github.com/pojol/braid-go/module/tracer"
 )
 
 const (

@@ -3,7 +3,7 @@ package zaplogger
 import (
 	"os"
 
-	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid-go/module/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"

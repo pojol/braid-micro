@@ -6,20 +6,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid/mock"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/modules/discoverconsul"
-	"github.com/pojol/braid/modules/grpcclient/bproto"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/linkerredis"
-	"github.com/pojol/braid/modules/mailboxnsq"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/discoverconsul"
+	"github.com/pojol/braid-go/modules/grpcclient/bproto"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/linkerredis"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
@@ -57,6 +57,7 @@ func TestMain(m *testing.M) {
 	sb := server.GetBuilder(grpcserver.Name)
 	sb.AddOption(grpcserver.WithListen(":1216"))
 	s, _ := sb.Build("testgrpcclient", log)
+	s.Init()
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 

@@ -3,12 +3,13 @@ package electork8s
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/elector"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -81,54 +82,58 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logg
 		opt.(Option)(&p)
 	}
 
-	clientset, err := newClientset(p.KubeCfg)
+	el := &k8sElector{
+		parm:   p,
+		mb:     mb,
+		logger: logger,
+	}
+
+	return el, nil
+}
+
+func (e *k8sElector) Init() error {
+	clientset, err := newClientset(e.parm.KubeCfg)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "k8s", e.parm.KubeCfg)
 	}
 
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      "braid-lock",
-			Namespace: p.Namespace,
+			Namespace: e.parm.Namespace,
 		},
 		Client: clientset.CoordinationV1(),
 		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: p.NodID,
+			Identity: e.parm.NodID,
 		},
 	}
 
 	elector, err := leaderelection.NewLeaderElector(leaderelection.LeaderElectionConfig{
 		Lock:            lock,
 		ReleaseOnCancel: true,
-		LeaseDuration:   30 * time.Second, // 租约时间
-		RenewDeadline:   10 * time.Second, // 更新租约时间
-		RetryPeriod:     p.RetryPeriod,    // 非master节点的重试时间
+		LeaseDuration:   30 * time.Second,   // 租约时间
+		RenewDeadline:   10 * time.Second,   // 更新租约时间
+		RetryPeriod:     e.parm.RetryPeriod, // 非master节点的重试时间
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {},
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
-				if identity == p.NodID {
-					mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
-					logger.Debugf("new leader %s %s", p.NodID, identity)
+				if identity == e.parm.NodID {
+					e.mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+					e.logger.Debugf("new leader %s %s", e.parm.NodID, identity)
 
 				} else {
-					mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
+					e.mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},
 	})
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "k8s", err.Error())
 	}
 
-	el := &k8sElector{
-		parm:    p,
-		mb:      mb,
-		elector: elector,
-		logger:  logger,
-	}
-
-	return el, nil
+	e.elector = elector
+	return nil
 }
 
 type k8sElector struct {
@@ -141,10 +146,6 @@ type k8sElector struct {
 
 func (e *k8sElector) IsMaster() bool {
 	return e.elector.IsLeader()
-}
-
-func (e *k8sElector) Init() {
-
 }
 
 func (e *k8sElector) Run() {

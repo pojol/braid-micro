@@ -1,21 +1,38 @@
 package braid
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/linkcache"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
-	"github.com/pojol/braid/module/rpc/client"
-	"github.com/pojol/braid/module/rpc/server"
-	"github.com/pojol/braid/module/tracer"
-	"github.com/pojol/braid/modules/grpcclient"
-	"github.com/pojol/braid/modules/grpcserver"
-	"github.com/pojol/braid/modules/mailboxnsq"
-	"github.com/pojol/braid/modules/zaplogger"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/module/tracer"
+	"github.com/pojol/braid-go/modules/grpcclient"
+	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
+)
+
+const (
+	// Version of braid-go
+	Version = "v1.2.12"
+
+	banner = `
+ _               _     _ 
+| |             (_)   | |
+| |__  _ __ __ _ _  __| |
+| '_ \| '__/ _' | |/ _' |
+| |_) | | | (_| | | (_| |
+|_.__/|_|  \__,_|_|\__,_| %s
+____________________________________O/_______
+                                    O\
+`
 )
 
 // Braid framework instance
@@ -132,10 +149,14 @@ func (b *Braid) RegistModule(modules ...Module) error {
 
 // Init braid init
 func (b *Braid) Init() {
+	var err error
 
 	for k := range b.moduleMap {
-		b.logger.Debugf("%v module init", k)
-		b.moduleMap[k].Init()
+		err = b.moduleMap[k].Init()
+		if err != nil {
+			b.logger.Errorf("braid init err %v", err.Error())
+			break
+		}
 	}
 
 }
@@ -157,10 +178,10 @@ func (b *Braid) Run() {
 	*/
 
 	for k := range b.moduleMap {
-		b.logger.Debugf("%v module running", k)
 		b.moduleMap[k].Run()
 	}
 
+	fmt.Printf(banner, Version)
 }
 
 // GetClient get client interface

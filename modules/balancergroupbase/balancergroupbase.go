@@ -3,13 +3,14 @@ package balancergroupbase
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
-	"github.com/pojol/braid/module"
-	"github.com/pojol/braid/module/balancer"
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/logger"
-	"github.com/pojol/braid/module/mailbox"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/balancer"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module/mailbox"
 )
 
 const (
@@ -98,24 +99,25 @@ type baseBalancerGroup struct {
 	lock sync.RWMutex
 }
 
-func (bbg *baseBalancerGroup) Init() {
+func (bbg *baseBalancerGroup) Init() error {
 	var err error
 
 	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.AddService)
 	}
 
 	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.RmvService)
 	}
 
 	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.UpdateService)
 	}
 
+	return nil
 }
 
 func (bbg *baseBalancerGroup) Run() {

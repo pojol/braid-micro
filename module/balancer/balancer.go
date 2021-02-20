@@ -3,8 +3,8 @@ package balancer
 import (
 	"strings"
 
-	"github.com/pojol/braid/module/discover"
-	"github.com/pojol/braid/module/logger"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/logger"
 )
 
 // Builder balancer builder

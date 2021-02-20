@@ -3,7 +3,7 @@ package consul
 import (
 	"testing"
 
-	"github.com/pojol/braid/mock"
+	"github.com/pojol/braid-go/mock"
 )
 
 func TestHealth(t *testing.T) {
