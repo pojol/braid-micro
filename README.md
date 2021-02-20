@@ -1,5 +1,5 @@
 ## Braid
-**Braid** 提供统一的交互模型，通过注册`模块`（支持自定义），构建属于自己的微服务。
+**Braid** 轻量易读的微服务框架，使用模块化的结构编写，以及提供统一的消息模型。
 
 ---
 
@@ -95,7 +95,7 @@ defer b.Close() // 释放
 https://github.com/pojol/braid-go/wiki
 
 #### Sample
-https://github.com/pojol/braid-gogo-sample
+https://github.com/pojol/braidgo-sample
 
 
 
