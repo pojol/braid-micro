@@ -244,11 +244,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	var nod discover.Node
 
 	if c.parm.byLink && token != "" {
-		address, err = c.parm.linker.Target(token, target)
-		if err != nil {
-			c.logger.Debugf("linker.target warning %s", err.Error())
-			return ""
-		}
+		address, _ = c.parm.linker.Target(token, target)
 	}
 
 	if address == "" {
@@ -262,7 +258,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 		if c.parm.byLink && token != "" {
 			err = c.parm.linker.Link(token, nod)
 			if err != nil {
-				c.logger.Debugf("link warning %s %s", token, err.Error())
+				c.logger.Debugf("link warning %s %s %s", token, target, err.Error())
 			}
 		}
 	}
