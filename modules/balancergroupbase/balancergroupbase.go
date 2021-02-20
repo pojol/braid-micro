@@ -104,17 +104,17 @@ func (bbg *baseBalancerGroup) Init() error {
 
 	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.AddService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.AddService)
 	}
 
 	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.RmvService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.RmvService)
 	}
 
 	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "mailbox", discover.UpdateService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.UpdateService)
 	}
 
 	return nil

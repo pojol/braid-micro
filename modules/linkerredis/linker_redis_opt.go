@@ -1,7 +1,15 @@
 package linkerredis
 
+// mode
+const (
+	LinkerRedisModeLocal = "mode_local"
+	LinkerRedisModeRedis = "mode_redis"
+)
+
 // Parm Service 配置
 type Parm struct {
+	Mode           string
+	SyncTick       int // ms
 	RedisAddr      string
 	RedisMaxIdle   int
 	RedisMaxActive int
@@ -28,5 +36,19 @@ func WithRedisMaxIdle(maxIdle int) Option {
 func WithRedisMaxActive(maxActive int) Option {
 	return func(c *Parm) {
 		c.RedisMaxActive = maxActive
+	}
+}
+
+// WithSyncTick 同步周期
+func WithSyncTick(mstime int) Option {
+	return func(c *Parm) {
+		c.SyncTick = mstime
+	}
+}
+
+// WithMode 设置redis link-cache的执行模式
+func WithMode(mode string) Option {
+	return func(c *Parm) {
+		c.Mode = mode
 	}
 }

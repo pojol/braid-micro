@@ -94,7 +94,7 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logg
 func (e *k8sElector) Init() error {
 	clientset, err := newClientset(e.parm.KubeCfg)
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "k8s", e.parm.KubeCfg)
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "k8s", e.parm.KubeCfg)
 	}
 
 	lock := &resourcelock.LeaseLock{
@@ -129,7 +129,7 @@ func (e *k8sElector) Init() error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "k8s", err.Error())
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "k8s", err.Error())
 	}
 
 	e.elector = elector

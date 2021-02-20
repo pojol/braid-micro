@@ -58,7 +58,7 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, 
 func (e *consulElection) Init() error {
 	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "consul", e.parm.ConsulAddr)
+		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "consul", e.parm.ConsulAddr)
 	}
 
 	e.sessionID = sid

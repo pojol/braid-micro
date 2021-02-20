@@ -2,6 +2,7 @@ package linkcache
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
@@ -10,7 +11,12 @@ import (
 
 const (
 	// ServiceLinkNum topic service link num
-	ServiceLinkNum = "topic_service_link_num"
+	ServiceLinkNum = "braid_topic_service_link_num"
+
+	// TopicUnlink unlink token topic
+	TopicUnlink = "braid_topic_token_unlink"
+	// TopicDown service down
+	TopicDown = "braid_topic_service_down"
 )
 
 // LinkNumMsg msg struct
@@ -62,6 +68,37 @@ func EncodeDownMsg(id string, service string, addr string) *mailbox.Message {
 func DecodeDownMsg(msg *mailbox.Message) DownMsg {
 	dmsg := DownMsg{}
 	json.Unmarshal(msg.Body, &dmsg)
+	return dmsg
+}
+
+// UnlinkMsg 解除连接信息
+type UnlinkMsg struct {
+	Token   string
+	Service string
+}
+
+// EncodeUnlinkMsg encode unlink msg
+func EncodeUnlinkMsg(token string, service string) *mailbox.Message {
+	byt, err := json.Marshal(&UnlinkMsg{
+		Token:   token,
+		Service: service,
+	})
+	if err != nil {
+		fmt.Println("EncodeUnlinkMsg", err.Error())
+	}
+
+	return &mailbox.Message{
+		Body: byt,
+	}
+}
+
+// DecodeUnlinkMsg decode unlink msg
+func DecodeUnlinkMsg(msg *mailbox.Message) UnlinkMsg {
+	dmsg := UnlinkMsg{}
+	err := json.Unmarshal(msg.Body, &dmsg)
+	if err != nil {
+		fmt.Println("DecodeUnlinkMsg", err.Error(), msg.Body)
+	}
 	return dmsg
 }
 

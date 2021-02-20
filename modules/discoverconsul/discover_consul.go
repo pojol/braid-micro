@@ -13,7 +13,6 @@ import (
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
-	"github.com/pojol/braid-go/modules/linkerredis"
 )
 
 const (
@@ -31,7 +30,7 @@ var (
 
 	// 权重预设值，可以约等于节点支持的最大连接数
 	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1权重
-	defaultWeight = 1000
+	defaultWeight = 1024
 )
 
 type consulDiscoverBuilder struct {
@@ -82,10 +81,10 @@ func (dc *consulDiscover) Init() error {
 	// check address
 	_, err := consul.GetConsulLeader(dc.parm.Address)
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "consul", dc.parm.Address)
+		return fmt.Errorf("%v Dependency check error %v [%v]", dc.parm.Name, "consul", dc.parm.Address)
 	}
 
-	linknumC, _ := dc.mb.Sub(mailbox.Proc, linkcache.ServiceLinkNum).Shared()
+	linknumC, _ := dc.mb.Sub(mailbox.Cluster, linkcache.ServiceLinkNum).Shared()
 
 	linknumC.OnArrived(func(msg mailbox.Message) error {
 		lninfo := linkcache.DecodeLinkNumMsg(&msg)
@@ -192,7 +191,7 @@ func (dc *consulDiscover) discoverImpl() {
 				Name: dc.passingMap[k].service,
 			}))
 
-			dc.mb.PubAsync(mailbox.Cluster, linkerredis.LinkerTopicDown, linkcache.EncodeDownMsg(
+			dc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg(
 				dc.passingMap[k].id,
 				dc.passingMap[k].service,
 				dc.passingMap[k].address,

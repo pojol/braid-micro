@@ -74,7 +74,7 @@ func (s *grpcServer) Init() error {
 
 	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
 	if err != nil {
-		return fmt.Errorf("Dependency check error %v [%v]", "tcp", s.parm.ListenAddr)
+		return fmt.Errorf("%v Dependency check error %v [%v]", s.serviceName, "tcp", s.parm.ListenAddr)
 	}
 
 	s.listen = rpcListen
