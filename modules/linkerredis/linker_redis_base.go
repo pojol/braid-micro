@@ -289,9 +289,9 @@ func (rl *redisLinker) Run() {
 
 }
 
-// braid_linker-relation-gate-base-ukjna1g33rq9
-func (rl *redisLinker) getRelationKey(child string, id string) string {
-	return LinkerRedisPrefix + relationFlag + splitFlag + rl.serviceName + splitFlag + child + splitFlag + id
+// braid_linker-linknum-gate-base-ukjna1g33rq9
+func (rl *redisLinker) getLinkNumKey(child string, id string) string {
+	return LinkerRedisPrefix + linknumFlag + splitFlag + rl.serviceName + splitFlag + child + splitFlag + id
 }
 
 func (rl *redisLinker) Target(token string, serviceName string) (string, error) {

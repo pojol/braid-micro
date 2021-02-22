@@ -77,7 +77,7 @@ func (rl *redisLinker) redisLink(token string, target discover.Node) error {
 
 	if err == nil && cnt != 0 {
 
-		relationKey := rl.getRelationKey(target.Name, target.ID)
+		relationKey := rl.getLinkNumKey(target.Name, target.ID)
 
 		rl.local.link(token, target)
 		if !rl.local.isRelationMember(relationKey) {
@@ -113,7 +113,7 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 	if err == nil && cnt == 1 {
 		rl.local.unlink(token, target)
 
-		conn.Do("DECR", rl.getRelationKey(info.TargetName, info.TargetID))
+		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
 	return nil
@@ -151,7 +151,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 
 	rl.local.down(target)
 
-	relationKey := rl.getRelationKey(target.Name, target.ID)
+	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
 	conn.Do("SREM", RelationPrefix, relationKey)

@@ -102,14 +102,14 @@ func (rl *redisLinker) localLink(token string, target discover.Node) error {
 
 	rl.local.link(token, target)
 
-	relationKey := rl.getRelationKey(target.Name, target.ID)
+	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	if !rl.local.isRelationMember(relationKey) {
 		rl.local.addRelation(relationKey)
 
 		conn.Do("SADD", RelationPrefix, relationKey)
 	}
 
-	conn.Do("INCR", rl.getRelationKey(target.Name, target.ID))
+	conn.Do("INCR", rl.getLinkNumKey(target.Name, target.ID))
 
 	return nil
 }
@@ -122,7 +122,7 @@ func (rl *redisLinker) localUnlink(token string, target string) error {
 	info := rl.local.unlink(token, target)
 
 	if info.TargetID != "" {
-		conn.Do("DECR", rl.getRelationKey(info.TargetName, info.TargetID))
+		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
 	return nil
@@ -135,13 +135,13 @@ func (rl *redisLinker) localDown(target discover.Node) error {
 
 	cnt := rl.local.down(target)
 
-	relationKey := rl.getRelationKey(target.Name, target.ID)
+	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
 	conn.Do("SREM", RelationPrefix, relationKey)
 
 	if cnt != 0 {
-		conn.Do("DECRBY", rl.getRelationKey(target.Name, target.ID), cnt)
+		conn.Do("DECRBY", rl.getLinkNumKey(target.Name, target.ID), cnt)
 	}
 
 	return nil
