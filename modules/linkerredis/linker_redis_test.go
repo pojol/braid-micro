@@ -105,8 +105,8 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, linkcache.EncodeUnlinkMsg("token01", nods[0].Name))
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, linkcache.EncodeUnlinkMsg("token02", nods[0].Name))
+	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token01")})
+	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 	for _, v := range nods {
@@ -194,7 +194,7 @@ func TestLocalTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "localbase")
 	assert.NotEqual(t, err, nil)
 
-	lc.Unlink("localtoken01", nods[0].Name)
+	lc.Unlink("localtoken01")
 
 	for _, v := range nods {
 		lc.Down(v)

@@ -143,7 +143,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		},
 	}
 
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicUnlink, linkcache.EncodeUnlinkMsg("", ""))
+	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("nil")})
 	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg("", "", ""))
 
 	return lc, nil
@@ -172,6 +172,9 @@ type redisLinker struct {
 	client *RedisClient
 	local  *localLinker
 
+	// 从属节点
+	child []string
+
 	sync.RWMutex
 }
 
@@ -199,9 +202,9 @@ func (rl *redisLinker) Init() error {
 
 	rl.unlink.OnArrived(func(msg mailbox.Message) error {
 
-		unlinkmsg := linkcache.DecodeUnlinkMsg(&msg)
-		if unlinkmsg.Token != "" {
-			return rl.Unlink(unlinkmsg.Token, unlinkmsg.Service)
+		token := string(msg.Body)
+		if token != "" && token != "nil" {
+			return rl.Unlink(token)
 		}
 
 		return nil
@@ -223,8 +226,9 @@ func (rl *redisLinker) Init() error {
 	rl.election.OnArrived(func(msg mailbox.Message) error {
 
 		statemsg := elector.DecodeStateChangeMsg(&msg)
-		if statemsg.State != "" {
+		if statemsg.State != "" && rl.electorState != statemsg.State {
 			rl.electorState = statemsg.State
+			rl.logger.Debugf("service state change => %v", statemsg.State)
 		}
 
 		return nil
@@ -265,28 +269,74 @@ func (rl *redisLinker) syncLinkNum() {
 	}
 }
 
+func (rl *redisLinker) syncRelation() {
+	conn := rl.getConn()
+	defer conn.Close()
+
+	members, err := redis.Strings(conn.Do("SMEMBERS", RelationPrefix))
+	if err != nil {
+		return
+	}
+
+	rl.Lock()
+	defer rl.Unlock()
+
+	childmap := make(map[string]int)
+
+	for _, member := range members {
+		info := strings.Split(member, splitFlag)
+		if len(info) != 5 {
+			rl.logger.Warnf("%v wrong relation string format %v", Name, member)
+			continue
+		}
+
+		parent := info[2]
+		child := info[3]
+		if parent == rl.serviceName {
+			childmap[child] = 1
+		}
+	}
+
+	rl.child = rl.child[:0]
+	for newchild := range childmap {
+		rl.child = append(rl.child, newchild)
+	}
+}
+
 func (rl *redisLinker) Run() {
 
-	// 这里还要处理下 历史数据， 如果key 里面的连接数为 0 则定期进行清理
-	go func() {
+	/*
+		// 暂时屏蔽这段代码，因为在swarm模式下，没有办法设置物理权重；因此暂不调整权重。
+		go func() {
 
-		tick := time.NewTicker(time.Millisecond * time.Duration(rl.parm.SyncTick))
+			tick := time.NewTicker(time.Millisecond * time.Duration(rl.parm.SyncTick))
+			for {
+				select {
+				case <-tick.C:
+					// Synchronize link information
+					rl.RLock()
+
+					if rl.electorState == elector.EMaster {
+						rl.syncLinkNum()
+					}
+
+					rl.RUnlock()
+				}
+			}
+
+		}()
+	*/
+
+	rl.syncRelation()
+	go func() {
+		tick := time.NewTicker(time.Second * 5)
 		for {
 			select {
 			case <-tick.C:
-				// Synchronize link information
-				rl.RLock()
-
-				if rl.electorState == elector.EMaster {
-					rl.syncLinkNum()
-				}
-
-				rl.RUnlock()
+				rl.syncRelation()
 			}
 		}
-
 	}()
-
 }
 
 // braid_linker-linknum-gate-base-ukjna1g33rq9
@@ -327,17 +377,20 @@ func (rl *redisLinker) Link(token string, target discover.Node) error {
 }
 
 // Unlink 当前节点所属的用户离线
-func (rl *redisLinker) Unlink(token string, target string) error {
+func (rl *redisLinker) Unlink(token string) error {
 
 	rl.Lock()
 	defer rl.Unlock()
 
 	var err error
 
-	if rl.parm.Mode == LinkerRedisModeRedis {
-		err = rl.redisUnlink(token, target)
-	} else if rl.parm.Mode == LinkerRedisModeLocal {
-		err = rl.localUnlink(token, target)
+	// 尝试将自身名下的节点中的token释放掉
+	for _, child := range rl.child {
+		if rl.parm.Mode == LinkerRedisModeRedis && rl.electorState == elector.EMaster {
+			err = rl.redisUnlink(token, child)
+		} else if rl.parm.Mode == LinkerRedisModeLocal {
+			err = rl.localUnlink(token, child)
+		}
 	}
 
 	return err

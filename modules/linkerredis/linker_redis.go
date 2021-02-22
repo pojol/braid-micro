@@ -104,10 +104,10 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 
 	info, err = rl.findToken(conn, token, target)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	cnt, err = redis.Int(conn.Do("HDEL", LinkerRedisPrefix+rl.serviceName+splitFlag+target,
+	cnt, err = redis.Int(conn.Do("HDEL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target,
 		token))
 
 	if err == nil && cnt == 1 {

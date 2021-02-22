@@ -297,7 +297,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	if err != nil {
 		c.logger.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
 		if c.parm.byLink {
-			c.parm.linker.Unlink(token, nodName)
+			c.parm.linker.Unlink(token)
 		}
 	}
 
