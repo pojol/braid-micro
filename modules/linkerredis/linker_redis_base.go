@@ -19,6 +19,12 @@ import (
 var (
 	// LinkerRedisPrefix linker redis key prefix
 	LinkerRedisPrefix = "braid_linker-"
+
+	// RelationPrefix braid_linker-relation-parent-child : cnt
+	RelationPrefix = LinkerRedisPrefix + relationFlag
+
+	// RoutePrefix braid_linker-route-gate-base : nodinfo { addr, name, id }
+	RoutePrefix = LinkerRedisPrefix + routeFlag
 )
 
 const (
@@ -30,6 +36,13 @@ const (
 	// sankey
 	//braid_linker-relation-parent-child : cnt
 	relationFlag = "relation"
+
+	// braid_linker-route-gate-base : nodinfo { addr, name, id }
+	// 这个字段用于描述 父-子 节点之间的链路关系，通常用在随机请求端
+	routeFlag = "route"
+
+	// braid_linker-linknum-gate-base-ID : 100
+	linknumFlag = "linknum"
 )
 
 var (
@@ -224,7 +237,7 @@ func (rl *redisLinker) syncLinkNum() {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	members, err := redis.Strings(conn.Do("SMEMBERS", LinkerRedisPrefix+"relation"))
+	members, err := redis.Strings(conn.Do("SMEMBERS", RelationPrefix))
 	if err != nil {
 		return
 	}
@@ -254,6 +267,7 @@ func (rl *redisLinker) syncLinkNum() {
 
 func (rl *redisLinker) Run() {
 
+	// 这里还要处理下 历史数据， 如果key 里面的连接数为 0 则定期进行清理
 	go func() {
 
 		tick := time.NewTicker(time.Millisecond * time.Duration(rl.parm.SyncTick))

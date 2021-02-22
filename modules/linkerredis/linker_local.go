@@ -106,7 +106,7 @@ func (rl *redisLinker) localLink(token string, target discover.Node) error {
 	if !rl.local.isRelationMember(relationKey) {
 		rl.local.addRelation(relationKey)
 
-		conn.Do("SADD", LinkerRedisPrefix+"relation", relationKey)
+		conn.Do("SADD", RelationPrefix, relationKey)
 	}
 
 	conn.Do("INCR", rl.getRelationKey(target.Name, target.ID))
@@ -138,7 +138,7 @@ func (rl *redisLinker) localDown(target discover.Node) error {
 	relationKey := rl.getRelationKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
-	conn.Do("SREM", LinkerRedisPrefix+"relation", relationKey)
+	conn.Do("SREM", RelationPrefix, relationKey)
 
 	if cnt != 0 {
 		conn.Do("DECRBY", rl.getRelationKey(target.Name, target.ID), cnt)

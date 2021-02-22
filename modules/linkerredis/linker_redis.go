@@ -15,7 +15,7 @@ func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName stri
 
 	info := linkInfo{}
 
-	byt, err := redis.Bytes(conn.Do("HGET", LinkerRedisPrefix+rl.serviceName+splitFlag+serviceName,
+	byt, err := redis.Bytes(conn.Do("HGET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+serviceName,
 		token),
 	)
 	if err != nil {
@@ -70,7 +70,7 @@ func (rl *redisLinker) redisLink(token string, target discover.Node) error {
 
 	byt, _ := json.Marshal(&info)
 
-	cnt, err = redis.Int(conn.Do("HSET", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name,
+	cnt, err = redis.Int(conn.Do("HSET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name,
 		token,
 		byt,
 	))
@@ -83,7 +83,7 @@ func (rl *redisLinker) redisLink(token string, target discover.Node) error {
 		if !rl.local.isRelationMember(relationKey) {
 			rl.local.addRelation(relationKey)
 
-			conn.Do("SADD", LinkerRedisPrefix+"relation", relationKey)
+			conn.Do("SADD", RelationPrefix, relationKey)
 		}
 
 		conn.Do("INCR", relationKey)
@@ -127,7 +127,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 	var info *linkInfo
 	var cnt int64
 
-	tokenMap, err := redis.StringMap(conn.Do("HGETALL", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name))
+	tokenMap, err := redis.StringMap(conn.Do("HGETALL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name))
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 		}
 
 		if info.TargetID == target.ID {
-			rmcnt, _ := redis.Int64(conn.Do("HDEL", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name,
+			rmcnt, _ := redis.Int64(conn.Do("HDEL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name,
 				key))
 
 			cnt += rmcnt
@@ -154,7 +154,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 	relationKey := rl.getRelationKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
-	conn.Do("SREM", LinkerRedisPrefix+"relation", relationKey)
+	conn.Do("SREM", RelationPrefix, relationKey)
 
 	if cnt != 0 {
 		conn.Do("DECRBY", relationKey, cnt)
