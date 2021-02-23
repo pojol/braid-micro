@@ -133,16 +133,13 @@ func (rl *redisLinker) localDown(target discover.Node) error {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	cnt := rl.local.down(target)
+	rl.local.down(target)
 
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
 	conn.Do("SREM", RelationPrefix, relationKey)
-
-	if cnt != 0 {
-		conn.Do("DECRBY", rl.getLinkNumKey(target.Name, target.ID), cnt)
-	}
+	conn.Do("DEL", rl.getLinkNumKey(target.Name, target.ID))
 
 	return nil
 }

@@ -404,12 +404,7 @@ func (rl *redisLinker) Down(target discover.Node) error {
 
 	var err error
 
-	// need master service
-	if rl.electorState != elector.EMaster {
-		return nil
-	}
-
-	if rl.parm.Mode == LinkerRedisModeRedis {
+	if rl.parm.Mode == LinkerRedisModeRedis && rl.electorState == elector.EMaster {
 		err = rl.redisDown(target)
 	} else if rl.parm.Mode == LinkerRedisModeLocal {
 		err = rl.localDown(target)

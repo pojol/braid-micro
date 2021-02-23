@@ -119,6 +119,7 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 	return nil
 }
 
+// todo
 func (rl *redisLinker) redisDown(target discover.Node) error {
 
 	conn := rl.getConn()
@@ -155,10 +156,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 	rl.local.rmvRelation(relationKey)
 
 	conn.Do("SREM", RelationPrefix, relationKey)
-
-	if cnt != 0 {
-		conn.Do("DECRBY", relationKey, cnt)
-	}
+	conn.Do("DEL", relationKey)
 
 	return nil
 }
