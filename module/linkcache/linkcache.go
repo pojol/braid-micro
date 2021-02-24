@@ -2,7 +2,6 @@ package linkcache
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
@@ -71,37 +70,6 @@ func DecodeDownMsg(msg *mailbox.Message) DownMsg {
 	return dmsg
 }
 
-// UnlinkMsg 解除连接信息
-type UnlinkMsg struct {
-	Token   string
-	Service string
-}
-
-// EncodeUnlinkMsg encode unlink msg
-func EncodeUnlinkMsg(token string, service string) *mailbox.Message {
-	byt, err := json.Marshal(&UnlinkMsg{
-		Token:   token,
-		Service: service,
-	})
-	if err != nil {
-		fmt.Println("EncodeUnlinkMsg", err.Error())
-	}
-
-	return &mailbox.Message{
-		Body: byt,
-	}
-}
-
-// DecodeUnlinkMsg decode unlink msg
-func DecodeUnlinkMsg(msg *mailbox.Message) UnlinkMsg {
-	dmsg := UnlinkMsg{}
-	err := json.Unmarshal(msg.Body, &dmsg)
-	if err != nil {
-		fmt.Println("DecodeUnlinkMsg", err.Error(), msg.Body)
-	}
-	return dmsg
-}
-
 // ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.
 //
 // +---parent----------+
@@ -123,7 +91,7 @@ type ILinkCache interface {
 	Link(token string, target discover.Node) error
 
 	// unlink token
-	Unlink(token string, target string) error
+	Unlink(token string) error
 
 	// clean up the service
 	Down(target discover.Node) error

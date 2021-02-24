@@ -44,6 +44,7 @@ func linkInfo() *charts.Sankey {
 		return nil
 	}
 
+	// braid_linker-linknum-gateway-base-aad90ab8246a:sharp_rubin:14201
 	var sankeyNode []charts.SankeyNode
 	var sankeyLink []charts.SankeyLink
 

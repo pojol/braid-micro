@@ -15,7 +15,7 @@ func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName stri
 
 	info := linkInfo{}
 
-	byt, err := redis.Bytes(conn.Do("HGET", LinkerRedisPrefix+rl.serviceName+splitFlag+serviceName,
+	byt, err := redis.Bytes(conn.Do("HGET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+serviceName,
 		token),
 	)
 	if err != nil {
@@ -70,20 +70,20 @@ func (rl *redisLinker) redisLink(token string, target discover.Node) error {
 
 	byt, _ := json.Marshal(&info)
 
-	cnt, err = redis.Int(conn.Do("HSET", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name,
+	cnt, err = redis.Int(conn.Do("HSET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name,
 		token,
 		byt,
 	))
 
 	if err == nil && cnt != 0 {
 
-		relationKey := rl.getRelationKey(target.Name, target.ID)
+		relationKey := rl.getLinkNumKey(target.Name, target.ID)
 
 		rl.local.link(token, target)
 		if !rl.local.isRelationMember(relationKey) {
 			rl.local.addRelation(relationKey)
 
-			conn.Do("SADD", LinkerRedisPrefix+"relation", relationKey)
+			conn.Do("SADD", RelationPrefix, relationKey)
 		}
 
 		conn.Do("INCR", relationKey)
@@ -104,21 +104,22 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 
 	info, err = rl.findToken(conn, token, target)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	cnt, err = redis.Int(conn.Do("HDEL", LinkerRedisPrefix+rl.serviceName+splitFlag+target,
+	cnt, err = redis.Int(conn.Do("HDEL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target,
 		token))
 
 	if err == nil && cnt == 1 {
 		rl.local.unlink(token, target)
 
-		conn.Do("DECR", rl.getRelationKey(info.TargetName, info.TargetID))
+		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
 	return nil
 }
 
+// todo
 func (rl *redisLinker) redisDown(target discover.Node) error {
 
 	conn := rl.getConn()
@@ -127,7 +128,9 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 	var info *linkInfo
 	var cnt int64
 
-	tokenMap, err := redis.StringMap(conn.Do("HGETALL", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name))
+	routekey := RoutePrefix + splitFlag + rl.serviceName + splitFlag + target.Name
+
+	tokenMap, err := redis.StringMap(conn.Do("HGETALL", routekey))
 	if err != nil {
 		return err
 	}
@@ -136,12 +139,12 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 
 		info, err = rl.findToken(conn, key, target.Name)
 		if err != nil {
-			// log
+			rl.logger.Debugf("redis down find token err %v", err.Error())
 			continue
 		}
 
 		if info.TargetID == target.ID {
-			rmcnt, _ := redis.Int64(conn.Do("HDEL", LinkerRedisPrefix+rl.serviceName+splitFlag+target.Name,
+			rmcnt, _ := redis.Int64(conn.Do("HDEL", routekey,
 				key))
 
 			cnt += rmcnt
@@ -149,16 +152,15 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 
 	}
 
+	rl.logger.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
+
 	rl.local.down(target)
 
-	relationKey := rl.getRelationKey(target.Name, target.ID)
+	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
-	conn.Do("SREM", LinkerRedisPrefix+"relation", relationKey)
-
-	if cnt != 0 {
-		conn.Do("DECRBY", relationKey, cnt)
-	}
+	conn.Do("SREM", RelationPrefix, relationKey)
+	conn.Do("DEL", relationKey)
 
 	return nil
 }
