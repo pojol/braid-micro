@@ -1,6 +1,7 @@
 package linkerredis
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -103,11 +104,13 @@ func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
 func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
 
 	p := Parm{
-		Mode:           LinkerRedisModeRedis,
-		SyncTick:       1000 * 10, // 10 second
-		RedisAddr:      "redis://127.0.0.1:6379/0",
-		RedisMaxIdle:   16,
-		RedisMaxActive: 128,
+		Mode:             LinkerRedisModeRedis,
+		SyncTick:         1000 * 10, // 10 second
+		RedisAddr:        "redis://127.0.0.1:6379/0",
+		RedisMaxIdle:     16,
+		RedisMaxActive:   128,
+		syncOfflineTick:  60,
+		syncRelationTick: 5,
 	}
 	for _, opt := range rb.opts {
 		opt.(Option)(&p)
@@ -130,12 +133,13 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 	}
 
 	lc := &redisLinker{
-		serviceName:  serviceName,
-		mb:           mb,
-		electorState: elector.EWait,
-		logger:       logger,
-		client:       client,
-		parm:         p,
+		serviceName:   serviceName,
+		mb:            mb,
+		electorState:  elector.EWait,
+		logger:        logger,
+		client:        client,
+		parm:          p,
+		activeNodeMap: make(map[string]discover.Node),
 		local: &localLinker{
 			serviceName: serviceName,
 			tokenMap:    make(map[string]linkInfo),
@@ -163,9 +167,11 @@ type redisLinker struct {
 	electorState string
 	mb           mailbox.IMailbox
 
-	unlink   mailbox.IConsumer
-	down     mailbox.IConsumer
-	election mailbox.IConsumer
+	unlink     mailbox.IConsumer
+	down       mailbox.IConsumer
+	election   mailbox.IConsumer
+	addService mailbox.IConsumer
+	rmvService mailbox.IConsumer
 
 	logger logger.ILogger
 
@@ -174,6 +180,8 @@ type redisLinker struct {
 
 	// 从属节点
 	child []string
+
+	activeNodeMap map[string]discover.Node
 
 	sync.RWMutex
 }
@@ -193,6 +201,16 @@ func (rl *redisLinker) Init() error {
 	rl.election, err = rl.mb.Sub(mailbox.Proc, elector.StateChange).Shared()
 	if err != nil {
 		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "elector", elector.StateChange)
+	}
+
+	rl.addService, err = rl.mb.Sub(mailbox.Proc, discover.AddService).Shared()
+	if err != nil {
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.AddService)
+	}
+
+	rl.rmvService, err = rl.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
+	if err != nil {
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.RmvService)
 	}
 
 	_, err = rl.client.Ping()
@@ -231,6 +249,22 @@ func (rl *redisLinker) Init() error {
 			rl.logger.Debugf("service state change => %v", statemsg.State)
 		}
 
+		return nil
+	})
+
+	rl.addService.OnArrived(func(msg mailbox.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		rl.addOfflineService(nod)
+		return nil
+	})
+
+	rl.rmvService.OnArrived(func(msg mailbox.Message) error {
+		nod := discover.Node{}
+		json.Unmarshal(msg.Body, &nod)
+
+		rl.rmvOfflineService(nod)
 		return nil
 	})
 
@@ -303,6 +337,73 @@ func (rl *redisLinker) syncRelation() {
 	}
 }
 
+func (rl *redisLinker) addOfflineService(service discover.Node) {
+	rl.Lock()
+	rl.activeNodeMap[service.ID] = service
+	rl.Unlock()
+}
+
+func (rl *redisLinker) rmvOfflineService(service discover.Node) {
+	rl.Lock()
+	if _, ok := rl.activeNodeMap[service.ID]; ok {
+		delete(rl.activeNodeMap, service.ID)
+	}
+	rl.Unlock()
+}
+
+func (rl *redisLinker) syncOffline() {
+	conn := rl.getConn()
+	defer conn.Close()
+
+	if rl.parm.Mode != LinkerRedisModeLocal && rl.electorState != elector.EMaster {
+		return
+	}
+
+	members, err := redis.Strings(conn.Do("SMEMBERS", RelationPrefix))
+	if err != nil {
+		return
+	}
+
+	rl.Lock()
+	defer rl.Unlock()
+
+	offline := []discover.Node{}
+
+	rl.logger.Debugf("active service %v", rl.activeNodeMap)
+
+	for _, member := range members {
+		info := strings.Split(member, splitFlag)
+		if len(info) != 5 {
+			rl.logger.Warnf("%v wrong relation string format %v", Name, member)
+			continue
+		}
+
+		parent := info[2]
+		childname := info[3]
+		childid := info[4]
+
+		_, ok := rl.activeNodeMap[childid]
+		if !ok && rl.serviceName == parent {
+			offline = append(offline, discover.Node{
+				ID:   childid,
+				Name: childname,
+			})
+		}
+	}
+
+	for _, service := range offline {
+		if rl.parm.Mode == LinkerRedisModeLocal {
+			err = rl.localDown(service)
+		} else if rl.parm.Mode == LinkerRedisModeRedis {
+			err = rl.redisDown(service)
+		}
+		rl.logger.Debugf("offline service mode:%v, name:%v, id:%v", rl.parm.Mode, service.Name, service.ID)
+		if err != nil {
+			rl.logger.Warnf("offline err %v", err.Error())
+		}
+	}
+}
+
 func (rl *redisLinker) Run() {
 
 	/*
@@ -329,11 +430,21 @@ func (rl *redisLinker) Run() {
 
 	rl.syncRelation()
 	go func() {
-		tick := time.NewTicker(time.Second * 5)
+		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncRelationTick))
 		for {
 			select {
 			case <-tick.C:
 				rl.syncRelation()
+			}
+		}
+	}()
+
+	go func() {
+		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncOfflineTick))
+		for {
+			select {
+			case <-tick.C:
+				rl.syncOffline()
 			}
 		}
 	}()
@@ -414,6 +525,12 @@ func (rl *redisLinker) Down(target discover.Node) error {
 }
 
 func (rl *redisLinker) Close() {
+	rl.down.Exit()
+	rl.unlink.Exit()
+	rl.election.Exit()
+	rl.rmvService.Exit()
+	rl.addService.Exit()
+
 	rl.client.pool.Close()
 }
 

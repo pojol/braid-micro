@@ -13,6 +13,12 @@ type Parm struct {
 	RedisAddr      string
 	RedisMaxIdle   int
 	RedisMaxActive int
+
+	//
+	syncRelationTick int // second
+
+	//
+	syncOfflineTick int // second
 }
 
 // Option config wraps

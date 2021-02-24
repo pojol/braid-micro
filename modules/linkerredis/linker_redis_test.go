@@ -203,6 +203,11 @@ func TestLocalTarget(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 }
 
+func TestDown(t *testing.T) {
+	LinkerRedisPrefix = "TestLinkerRedisDown-"
+
+}
+
 func BenchmarkLink(b *testing.B) {
 	LinkerRedisPrefix = "benchmarklink"
 

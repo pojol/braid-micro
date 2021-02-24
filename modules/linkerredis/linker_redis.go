@@ -128,7 +128,9 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 	var info *linkInfo
 	var cnt int64
 
-	tokenMap, err := redis.StringMap(conn.Do("HGETALL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name))
+	routekey := RoutePrefix + splitFlag + rl.serviceName + splitFlag + target.Name
+
+	tokenMap, err := redis.StringMap(conn.Do("HGETALL", routekey))
 	if err != nil {
 		return err
 	}
@@ -137,18 +139,20 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 
 		info, err = rl.findToken(conn, key, target.Name)
 		if err != nil {
-			// log
+			rl.logger.Debugf("redis down find token err %v", err.Error())
 			continue
 		}
 
 		if info.TargetID == target.ID {
-			rmcnt, _ := redis.Int64(conn.Do("HDEL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name,
+			rmcnt, _ := redis.Int64(conn.Do("HDEL", routekey,
 				key))
 
 			cnt += rmcnt
 		}
 
 	}
+
+	rl.logger.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
 
 	rl.local.down(target)
 
