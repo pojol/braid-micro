@@ -88,14 +88,9 @@ defer b.Close() // 释放
 ```
 
 
-
-#### Wiki
-> Wiki 中提供了一个较为详细的Guide，用于帮助用户更加全面的理解braid的设计理念
-
-https://github.com/pojol/braid-go/wiki
-
-#### Sample
-https://github.com/pojol/braidgo-sample
+[![](https://img.shields.io/badge/braid-%E6%A0%B7%E4%BE%8B-2ca5e0?style=for-the-badge&logo=appveyor)](https://github.com/pojol/braidgo-sample)
+[![](https://img.shields.io/badge/braid-%E6%96%87%E6%A1%A3-2ca5e0?style=for-the-badge&logo=appveyor)](https://github.com/pojol/braid-go/wiki)
+[![](https://img.shields.io/badge/braid-%E4%BA%A4%E6%B5%81-2ca5e0?style=for-the-badge&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
 
