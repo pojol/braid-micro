@@ -33,6 +33,7 @@ func (nb *nsqMailboxBuilder) Name() string {
 func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error) {
 	p := Parm{
 		ServiceName: serviceName,
+		nsqLogLv:    nsq.LogLevelWarning,
 	}
 	for _, opt := range nb.opts {
 		opt.(Option)(&p)
