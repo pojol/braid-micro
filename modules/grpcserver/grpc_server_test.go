@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -26,7 +27,8 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 	if req.Service == "test" {
 		err = nil
 	} else {
-		err = errors.New("err")
+		err = errors.New("routing err")
+		panic(errors.New("panic err"))
 	}
 
 	return out, err
@@ -63,6 +65,7 @@ func TestNew(t *testing.T) {
 		Service: "errtest",
 		ReqBody: nil,
 	}, rres)
+	fmt.Println(err.Error())
 	assert.NotEqual(t, err, nil)
 }
 
@@ -79,4 +82,5 @@ func TestOpts(t *testing.T) {
 	//top := WithTracing()
 	//top(&cfg)
 	//assert.Equal(t, cfg.isTracing, true)
+
 }

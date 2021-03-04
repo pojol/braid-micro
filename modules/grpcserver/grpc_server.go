@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/pojol/braid-go/modules/jaegertracing"
@@ -39,7 +41,8 @@ func (b *grpcServerBuilder) Name() string {
 
 func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.IServer, error) {
 	p := Parm{
-		ListenAddr: ":14222",
+		ListenAddr:  ":14222",
+		openRecover: true,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
@@ -51,8 +54,17 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 		serviceName: serviceName,
 	}
 
+	interceptors := []grpc.UnaryServerInterceptor{}
 	if p.tracer != nil {
-		s.rpc = grpc.NewServer(jaegertracing.GetGRPCServerTracer(p.tracer))
+		interceptors = append(interceptors, jaegertracing.ServerInterceptor(p.tracer))
+	}
+
+	if p.openRecover {
+		interceptors = append(interceptors, grpc_recovery.UnaryServerInterceptor())
+	}
+
+	if len(interceptors) != 0 {
+		s.rpc = grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)))
 	} else {
 		s.rpc = grpc.NewServer()
 	}
