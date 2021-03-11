@@ -81,14 +81,8 @@ func ClientInterceptor(tracer opentracing.Tracer) grpc.UnaryClientInterceptor {
 	}
 }
 
-// GetGRPCServerTracer 获取GRPC Server拦截器
-func GetGRPCServerTracer(tracer opentracing.Tracer) grpc.ServerOption {
-	interceptor := serverInterceptor(tracer)
-	return grpc.UnaryInterceptor(interceptor)
-}
-
-// serverInterceptor server端rpc拦截器
-func serverInterceptor(tracer opentracing.Tracer) grpc.UnaryServerInterceptor {
+// ServerInterceptor server端rpc拦截器
+func ServerInterceptor(tracer opentracing.Tracer) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,

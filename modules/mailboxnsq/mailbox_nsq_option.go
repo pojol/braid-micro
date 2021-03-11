@@ -11,6 +11,8 @@ type Parm struct {
 
 	Channel     string
 	ServiceName string
+
+	nsqLogLv nsq.LogLevel
 }
 
 // Option config wraps
@@ -41,5 +43,12 @@ func WithLookupAddr(addr []string) Option {
 func WithNsqdAddr(addr []string) Option {
 	return func(c *Parm) {
 		c.Address = addr
+	}
+}
+
+// WithNsqLogLv 修改nsq的日志等级
+func WithNsqLogLv(lv nsq.LogLevel) Option {
+	return func(c *Parm) {
+		c.nsqLogLv = lv
 	}
 }

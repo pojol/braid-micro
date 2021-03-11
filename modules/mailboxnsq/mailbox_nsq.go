@@ -33,6 +33,8 @@ type nsqSubscriber struct {
 	Channel string
 	Topic   string
 
+	nsqLovLv nsq.LogLevel
+
 	lookupAddress []string
 	address       []string
 
@@ -109,6 +111,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
+	consumer.SetLoggerLevel(ns.nsqLovLv)
 
 	consumer.AddHandler(&consumerHandler{
 		c:    nc,
@@ -158,6 +161,7 @@ func (nmb *nsqMailbox) sub(topic string) mailbox.ISubscriber {
 		lookupAddress: nmb.parm.LookupAddress,
 		address:       nmb.parm.Address,
 		serviceName:   nmb.parm.ServiceName,
+		nsqLovLv:      nmb.parm.nsqLogLv,
 	}
 
 	nmb.csubsrcibers = append(nmb.csubsrcibers, s)

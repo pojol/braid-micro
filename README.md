@@ -6,7 +6,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid-go)](https://goreportcard.com/report/github.com/pojol/braid-go)
 [![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
-
+[![](https://img.shields.io/badge/braid-%E6%A0%B7%E4%BE%8B-2ca5e0?style=flat&logo=appveyor)](https://github.com/pojol/braidgo-sample)
+[![](https://img.shields.io/badge/braid-%E6%96%87%E6%A1%A3-2ca5e0?style=flat&logo=appveyor)](https://github.com/pojol/braid-go/wiki)
+[![](https://img.shields.io/badge/braid-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
 ### 交互模型
@@ -88,14 +90,6 @@ defer b.Close() // 释放
 ```
 
 
-
-#### Wiki
-> Wiki 中提供了一个较为详细的Guide，用于帮助用户更加全面的理解braid的设计理念
-
-https://github.com/pojol/braid-go/wiki
-
-#### Sample
-https://github.com/pojol/braidgo-sample
 
 
 
