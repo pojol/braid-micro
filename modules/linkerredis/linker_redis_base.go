@@ -369,8 +369,6 @@ func (rl *redisLinker) syncOffline() {
 
 	offline := []discover.Node{}
 
-	rl.logger.Debugf("active service %v", rl.activeNodeMap)
-
 	for _, member := range members {
 		info := strings.Split(member, splitFlag)
 		if len(info) != 5 {
