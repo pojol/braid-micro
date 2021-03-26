@@ -101,6 +101,10 @@ func (jtb *jaegerTracingBuilder) Build(name string) (tracer.ITracer, error) {
 		factory:     make(map[string]tracer.SpanFactory, len(jtb.factory)),
 	}
 
+	for k, v := range jtb.factory {
+		jt.factory[k] = v
+	}
+
 	return jt, nil
 }
 
@@ -120,10 +124,6 @@ func (jt *jaegerTracing) Init() error {
 
 	jt.tracing = jtracing
 	jt.closer = closer
-
-	for k, v := range jt.factory {
-		jt.factory[k] = v
-	}
 
 	return nil
 }
