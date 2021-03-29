@@ -100,13 +100,23 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	if c.parm.tracer != nil {
 		interceptor := jaegertracing.ClientInterceptor(c.parm.tracer)
 		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
+		if err != nil {
+			goto EXT
+		}
+		c.logger.Debugf("new connect %v tracer open", addr)
 	} else {
 		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure())
+		if err != nil {
+			goto EXT
+		}
+		c.logger.Debugf("new connect %v tracer close", addr)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w %v", err, "failed to dial to gRPC server")
+		err = fmt.Errorf("%w %v", err, "failed to dial to gRPC server")
+		goto EXT
 	}
 
+EXT:
 	return conn, err
 }
 
