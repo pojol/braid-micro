@@ -120,6 +120,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		if b.tracer != nil {
 			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
 			if ok {
+				b.logger.Debugf("auto open tracing in grpc-client")
 				b.clientBuilder.AddOption(grpcclient.AutoOpenTracing(opent))
 			}
 		}
@@ -135,6 +136,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 		if b.tracer != nil {
 			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
 			if ok {
+				b.logger.Debugf("auto open tracing in grpc-server")
 				b.serverBuilder.AddOption(grpcserver.AutoOpenTracing(opent))
 			}
 		}

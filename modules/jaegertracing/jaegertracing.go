@@ -105,13 +105,9 @@ func (jtb *jaegerTracingBuilder) Build(name string) (tracer.ITracer, error) {
 		jt.factory[k] = v
 	}
 
-	return jt, nil
-}
-
-func (jt *jaegerTracing) Init() error {
 	sender, err := newTransport(jt.jcfg.Reporter)
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
+		return nil, fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
 	}
 
 	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, jt.parm.Probabilistic))
@@ -119,11 +115,16 @@ func (jt *jaegerTracing) Init() error {
 
 	jtracing, closer, err := jt.jcfg.NewTracer(r, m)
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
+		return nil, fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
 	}
 
 	jt.tracing = jtracing
 	jt.closer = closer
+
+	return jt, nil
+}
+
+func (jt *jaegerTracing) Init() error {
 
 	return nil
 }
