@@ -10,11 +10,6 @@ import (
 // SpanFactory span 工厂
 type SpanFactory func(interface{}) (ISpan, error)
 
-type SpanTag struct {
-	Key string
-	Val interface{}
-}
-
 // Builder tracer build
 type Builder interface {
 	Build(name string, logger logger.ILogger) (ITracer, error)
@@ -24,7 +19,8 @@ type Builder interface {
 
 // ISpan span interface
 type ISpan interface {
-	Begin(ctx interface{}, tags ...SpanTag)
+	Begin(ctx interface{})
+	SetTag(key string, val interface{})
 	End(ctx interface{})
 }
 

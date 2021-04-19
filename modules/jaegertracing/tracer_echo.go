@@ -55,7 +55,7 @@ func CreateEchoTraceSpan() tracer.SpanFactory {
 }
 
 // Begin 开始捕捉
-func (t *EchoTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
+func (t *EchoTracer) Begin(ctx interface{}) {
 
 	echoContext, ok := ctx.(echo.Context)
 	if !ok {
@@ -74,10 +74,6 @@ func (t *EchoTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
 
 	ext.HTTPMethod.Set(t.span, req.Method)
 	ext.HTTPUrl.Set(t.span, req.URL.String())
-	for _, v := range tags {
-		t.span.SetTag(v.Key, v.Val)
-	}
-
 	rc := opentracing.ContextWithSpan(req.Context(), t.span)
 	// Set request ID for context.
 	if sc, ok := t.span.Context().(jaeger.SpanContext); ok {
@@ -89,6 +85,12 @@ func (t *EchoTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
 	echoContext.SetRequest(req)
 
 	t.starting = true
+}
+
+func (t *EchoTracer) SetTag(key string, val interface{}) {
+	if t.span != nil {
+		t.span.SetTag(key, val)
+	}
 }
 
 // End 结束捕捉
