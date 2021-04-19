@@ -7,6 +7,7 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/tracer"
 	"github.com/uber/jaeger-client-go"
 	jaegerCfg "github.com/uber/jaeger-client-go/config"
@@ -25,18 +26,11 @@ var (
 )
 
 type jaegerTracingBuilder struct {
-	factory map[string]tracer.SpanFactory
-	opts    []interface{}
+	opts []interface{}
 }
 
 func newJaegerTracingBuilder() tracer.Builder {
-	jtb := &jaegerTracingBuilder{
-		factory: make(map[string]tracer.SpanFactory),
-	}
-
-	jtb.factory[EchoSpan] = createEchoTraceSpan()
-	jtb.factory[RedisSpan] = createRedisSpanFactory()
-
+	jtb := &jaegerTracingBuilder{}
 	return jtb
 }
 
@@ -46,14 +40,6 @@ func (jtb *jaegerTracingBuilder) Name() string {
 
 func (jtb *jaegerTracingBuilder) AddOption(opt interface{}) {
 	jtb.opts = append(jtb.opts, opt)
-}
-
-func (jtb *jaegerTracingBuilder) AddFactory(strategy string, factory tracer.SpanFactory) {
-
-	if _, ok := jtb.factory[strategy]; !ok {
-		jtb.factory[strategy] = factory
-	}
-
 }
 
 func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
@@ -69,7 +55,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 	}
 }
 
-func (jtb *jaegerTracingBuilder) Build(name string) (tracer.ITracer, error) {
+func (jtb *jaegerTracingBuilder) Build(name string, logger logger.ILogger) (tracer.ITracer, error) {
 
 	p := Parm{
 		Probabilistic: 1,
@@ -98,11 +84,13 @@ func (jtb *jaegerTracingBuilder) Build(name string) (tracer.ITracer, error) {
 		parm:        p,
 		serviceName: name,
 		jcfg:        jcfg,
-		factory:     make(map[string]tracer.SpanFactory, len(jtb.factory)),
+		factory:     make(map[string]tracer.SpanFactory),
 	}
 
-	for k, v := range jtb.factory {
-		jt.factory[k] = v
+	for _, v := range p.ImportFactory {
+		if _, ok := jt.factory[v.Name]; !ok {
+			jt.factory[v.Name] = v.Factory
+		}
 	}
 
 	sender, err := newTransport(jt.jcfg.Reporter)

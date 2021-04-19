@@ -112,7 +112,7 @@ func (b *Braid) RegistModule(modules ...Module) error {
 	}
 
 	if b.tracerBuilder != nil {
-		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name)
+		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name, b.logger)
 		b.moduleMap[module.TyTracer] = b.tracer
 	}
 
@@ -178,11 +178,11 @@ func (b *Braid) Run() {
 		}()
 	*/
 
+	fmt.Printf(banner, Version)
+
 	for k := range b.moduleMap {
 		b.moduleMap[k].Run()
 	}
-
-	fmt.Printf(banner, Version)
 }
 
 // GetClient get client interface

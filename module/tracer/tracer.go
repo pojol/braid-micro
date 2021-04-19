@@ -4,22 +4,27 @@ import (
 	"strings"
 
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/logger"
 )
 
 // SpanFactory span 工厂
 type SpanFactory func(interface{}) (ISpan, error)
 
+type SpanTag struct {
+	Key string
+	Val interface{}
+}
+
 // Builder tracer build
 type Builder interface {
-	Build(name string) (ITracer, error)
+	Build(name string, logger logger.ILogger) (ITracer, error)
 	Name() string
 	AddOption(opt interface{})
-	AddFactory(strategy string, factory SpanFactory)
 }
 
 // ISpan span interface
 type ISpan interface {
-	Begin(ctx interface{})
+	Begin(ctx interface{}, tags ...SpanTag)
 	End(ctx interface{})
 }
 

@@ -38,7 +38,7 @@ type EchoTracer struct {
 }
 
 // createEchoTraceSpan 构建 echo tracer
-func createEchoTraceSpan() tracer.SpanFactory {
+func CreateEchoTraceSpan() tracer.SpanFactory {
 	return func(tracing interface{}) (tracer.ISpan, error) {
 
 		t, ok := tracing.(opentracing.Tracer)
@@ -55,7 +55,7 @@ func createEchoTraceSpan() tracer.SpanFactory {
 }
 
 // Begin 开始捕捉
-func (t *EchoTracer) Begin(ctx interface{}) {
+func (t *EchoTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
 
 	echoContext, ok := ctx.(echo.Context)
 	if !ok {
@@ -74,6 +74,9 @@ func (t *EchoTracer) Begin(ctx interface{}) {
 
 	ext.HTTPMethod.Set(t.span, req.Method)
 	ext.HTTPUrl.Set(t.span, req.URL.String())
+	for _, v := range tags {
+		t.span.SetTag(v.Key, v.Val)
+	}
 
 	rc := opentracing.ContextWithSpan(req.Context(), t.span)
 	// Set request ID for context.
