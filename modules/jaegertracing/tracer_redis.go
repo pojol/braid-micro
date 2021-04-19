@@ -41,7 +41,7 @@ func CreateRedisSpanFactory() tracer.SpanFactory {
 }
 
 // Begin 开始监听
-func (r *RedisTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
+func (r *RedisTracer) Begin(ctx interface{}) {
 
 	redisctx, ok := ctx.(context.Context)
 	if !ok {
@@ -52,16 +52,16 @@ func (r *RedisTracer) Begin(ctx interface{}, tags ...tracer.SpanTag) {
 	if parentSpan != nil {
 		r.span = r.tracing.StartSpan(r.Cmd, opentracing.ChildOf(parentSpan.Context()))
 
-		if tags != nil {
-			for _, v := range tags {
-				r.span.SetTag(v.Key, v.Val)
-			}
-		}
-
 		ext.DBType.Set(r.span, "Redis")
 	}
 
 	r.starting = true
+}
+
+func (r *RedisTracer) SetTag(key string, val interface{}) {
+	if r.span != nil {
+		r.span.SetTag(key, val)
+	}
 }
 
 // End 结束监听
