@@ -1,6 +1,15 @@
 package jaegertracing
 
-import "time"
+import (
+	"time"
+
+	"github.com/pojol/braid-go/module/tracer"
+)
+
+type SpanFactory struct {
+	Name    string
+	Factory tracer.SpanFactory
+}
 
 // Parm https://github.com/jaegertracing/jaeger-client-go/blob/master/config/config.go
 type Parm struct {
@@ -9,6 +18,7 @@ type Parm struct {
 	Probabilistic      float64       // 采样率
 	SlowRequest        time.Duration // 一旦request超出设置的SlowRequest（ms）时间，则一定会有一条slow日志
 	SlowSpan           time.Duration // 一旦span超出设置的SlowSpan（ms）时间，则一定会有一条slow日志
+	ImportFactory      []SpanFactory
 }
 
 // Option config wraps
@@ -46,5 +56,13 @@ func WithHTTP(CollectorEndpoint string) Option {
 func WithUDP(LocalAgentHostPort string) Option {
 	return func(c *Parm) {
 		c.LocalAgentHostPort = LocalAgentHostPort
+	}
+}
+
+func WithSpanFactory(factory ...SpanFactory) Option {
+	return func(c *Parm) {
+		for _, v := range factory {
+			c.ImportFactory = append(c.ImportFactory, v)
+		}
 	}
 }
