@@ -220,6 +220,7 @@ func (c *grpcClient) getConn(address string) (*grpc.ClientConn, error) {
 	}
 
 	if conn.GetState() == connectivity.TransientFailure {
+		c.logger.Debugf("reset connect backoff")
 		conn.ResetConnectBackoff()
 	}
 
@@ -305,7 +306,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	err = conn.Invoke(ctx, methon, args, reply, grpcopts...)
 	if err != nil {
-		c.logger.Debugf("client invoke warning %s, target = %s, token = %s", err.Error(), nodName, token)
+		c.logger.Warnf("client invoke warning %s, target = %s, methon = %s, addr = %s, token = %s", err.Error(), nodName, methon, address, token)
 		if c.parm.byLink {
 			c.parm.linker.Unlink(token)
 		}

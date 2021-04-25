@@ -111,7 +111,7 @@ func (wr *swrrBalancer) Add(nod discover.Node) {
 
 	wr.calcTotalWeight()
 
-	wr.logger.Debugf("add weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	wr.logger.Debugf("add weighted nod id : %s name : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func (wr *swrrBalancer) Rmv(nod discover.Node) {
@@ -128,7 +128,7 @@ func (wr *swrrBalancer) Rmv(nod discover.Node) {
 	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
 
 	wr.calcTotalWeight()
-	wr.logger.Debugf("rmv weighted nod id : %s space : %s", nod.ID, nod.Name)
+	wr.logger.Debugf("rmv weighted nod id : %s name : %s", nod.ID, nod.Name)
 }
 
 func (wr *swrrBalancer) Update(nod discover.Node) {
@@ -142,7 +142,7 @@ func (wr *swrrBalancer) Update(nod discover.Node) {
 		wr.calcTotalWeight()
 	}
 
-	wr.logger.Debugf("update weighted nod id : %s space : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	wr.logger.Debugf("update weighted nod id : %s name : %s weight : %d", nod.ID, nod.Name, nod.Weight)
 }
 
 func init() {

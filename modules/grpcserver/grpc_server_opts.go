@@ -1,13 +1,16 @@
 package grpcserver
 
 import (
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/opentracing/opentracing-go"
 )
 
 // Parm Service 配置
 type Parm struct {
-	ListenAddr  string
-	openRecover bool
+	ListenAddr string
+
+	openRecover   bool
+	recoverHandle grpc_recovery.RecoveryHandlerFunc
 
 	tracer opentracing.Tracer
 }
@@ -23,9 +26,10 @@ func WithListen(address string) Option {
 }
 
 // WithRecover 设置是否开启recover，当开启时 内部的 panic 将转换为 err
-func WithRecover(open bool) Option {
+func WithRecover(f grpc_recovery.RecoveryHandlerFunc) Option {
 	return func(c *Parm) {
-		c.openRecover = open
+		c.openRecover = true
+		c.recoverHandle = f
 	}
 }
 
