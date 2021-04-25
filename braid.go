@@ -21,7 +21,7 @@ import (
 
 const (
 	// Version of braid-go
-	Version = "v1.2.15"
+	Version = "v1.2.22"
 
 	banner = `
  _               _     _ 

@@ -42,7 +42,7 @@ func (b *grpcServerBuilder) Name() string {
 func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.IServer, error) {
 	p := Parm{
 		ListenAddr:  ":14222",
-		openRecover: true,
+		openRecover: false,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
@@ -60,7 +60,8 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 	}
 
 	if p.openRecover {
-		interceptors = append(interceptors, grpc_recovery.UnaryServerInterceptor())
+		interceptors = append(interceptors,
+			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(p.recoverHandle)))
 	}
 
 	if len(interceptors) != 0 {
