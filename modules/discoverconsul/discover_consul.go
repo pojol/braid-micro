@@ -84,7 +84,7 @@ func (dc *consulDiscover) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", dc.parm.Name, "consul", dc.parm.Address)
 	}
 
-	linknumC, _ := dc.mb.Sub(mailbox.Cluster, linkcache.ServiceLinkNum).Shared()
+	linknumC, _ := dc.mb.Sub(mailbox.Cluster, linkcache.LinkcacheServiceLinkNum).Shared()
 
 	linknumC.OnArrived(func(msg mailbox.Message) error {
 		lninfo := linkcache.DecodeLinkNumMsg(&msg)
@@ -172,7 +172,7 @@ func (dc *consulDiscover) discoverImpl() {
 			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.mb.PubAsync(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
+			dc.mb.PubAsync(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
@@ -186,16 +186,11 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.mb.PubAsync(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
-				ID:   dc.passingMap[k].id,
-				Name: dc.passingMap[k].service,
+			dc.mb.PubAsync(mailbox.Proc, discover.DiscoverRmvService, mailbox.NewMessage(discover.Node{
+				ID:      dc.passingMap[k].id,
+				Name:    dc.passingMap[k].service,
+				Address: dc.passingMap[k].address,
 			}))
-
-			dc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg(
-				dc.passingMap[k].id,
-				dc.passingMap[k].service,
-				dc.passingMap[k].address,
-			))
 
 			delete(dc.passingMap, k)
 		}
@@ -223,7 +218,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.mb.PubAsync(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
+		dc.mb.PubAsync(mailbox.Proc, discover.DiscoverUpdateService, mailbox.NewMessage(discover.Node{
 			ID:     v.id,
 			Name:   v.service,
 			Weight: nweight,

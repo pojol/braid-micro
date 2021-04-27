@@ -102,19 +102,19 @@ type baseBalancerGroup struct {
 func (bbg *baseBalancerGroup) Init() error {
 	var err error
 
-	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
+	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.AddService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverAddService)
 	}
 
-	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
+	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.RmvService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverRmvService)
 	}
 
-	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
+	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverUpdateService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.UpdateService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverUpdateService)
 	}
 
 	return nil

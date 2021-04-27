@@ -147,8 +147,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		},
 	}
 
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("nil")})
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg("", "", ""))
+	lc.mb.PubAsync(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("nil")})
 
 	return lc, nil
 }
@@ -188,29 +187,29 @@ type redisLinker struct {
 
 func (rl *redisLinker) Init() error {
 	var err error
-	rl.unlink, err = rl.mb.Sub(mailbox.Cluster, linkcache.TopicUnlink).Shared()
+	rl.unlink, err = rl.mb.Sub(mailbox.Cluster, linkcache.LinkcacheTokenUnlink).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.TopicUnlink)
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.LinkcacheTokenUnlink)
 	}
 
-	rl.down, err = rl.mb.Sub(mailbox.Cluster, linkcache.TopicDown).Shared()
+	rl.down, err = rl.mb.Sub(mailbox.Cluster, discover.DiscoverRmvService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.TopicDown)
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", discover.DiscoverRmvService)
 	}
 
-	rl.election, err = rl.mb.Sub(mailbox.Proc, elector.StateChange).Shared()
+	rl.election, err = rl.mb.Sub(mailbox.Proc, elector.ElectorStateChange).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "elector", elector.StateChange)
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "elector", elector.ElectorStateChange)
 	}
 
-	rl.addService, err = rl.mb.Sub(mailbox.Proc, discover.AddService).Shared()
+	rl.addService, err = rl.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.AddService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.DiscoverAddService)
 	}
 
-	rl.rmvService, err = rl.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
+	rl.rmvService, err = rl.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.RmvService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.DiscoverRmvService)
 	}
 
 	_, err = rl.client.Ping()
@@ -229,7 +228,7 @@ func (rl *redisLinker) Init() error {
 	})
 
 	rl.down.OnArrived(func(msg mailbox.Message) error {
-		dmsg := linkcache.DecodeDownMsg(&msg)
+		dmsg := discover.DecodeRmvServiceMsg(&msg)
 		if dmsg.Service == "" {
 			return errors.New("Can't find service")
 		}
@@ -299,7 +298,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		rl.mb.Pub(mailbox.Cluster, linkcache.ServiceLinkNum, linkcache.EncodeLinkNumMsg(id, int(cnt)))
+		rl.mb.Pub(mailbox.Cluster, linkcache.LinkcacheServiceLinkNum, linkcache.EncodeLinkNumMsg(id, int(cnt)))
 	}
 }
 

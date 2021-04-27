@@ -9,13 +9,11 @@ import (
 )
 
 const (
-	// ServiceLinkNum topic service link num
-	ServiceLinkNum = "braid_topic_service_link_num"
+	// LinkcacheServiceLinkNum topic service link num
+	LinkcacheServiceLinkNum = "topic_linkcache_service_link_num"
 
-	// TopicUnlink unlink token topic
-	TopicUnlink = "braid_topic_token_unlink"
-	// TopicDown service down
-	TopicDown = "braid_topic_service_down"
+	// LinkcacheTokenUnlink unlink token topic
+	LinkcacheTokenUnlink = "topic_linkcache_token_unlink"
 )
 
 // LinkNumMsg msg struct
@@ -41,33 +39,6 @@ func DecodeLinkNumMsg(msg *mailbox.Message) LinkNumMsg {
 	lnmsg := LinkNumMsg{}
 	json.Unmarshal(msg.Body, &lnmsg)
 	return lnmsg
-}
-
-// DownMsg down msg
-type DownMsg struct {
-	ID      string
-	Service string
-	Addr    string
-}
-
-// EncodeDownMsg encode down msg
-func EncodeDownMsg(id string, service string, addr string) *mailbox.Message {
-	byt, _ := json.Marshal(&DownMsg{
-		ID:      id,
-		Service: service,
-		Addr:    addr,
-	})
-
-	return &mailbox.Message{
-		Body: byt,
-	}
-}
-
-// DecodeDownMsg decode down msg
-func DecodeDownMsg(msg *mailbox.Message) DownMsg {
-	dmsg := DownMsg{}
-	json.Unmarshal(msg.Body, &dmsg)
-	return dmsg
 }
 
 // ILinkCache The connector is a service that maintains the link relationship between multiple processes and users.

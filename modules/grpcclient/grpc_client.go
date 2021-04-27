@@ -156,9 +156,9 @@ func (c *grpcClient) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
 	}
 
-	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.AddService).Shared()
+	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.AddService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.DiscoverAddService)
 	}
 
 	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
@@ -178,9 +178,9 @@ func (c *grpcClient) Init() error {
 		return nil
 	})
 
-	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
+	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.RmvService)
+		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.DiscoverRmvService)
 	}
 	c.rmvTargetConsumer.OnArrived(func(msg mailbox.Message) error {
 

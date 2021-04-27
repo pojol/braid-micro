@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// StateChange topic_elector_state
-	StateChange = "topic_elector_state"
+	// ElectorStateChange topic_elector_state
+	ElectorStateChange = "topic_elector_state"
 )
 
 // StateChangeMsg become master msg

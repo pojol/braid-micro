@@ -74,7 +74,7 @@ func TestLinkerTarget(t *testing.T) {
 	defer lc.Close()
 
 	// test set service state == master
-	mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
@@ -105,14 +105,14 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token01")})
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token02")})
+	mb.Pub(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("token01")})
+	mb.Pub(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 	for _, v := range nods {
 		mb.Pub(mailbox.Cluster,
-			linkcache.TopicDown,
-			linkcache.EncodeDownMsg(v.ID, v.Name, v.Address))
+			discover.DiscoverRmvService,
+			discover.EncodeRmvServiceMsg(v.ID, v.Name, v.Address))
 	}
 
 	time.Sleep(time.Millisecond * 100)
@@ -163,7 +163,7 @@ func TestLocalTarget(t *testing.T) {
 	defer lc.Close()
 
 	// test set service state == master
-	mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
