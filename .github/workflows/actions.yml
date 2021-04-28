@@ -73,7 +73,7 @@ jobs:
       - name: unit test
         run: |
           go version
-          ifconfig
+          ip a
           export MOCK_REDIS_ADDR=redis://172.0.0.1:6379/0
           export MOCK_CONSUL_ADDR=http://172.0.0.1:8900
           export MOCK_JAEGER_ADDR=http://172.0.0.1:9411/api/v2/spans
