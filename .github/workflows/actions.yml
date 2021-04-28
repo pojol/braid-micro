@@ -72,7 +72,6 @@ jobs:
           --internal=false
           --ip=127.0.0.1
           consul://127.0.0.1:8500
-      
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -82,8 +81,9 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          env
           go test -race -coverprofile=coverage.out ./...
         env:
-          REDIS_HOST: redis
-          REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+          MOCK_REDIS_ADDR: redis://127.0.0.1:6379/0
+          MOCK_CONSUL_ADDR: http://127.0.0.1:8500
+          MOCK_NSQD_ADDR: 127.0.0.1:4150
+          MOCK_NSQ_LOOKUPD_ADDR: 127.0.0.1:4161

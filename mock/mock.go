@@ -39,8 +39,6 @@ func Init() {
 		RedisAddr = "redis://127.0.0.1:6379/0"
 	}
 
-	RedisAddr = os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT")
-
 	// 构造测试环境
 	ConsulAddr = os.Getenv(mockConsulEnv)
 	if ConsulAddr == "" {
