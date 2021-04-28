@@ -44,15 +44,11 @@ jobs:
         options: >-
           --name lookupd
           nsqio/nsq:v1.2.0
-          -p 4160:4160
-          -p 4161:4161
           /nsqlookupd
       nsqd:
         image: nsqio/nsq:v1.2.0
         options: >-
           --name nsqd 
-          -p 4150:4150 
-          -p 4151:4151 
           nsqio/nsq:v1.2.0
           /nsqd 
           --broadcast-address=172.17.0.1 
