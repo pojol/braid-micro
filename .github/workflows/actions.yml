@@ -51,8 +51,8 @@ jobs:
           --name nsqd 
           nsqio/nsq:v1.2.0
           /nsqd 
-          --broadcast-address=172.17.0.1 
-          --lookupd-tcp-address=172.17.0.1:4160
+          --broadcast-address=127.0.0.1 
+          --lookupd-tcp-address=127.0.0.1:4160
       registrator:
         image: gliderlabs/registrator:latest
         options: >-
@@ -60,8 +60,8 @@ jobs:
           --volume=/var/run/docker.sock:/tmp/docker.sock
           gliderlabs/registrator:latest
           --internal=false
-          --ip=172.17.0.1
-          consul://172.17.0.1:8500
+          --ip=127.0.0.1
+          consul://127.0.0.1:8500
       
 
     # Steps represent a sequence of tasks that will be executed as part of the job
@@ -73,10 +73,9 @@ jobs:
       - name: unit test
         run: |
           go version
-          ip a
-          export MOCK_REDIS_ADDR=redis://172.0.0.1:6379/0
-          export MOCK_CONSUL_ADDR=http://172.0.0.1:8900
-          export MOCK_JAEGER_ADDR=http://172.0.0.1:9411/api/v2/spans
-          export MOCK_NSQD_ADDR="172.18.0.1:4150"
-          export MOCK_NSQ_LOOKUPD_ADDR="172.0.0.1:4161"
+          export MOCK_REDIS_ADDR=redis://127.0.0.1:6379/0
+          export MOCK_CONSUL_ADDR=http://127.0.0.1:8900
+          export MOCK_JAEGER_ADDR=http://127.0.0.1:9411/api/v2/spans
+          export MOCK_NSQD_ADDR="127.0.0.1:4150"
+          export MOCK_NSQ_LOOKUPD_ADDR="127.0.0.1:4161"
           go test -race -coverprofile=coverage.out ./...
