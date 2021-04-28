@@ -13,6 +13,41 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    # Docker Hub image that `container-job` executes in
+    container: golang:1.15.8
+
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      consul:
+        image: consul
+        options: >-
+          --name=consul_s_1
+          agent
+          -server 
+          -ui 
+          -node=s_1 
+          -bootstrap-expect=1 
+          -client=0.0.0.0
+      registrator:
+        image: gliderlabs/registrator:latest
+        options: >-
+          --name=registrator
+          --volume=/var/run/docker.sock:/tmp/docker.sock
+          gliderlabs/registrator:latest
+          --internal=false
+          --ip=172.17.0.1
+          consul://172.17.0.1:8500
+      
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -21,7 +56,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: echo Hello, world!
+        run: go version
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
