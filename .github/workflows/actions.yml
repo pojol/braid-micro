@@ -9,8 +9,6 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    # Docker Hub image that `container-job` executes in
-    container: golang:1.15.8
 
     # Service containers to run with `container-job`
     services:
@@ -19,7 +17,7 @@ jobs:
         # Docker Hub image
         image: redis
         ports:
-        - 6379:6379
+         - 6379:6379
       consul:
         image: consul:1.6.2
         options: >-
@@ -68,14 +66,18 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+
       # Runs a single command using the runners shell
       - name: unit test
         run: |
           env
           go test -race -coverprofile=coverage.out ./...
         env:
-          REDIS_HOST: redis
-          REDIS_PORT: $❴❴ job.services.redis.ports[6379] ❵❵
+          MOCK_REDIS_ADDR: redis://127.0.0.1:6379/0
           MOCK_CONSUL_ADDR: http://127.0.0.1:8500
           MOCK_NSQD_ADDR: 127.0.0.1:4150
           MOCK_NSQ_LOOKUPD_ADDR: 127.0.0.1:4161
