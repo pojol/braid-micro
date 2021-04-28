@@ -28,11 +28,12 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        ports:
+          - 6379:6379
       consul:
         image: consul:1.6.2
         options: >-
           --name=consul_s_1
-          -d
           consul:1.6.2
           agent
           -server 
@@ -40,27 +41,32 @@ jobs:
           -node=s_1 
           -bootstrap-expect=1 
           -client=0.0.0.0
+        ports:
+          - 8500:8500
       nsqlookupd:
         image: nsqio/nsq:v1.2.0
         options: >-
           --name lookupd
-          -d
           nsqio/nsq:v1.2.0
           /nsqlookupd
+        ports:
+          - 4160:4160
+          - 4161:4161
       nsqd:
         image: nsqio/nsq:v1.2.0
         options: >-
           --name nsqd 
-          -d
           nsqio/nsq:v1.2.0
           /nsqd 
           --broadcast-address=127.0.0.1 
           --lookupd-tcp-address=127.0.0.1:4160
+        ports:
+          - 4150:4150
+          - 4151:4151
       registrator:
         image: gliderlabs/registrator:latest
         options: >-
           --name=registrator
-          -d
           --volume=/var/run/docker.sock:/tmp/docker.sock
           gliderlabs/registrator:latest
           --internal=false
