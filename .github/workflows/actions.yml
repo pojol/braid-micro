@@ -48,15 +48,6 @@ jobs:
         ports:
           - 4150:4150
           - 4151:4151
-      registrator:
-        image: gliderlabs/registrator:latest
-        options: >-
-          --name=registrator
-          --volume=/var/run/docker.sock:/tmp/docker.sock
-          gliderlabs/registrator:latest
-          --internal=false
-          --ip=127.0.0.1
-          consul://127.0.0.1:8500
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -71,7 +62,7 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          env
+          docker ps
           go test -race -coverprofile=coverage.out ./...
         env:
           MOCK_REDIS_ADDR: redis://127.0.0.1:6379/0
