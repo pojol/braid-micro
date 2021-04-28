@@ -29,9 +29,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       consul:
-        image: consul
+        image: consul:1.6.2
         options: >-
           --name=consul_s_1
+          consul:1.6.2
           agent
           -server 
           -ui 
