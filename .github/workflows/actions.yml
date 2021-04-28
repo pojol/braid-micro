@@ -82,11 +82,8 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          docker ps
-          go version
-          export MOCK_REDIS_ADDR=redis://127.0.0.1:6379/0
-          export MOCK_CONSUL_ADDR=http://127.0.0.1:8500
-          export MOCK_JAEGER_ADDR=http://127.0.0.1:9411/api/v2/spans
-          export MOCK_NSQD_ADDR="127.0.0.1:4150"
-          export MOCK_NSQ_LOOKUPD_ADDR="127.0.0.1:4161"
+          env
           go test -race -coverprofile=coverage.out ./...
+        env:
+          REDIS_HOST: redis
+          REDIS_PORT: ${{ job.services.redis.ports[6379] }}
