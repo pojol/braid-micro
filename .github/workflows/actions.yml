@@ -54,4 +54,6 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
+          curl -d 'init' 'http://127.0.0.1:4151/pub?topic=TestClusterShared'
+          curl -d 'init' 'http://127.0.0.1:4151/pub?topic=TestClusterCompetition'
           go test -race -coverprofile=coverage.out ./...
