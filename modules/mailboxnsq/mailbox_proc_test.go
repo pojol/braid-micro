@@ -30,6 +30,8 @@ func TestMain(m *testing.M) {
 		fmt.Println(err.Error())
 	}
 
+	time.Sleep(time.Second)
+
 	m.Run()
 }
 

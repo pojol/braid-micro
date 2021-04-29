@@ -54,10 +54,4 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          docker ps
           go test -race -coverprofile=coverage.out ./...
-        env:
-          MOCK_REDIS_ADDR: redis://127.0.0.1:6379/0
-          MOCK_CONSUL_ADDR: http://127.0.0.1:8500
-          MOCK_NSQD_ADDR: 127.0.0.1:4150
-          MOCK_NSQ_LOOKUPD_ADDR: 127.0.0.1:4161
