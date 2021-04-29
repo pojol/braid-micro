@@ -1,6 +1,7 @@
 package consul
 
 import (
+	"fmt"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -18,24 +19,39 @@ func TestSession(t *testing.T) {
 	sessionName := "test" + strconv.Itoa(r)
 
 	id, err := CreateSession(mock.ConsulAddr, sessionName)
-	assert.Equal(t, err, nil, err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
 	CreateSession("xxx", sessionName)
 
 	err = RefushSession(mock.ConsulAddr, id)
-	assert.Equal(t, err, nil, err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
 	RefushSession("xxx", id)
 
 	ok, err := AcquireLock(mock.ConsulAddr, sessionName, id)
-	assert.Equal(t, ok, true, err.Error())
-	assert.Equal(t, err, nil, err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, ok, true)
+	assert.Equal(t, err, nil)
 	AcquireLock("xxx", sessionName, id)
 
 	err = ReleaseLock(mock.ConsulAddr, sessionName, id)
-	assert.Equal(t, err, nil, err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
 	ReleaseLock("xxx", sessionName, id)
 
 	ok, err = DeleteSession(mock.ConsulAddr, id)
-	assert.Equal(t, ok, true, err.Error())
-	assert.Equal(t, err, nil, err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, ok, true)
+	assert.Equal(t, err, nil)
 	DeleteSession("xxx", id)
 }

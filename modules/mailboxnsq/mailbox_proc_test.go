@@ -21,8 +21,8 @@ func TestMain(m *testing.M) {
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	mb, _ := b.Build("cluster")
 
-	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{Body: []byte("")})
-	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{Body: []byte("")})
+	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{Body: []byte("0")})
+	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{Body: []byte("0")})
 
 	m.Run()
 }
