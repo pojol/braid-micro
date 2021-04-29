@@ -49,7 +49,7 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Millisecond * 1000):
+	case <-time.After(time.Millisecond * 3000):
 		t.FailNow()
 	}
 
@@ -87,7 +87,7 @@ func TestClusterCompetition(t *testing.T) {
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 3000)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
