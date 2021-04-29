@@ -82,8 +82,6 @@ func CreateSession(address string, name string) (ID string, err error) {
 	}
 
 EXT:
-	if err != nil {
-	}
 	return cRes.ID, err
 }
 
@@ -120,8 +118,6 @@ func DeleteSession(address string, id string) (succ bool, err error) {
 	}
 
 EXT:
-	if err != nil {
-	}
 	return succ, err
 }
 
@@ -158,8 +154,6 @@ func RefushSession(address string, id string) (err error) {
 	}
 
 EXT:
-	if err != nil {
-	}
 	return err
 }
 
@@ -202,8 +196,6 @@ func AcquireLock(address string, name string, id string) (succ bool, err error) 
 	}
 
 EXT:
-	if err != nil {
-	}
 	return succ, err
 }
 
@@ -240,7 +232,5 @@ func ReleaseLock(address string, name string, id string) (err error) {
 	}
 
 EXT:
-	if err != nil {
-	}
 	return err
 }

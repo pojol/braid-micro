@@ -18,24 +18,24 @@ func TestSession(t *testing.T) {
 	sessionName := "test" + strconv.Itoa(r)
 
 	id, err := CreateSession(mock.ConsulAddr, sessionName)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, err, nil, err.Error())
 	CreateSession("xxx", sessionName)
 
 	err = RefushSession(mock.ConsulAddr, id)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, err, nil, err.Error())
 	RefushSession("xxx", id)
 
 	ok, err := AcquireLock(mock.ConsulAddr, sessionName, id)
-	assert.Equal(t, ok, true)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, ok, true, err.Error())
+	assert.Equal(t, err, nil, err.Error())
 	AcquireLock("xxx", sessionName, id)
 
 	err = ReleaseLock(mock.ConsulAddr, sessionName, id)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, err, nil, err.Error())
 	ReleaseLock("xxx", sessionName, id)
 
 	ok, err = DeleteSession(mock.ConsulAddr, id)
-	assert.Equal(t, ok, true)
-	assert.Equal(t, err, nil)
+	assert.Equal(t, ok, true, err.Error())
+	assert.Equal(t, err, nil, err.Error())
 	DeleteSession("xxx", id)
 }
