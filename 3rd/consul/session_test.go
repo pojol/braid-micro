@@ -32,11 +32,10 @@ func TestSession(t *testing.T) {
 	assert.Equal(t, err, nil)
 	RefushSession("xxx", id)
 
-	ok, err := AcquireLock(mock.ConsulAddr, sessionName, id)
+	_, err = AcquireLock(mock.ConsulAddr, sessionName, id)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	assert.Equal(t, ok, true)
 	assert.Equal(t, err, nil)
 	AcquireLock("xxx", sessionName, id)
 
@@ -47,11 +46,10 @@ func TestSession(t *testing.T) {
 	assert.Equal(t, err, nil)
 	ReleaseLock("xxx", sessionName, id)
 
-	ok, err = DeleteSession(mock.ConsulAddr, id)
+	_, err = DeleteSession(mock.ConsulAddr, id)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	assert.Equal(t, ok, true)
 	assert.Equal(t, err, nil)
 	DeleteSession("xxx", id)
 }

@@ -55,6 +55,9 @@ jobs:
       - name: unit test
         run: |
           docker ps
+          echo "create nsq topic"
+          curl -X POST http://127.0.0.1:4151/topic/create?topic=TestClusterShared
+          curl -X POST http://127.0.0.1:4151/topic/create?topic=TestClusterCompetition
           go test -race -coverprofile=coverage.out ./...
         env:
           MOCK_REDIS_ADDR: redis://127.0.0.1:6379/0
