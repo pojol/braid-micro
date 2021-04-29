@@ -11,18 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestClusterMain(m *testing.M) {
-	b := mailbox.GetBuilder(Name)
-	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := b.Build("cluster")
-
-	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{Body: []byte("")})
-	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{Body: []byte("")})
-
-	m.Run()
-}
-
 func TestClusterShared(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
