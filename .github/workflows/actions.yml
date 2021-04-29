@@ -54,4 +54,6 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
+          curl -X POST http://127.0.0.1:4161/topic/create?topic=TestClusterShared
+          curl -X POST http://127.0.0.1:4161/topic/create?topic=TestClusterCompetition
           go test -race -coverprofile=coverage.out ./...
