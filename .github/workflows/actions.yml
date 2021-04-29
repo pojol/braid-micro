@@ -28,26 +28,18 @@ jobs:
           - 8500:8500/tcp
           - 8600:8600/tcp
           - 8600:8600/udp
-      nsqlookupd:
-        image: nsqio/nsq:v1.2.0
-        options: >-
-          --name lookupd
-          nsqio/nsq:v1.2.0
-          /nsqlookupd
-        ports:
-          - 4160:4160
-          - 4161:4161
       nsqd:
-        image: nsqio/nsq:v1.2.0
-        options: >-
-          --name nsqd 
-          nsqio/nsq:v1.2.0
-          /nsqd 
-          --broadcast-address=127.0.0.1 
-          --lookupd-tcp-address=127.0.0.1:4160
+        image: nsqio/nsq
+        options: --entrypoint /bin/nsqd
         ports:
           - 4150:4150
           - 4151:4151
+      nsqlookupd:
+        image: nsqio/nsq
+        options: --entrypoint /bin/nsqlookupd
+        ports:
+          - 4160:4160
+          - 4161:4161
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
