@@ -16,6 +16,20 @@ func TestMain(m *testing.M) {
 
 	mock.Init()
 
+	b := mailbox.GetBuilder(Name)
+	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+	mb, _ := b.Build("cluster")
+
+	err := mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{Body: []byte("init topic")})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	err = mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{Body: []byte("init topic")})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
 	m.Run()
 }
 
