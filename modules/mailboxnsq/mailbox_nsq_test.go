@@ -53,7 +53,7 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Second * 3):
+	case <-time.After(time.Second * 10):
 		fmt.Println("TestClusterShared test time out")
 		t.FailNow()
 	}
@@ -93,7 +93,7 @@ func TestClusterCompetition(t *testing.T) {
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 10)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
