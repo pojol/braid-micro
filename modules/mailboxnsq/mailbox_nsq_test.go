@@ -53,7 +53,7 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 30):
 		fmt.Println("TestClusterShared test time out")
 		t.FailNow()
 	}
@@ -70,30 +70,32 @@ func TestClusterCompetition(t *testing.T) {
 	var tick uint64
 	var tickmu sync.Mutex
 
-	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
-	defer c1.Exit()
-	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
-	defer c2.Exit()
+	go func() {
+		c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+		defer c1.Exit()
+		c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+		defer c2.Exit()
 
-	c1.OnArrived(func(msg mailbox.Message) error {
-		tickmu.Lock()
-		atomic.AddUint64(&tick, 1)
-		tickmu.Unlock()
-		return nil
-	})
+		c1.OnArrived(func(msg mailbox.Message) error {
+			tickmu.Lock()
+			atomic.AddUint64(&tick, 1)
+			tickmu.Unlock()
+			return nil
+		})
 
-	c2.OnArrived(func(msg mailbox.Message) error {
-		tickmu.Lock()
-		atomic.AddUint64(&tick, 1)
-		tickmu.Unlock()
-		return nil
-	})
+		c2.OnArrived(func(msg mailbox.Message) error {
+			tickmu.Lock()
+			atomic.AddUint64(&tick, 1)
+			tickmu.Unlock()
+			return nil
+		})
+	}()
 
 	mb.PubAsync(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Second * 10)
+	time.Sleep(time.Second * 20)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
