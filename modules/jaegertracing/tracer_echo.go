@@ -93,6 +93,16 @@ func (t *EchoTracer) SetTag(key string, val interface{}) {
 	}
 }
 
+func (t *EchoTracer) GetID() string {
+	if t.span != nil {
+		if sc, ok := t.span.Context().(jaeger.SpanContext); ok {
+			return sc.TraceID().String()
+		}
+	}
+
+	return ""
+}
+
 // End 结束捕捉
 func (t *EchoTracer) End(ctx interface{}) {
 

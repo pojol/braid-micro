@@ -21,6 +21,7 @@ type Builder interface {
 type ISpan interface {
 	Begin(ctx interface{})
 	SetTag(key string, val interface{})
+	GetID() string
 	End(ctx interface{})
 }
 

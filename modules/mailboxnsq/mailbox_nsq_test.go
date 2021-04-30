@@ -1,6 +1,7 @@
 package mailboxnsq
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -40,7 +41,7 @@ func TestClusterShared(t *testing.T) {
 		return nil
 	})
 
-	mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
+	mb.PubAsync(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
 
@@ -52,7 +53,8 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Millisecond * 3000):
+	case <-time.After(time.Second * 3):
+		fmt.Println("TestClusterShared test time out")
 		t.FailNow()
 	}
 
@@ -87,11 +89,11 @@ func TestClusterCompetition(t *testing.T) {
 		return nil
 	})
 
-	mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
+	mb.PubAsync(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Millisecond * 4000)
+	time.Sleep(time.Second * 3)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
