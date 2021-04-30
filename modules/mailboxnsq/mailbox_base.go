@@ -48,12 +48,11 @@ func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (m
 		if err != nil {
 			return nil, err
 		}
-
+		logger.Infof("mailbox new producer addr:%v", addr)
 		if err = cp.Ping(); err != nil {
 			return nil, err
 		}
 
-		logger.Infof("mailbox new producer addr:%v", addr)
 		cps = append(cps, cp)
 	}
 
