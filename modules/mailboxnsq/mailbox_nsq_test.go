@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
@@ -20,6 +21,7 @@ func TestClusterShared(t *testing.T) {
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
 	mb, _ := b.Build("cluster", log)
 
 	var wg sync.WaitGroup
@@ -72,6 +74,7 @@ func TestClusterCompetition(t *testing.T) {
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
+	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
 	mb, _ := b.Build("cluster", log)
 	var tick uint64
 	var tickmu sync.Mutex

@@ -47,6 +47,7 @@ type nsqSubscriber struct {
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
+
 	ch.c.PutMsg(&mailbox.Message{
 		Body: msg.Body,
 	})
@@ -114,7 +115,6 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	}
 	ns.log.Infof("new consumer topic:%v, channel:%v", ns.Topic, nc.channel)
 	consumer.SetLoggerLevel(ns.nsqLovLv)
-
 	consumer.AddHandler(&consumerHandler{
 		c:       nc,
 		channel: nc.channel,
