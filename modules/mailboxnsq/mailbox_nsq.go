@@ -113,7 +113,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns.log.Infof("new consumer topic:%v, channel:%v", ns.Topic, nc.channel)
+	ns.log.Infof("mailbox new consumer topic:%v, channel:%v", ns.Topic, nc.channel)
 	consumer.SetLoggerLevel(ns.nsqLovLv)
 	consumer.AddHandler(&consumerHandler{
 		c:       nc,

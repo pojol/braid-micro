@@ -53,6 +53,7 @@ func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (m
 			return nil, err
 		}
 
+		logger.Infof("mailbox new producer addr:%v", addr)
 		cps = append(cps, cp)
 	}
 
