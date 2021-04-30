@@ -1,10 +1,10 @@
 package mailboxnsq
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/internal/braidsync"
 	"github.com/pojol/braid-go/module/logger"
@@ -47,6 +47,8 @@ type nsqSubscriber struct {
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
+
+	fmt.Println(ch.channel, "handler recv msg")
 
 	ch.c.PutMsg(&mailbox.Message{
 		Body: msg.Body,
@@ -144,7 +146,7 @@ func (ns *nsqSubscriber) Competition() (mailbox.IConsumer, error) {
 // AddShared 从管道副本中一起消费消息，因为共享需要不同的管道，所以这里默认设置为ephemeral
 func (ns *nsqSubscriber) Shared() (mailbox.IConsumer, error) {
 
-	uid := ns.serviceName + "-" + uuid.New().String() + "#ephemeral"
+	uid := ns.serviceName + "-" + "shared"
 
 	nc, err := ns.subImpl(uid)
 	if err != nil {
