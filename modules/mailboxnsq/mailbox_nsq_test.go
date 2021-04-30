@@ -91,7 +91,7 @@ func TestClusterCompetition(t *testing.T) {
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 4000)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()

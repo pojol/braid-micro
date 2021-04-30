@@ -1,7 +1,6 @@
 package mailboxnsq
 
 import (
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -13,8 +12,8 @@ import (
 )
 
 type consumerHandler struct {
-	uuid string
-	c    *nsqConsumer
+	channel string
+	c       *nsqConsumer
 }
 
 // Consumer 消费者
@@ -28,7 +27,7 @@ type nsqConsumer struct {
 	connected bool
 
 	lookupAddress []string
-	uuid          string
+	channel       string
 }
 
 type nsqSubscriber struct {
@@ -48,7 +47,6 @@ type nsqSubscriber struct {
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
-	fmt.Println(ch.uuid, "new msg")
 	ch.c.PutMsg(&mailbox.Message{
 		Body: msg.Body,
 	})
@@ -106,20 +104,20 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	config := nsq.NewConfig()
 	nc := &nsqConsumer{
 		exitCh:        braidsync.NewSwitch(),
-		uuid:          channel,
+		channel:       channel,
 		lookupAddress: ns.lookupAddress,
 	}
 
-	consumer, err := nsq.NewConsumer(ns.Topic, nc.uuid, config)
+	consumer, err := nsq.NewConsumer(ns.Topic, nc.channel, config)
 	if err != nil {
 		return nil, err
 	}
-	ns.log.Infof("new consumer topic:%v, channel:%v", ns.Topic, nc.uuid)
+	ns.log.Infof("new consumer topic:%v, channel:%v", ns.Topic, nc.channel)
 	consumer.SetLoggerLevel(ns.nsqLovLv)
 
 	consumer.AddHandler(&consumerHandler{
-		c:    nc,
-		uuid: nc.uuid,
+		c:       nc,
+		channel: nc.channel,
 	})
 
 	nc.consumer = consumer
