@@ -32,18 +32,24 @@ func TestClusterShared(t *testing.T) {
 	defer c2.Exit()
 
 	c1.OnArrived(func(msg mailbox.Message) error {
+		log.Debugf("c1 msg arrived")
 		wg.Done()
 		return nil
 	})
 
 	c2.OnArrived(func(msg mailbox.Message) error {
+		log.Debugf("c2 msg arrived")
 		wg.Done()
 		return nil
 	})
 
-	mb.PubAsync(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
+	err := mb.Pub(mailbox.Cluster, "TestClusterShared", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
 
 	go func() {
 		wg.Wait()
@@ -53,7 +59,7 @@ func TestClusterShared(t *testing.T) {
 	select {
 	case <-done:
 		//pass
-	case <-time.After(time.Second * 30):
+	case <-time.After(time.Second * 20):
 		fmt.Println("TestClusterShared test time out")
 		t.FailNow()
 	}
@@ -70,30 +76,34 @@ func TestClusterCompetition(t *testing.T) {
 	var tick uint64
 	var tickmu sync.Mutex
 
-	go func() {
-		c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
-		defer c1.Exit()
-		c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
-		defer c2.Exit()
+	c1, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+	defer c1.Exit()
+	c2, _ := mb.Sub(mailbox.Cluster, "TestClusterCompetition").Competition()
+	defer c2.Exit()
 
-		c1.OnArrived(func(msg mailbox.Message) error {
-			tickmu.Lock()
-			atomic.AddUint64(&tick, 1)
-			tickmu.Unlock()
-			return nil
-		})
+	c1.OnArrived(func(msg mailbox.Message) error {
+		tickmu.Lock()
+		fmt.Println("c1 arrived")
+		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
+		return nil
+	})
 
-		c2.OnArrived(func(msg mailbox.Message) error {
-			tickmu.Lock()
-			atomic.AddUint64(&tick, 1)
-			tickmu.Unlock()
-			return nil
-		})
-	}()
+	c2.OnArrived(func(msg mailbox.Message) error {
+		tickmu.Lock()
+		fmt.Println("c2 arrived")
+		atomic.AddUint64(&tick, 1)
+		tickmu.Unlock()
+		return nil
+	})
 
-	mb.PubAsync(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
+	err := mb.Pub(mailbox.Cluster, "TestClusterCompetition", &mailbox.Message{
 		Body: []byte("test msg"),
 	})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
 
 	time.Sleep(time.Second * 20)
 	tickmu.Lock()
