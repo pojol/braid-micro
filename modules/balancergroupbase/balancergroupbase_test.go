@@ -17,8 +17,8 @@ import (
 func TestParm(t *testing.T) {
 	serviceName := "TestParm"
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName, log)
 
 	bgb := module.GetBuilder(Name)
 	bgb.AddOption(WithStrategy([]string{balancerrandom.Name}))

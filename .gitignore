@@ -9,3 +9,4 @@ testSys.sys
 testNormal.log
 *.braid
 web_linux
+appendonly.aof

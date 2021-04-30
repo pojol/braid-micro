@@ -1,12 +1,14 @@
 package mailboxnsq
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/internal/braidsync"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
 )
 
@@ -33,6 +35,7 @@ type nsqSubscriber struct {
 	Channel string
 	Topic   string
 
+	log      logger.ILogger
 	nsqLovLv nsq.LogLevel
 
 	lookupAddress []string
@@ -45,7 +48,7 @@ type nsqSubscriber struct {
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
-
+	fmt.Println(ch.uuid, "new msg")
 	ch.c.PutMsg(&mailbox.Message{
 		Body: msg.Body,
 	})
@@ -111,6 +114,7 @@ func (ns *nsqSubscriber) subImpl(channel string) (*nsqConsumer, error) {
 	if err != nil {
 		return nil, err
 	}
+	ns.log.Infof("new consumer topic:%v, channel:%v", ns.Topic, nc.uuid)
 	consumer.SetLoggerLevel(ns.nsqLovLv)
 
 	consumer.AddHandler(&consumerHandler{
@@ -162,6 +166,7 @@ func (nmb *nsqMailbox) sub(topic string) mailbox.ISubscriber {
 		address:       nmb.parm.Address,
 		serviceName:   nmb.parm.ServiceName,
 		nsqLovLv:      nmb.parm.nsqLogLv,
+		log:           nmb.log,
 	}
 
 	nmb.csubsrcibers = append(nmb.csubsrcibers, s)

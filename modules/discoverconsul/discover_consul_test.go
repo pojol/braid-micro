@@ -31,8 +31,8 @@ func TestMain(m *testing.M) {
 	})
 	defer r.Close()
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
 
 	bgb := module.GetBuilder(balancergroupbase.Name)
 	bgb.AddOption(balancergroupbase.WithStrategy([]string{balancerswrr.Name}))
@@ -50,14 +50,14 @@ func TestDiscover(t *testing.T) {
 	b := module.GetBuilder(Name)
 	assert.Equal(t, b.Type(), module.TyDiscover)
 
-	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
 	assert.Equal(t, err, nil)
 
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
 	b.AddOption(WithSyncServiceInterval(time.Millisecond * 100))
 	b.AddOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
 	b.AddOption(WithBlacklist([]string{"gate"}))
-	log, err := logger.GetBuilder(zaplogger.Name).Build()
 	assert.Equal(t, err, nil)
 
 	d, err := b.Build("test", mb, log)
@@ -76,7 +76,8 @@ func TestDiscover(t *testing.T) {
 func TestParm(t *testing.T) {
 	b := module.GetBuilder(Name)
 
-	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	log, err := logger.GetBuilder(zaplogger.Name).Build()
+	mb, err := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
 	assert.Equal(t, err, nil)
 
 	b.AddOption(WithConsulAddr(mock.ConsulAddr))
@@ -84,7 +85,7 @@ func TestParm(t *testing.T) {
 	b.AddOption(WithBlacklist([]string{"gate"}))
 	b.AddOption(WithSyncServiceInterval(time.Second))
 	b.AddOption(WithSyncServiceWeightInterval(time.Second))
-	log, err := logger.GetBuilder(zaplogger.Name).Build()
+
 	assert.Equal(t, err, nil)
 
 	discv, err := b.Build("test", mb, log)

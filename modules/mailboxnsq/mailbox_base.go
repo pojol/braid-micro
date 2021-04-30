@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
 )
 
@@ -30,7 +31,7 @@ func (nb *nsqMailboxBuilder) Name() string {
 	return Name
 }
 
-func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error) {
+func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (mailbox.IMailbox, error) {
 	p := Parm{
 		ServiceName: serviceName,
 		nsqLogLv:    nsq.LogLevelWarning,
@@ -57,6 +58,7 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 
 	nsqm := &nsqMailbox{
 		parm: p,
+		log:  logger,
 		proc: &procMailbox{
 			subscribers: make(map[string]*procSubscriber),
 			exitChan:    make(chan int),
@@ -68,6 +70,7 @@ func (nb *nsqMailboxBuilder) Build(serviceName string) (mailbox.IMailbox, error)
 
 type nsqMailbox struct {
 	parm Parm
+	log  logger.ILogger
 
 	proc *procMailbox
 

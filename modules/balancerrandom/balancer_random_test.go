@@ -23,8 +23,8 @@ func TestRandomBalancer(t *testing.T) {
 
 	serviceName := "TestRandomBalancer"
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName, log)
 
 	bgb := module.GetBuilder(balancergroupbase.Name)
 	bgb.AddOption(balancergroupbase.WithStrategy([]string{Name}))

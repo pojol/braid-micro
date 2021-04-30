@@ -34,12 +34,12 @@ func TestLinkerTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLinkerTarget-"
 	tmu.Unlock()
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("testlinkertarget")
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("testlinkertarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
@@ -125,12 +125,12 @@ func TestLocalTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLocalTarget-"
 	tmu.Unlock()
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestLocalTarget")
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("TestLocalTarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
@@ -216,7 +216,7 @@ func BenchmarkLink(b *testing.B) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("benchmarklink")
+	mb, _ := mbb.Build("benchmarklink", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))

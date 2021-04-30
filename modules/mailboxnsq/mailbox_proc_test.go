@@ -1,14 +1,15 @@
 package mailboxnsq
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,7 +23,8 @@ func TestMain(m *testing.M) {
 func TestSharedProc(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
-	mb, _ := b.Build("TestSharedProc")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestSharedProc", log)
 	topic := "TestSharedProc"
 
 	var wg sync.WaitGroup
@@ -36,13 +38,11 @@ func TestSharedProc(t *testing.T) {
 
 	c1.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
-		fmt.Printf("%p %s\n", &msg, msg.Body)
 		return nil
 	})
 
 	c2.OnArrived(func(msg mailbox.Message) error {
 		wg.Done()
-		fmt.Printf("%p %s\n", &msg, msg.Body)
 		return nil
 	})
 
@@ -65,7 +65,8 @@ func TestSharedProc(t *testing.T) {
 
 func TestCompetition(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
-	mb, _ := b.Build("TestCompetition")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestCompetition", log)
 	var carrived uint64
 	var race sync.Mutex
 	topic := "TestCompetition"
@@ -99,7 +100,8 @@ func TestCompetition(t *testing.T) {
 // BenchmarkShared-8   	 2102298	       527 ns/op	      94 B/op	       2 allocs/op
 func BenchmarkShared(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkShared")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("BenchmarkShared", log)
 	topic := "BenchmarkShared"
 	body := []byte("msg")
 
@@ -122,7 +124,8 @@ func BenchmarkShared(b *testing.B) {
 
 func BenchmarkSharedAsync(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkShared")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("BenchmarkShared", log)
 	topic := "BenchmarkShared"
 	body := []byte("msg")
 
@@ -150,7 +153,8 @@ func BenchmarkSharedAsync(b *testing.B) {
 //BenchmarkCompetition-8   	 3238792	       335 ns/op	      79 B/op	       2 allocs/op
 func BenchmarkCompetition(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkCompetition")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("BenchmarkCompetition", log)
 	topic := "BenchmarkCompetition"
 	body := []byte("msg")
 
@@ -174,7 +178,8 @@ func BenchmarkCompetition(b *testing.B) {
 
 func BenchmarkCompetitionAsync(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkCompetition")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mbb.Build("BenchmarkCompetition", log)
 	topic := "BenchmarkCompetition"
 	body := []byte("msg")
 

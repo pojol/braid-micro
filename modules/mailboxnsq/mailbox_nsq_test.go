@@ -7,16 +7,19 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestClusterShared(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := b.Build("cluster")
+	mb, _ := b.Build("cluster", log)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
@@ -58,9 +61,10 @@ func TestClusterShared(t *testing.T) {
 func TestClusterCompetition(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := b.Build("cluster")
+	mb, _ := b.Build("cluster", log)
 	var tick uint64
 	var tickmu sync.Mutex
 
@@ -87,7 +91,7 @@ func TestClusterCompetition(t *testing.T) {
 		Body: []byte("test msg"),
 	})
 
-	time.Sleep(time.Millisecond * 3000)
+	time.Sleep(time.Millisecond * 1000)
 	tickmu.Lock()
 	assert.Equal(t, tick, uint64(1))
 	tickmu.Unlock()
@@ -96,11 +100,12 @@ func TestClusterCompetition(t *testing.T) {
 
 func TestClusterMailboxParm(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithChannel("parm"))
 	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 
-	mb, err := b.Build("cluster")
+	mb, err := b.Build("cluster", log)
 	assert.Equal(t, err, nil)
 	cm := mb.(*nsqMailbox)
 

@@ -3,11 +3,13 @@ package mailbox
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/pojol/braid-go/module/logger"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(serviceName string) (IMailbox, error)
+	Build(serviceName string, logger logger.ILogger) (IMailbox, error)
 	Name() string
 	AddOption(opt interface{})
 }

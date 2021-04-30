@@ -20,12 +20,11 @@ func TestMain(m *testing.M) {
 
 func TestElection(t *testing.T) {
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
 
 	eb := module.GetBuilder(Name)
 	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	e, _ := eb.Build("test_elector_with_consul", mb, log)
 
@@ -36,14 +35,13 @@ func TestElection(t *testing.T) {
 
 func TestParm(t *testing.T) {
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover")
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
 
 	eb := module.GetBuilder(Name)
 	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
 	eb.AddOption(WithLockTick(time.Second))
 	eb.AddOption(WithSessionTick(time.Second))
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	e, _ := eb.Build("test_elector_with_consul", mb, log)
 

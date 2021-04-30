@@ -63,17 +63,17 @@ var (
 // New 构建braid
 func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	for _, opt := range mailboxOpts {
-		mbb.AddOption(opt)
-	}
-	mb, err := mbb.Build(name)
+	zlb := logger.GetBuilder(zaplogger.Name)
+	log, err := zlb.Build()
 	if err != nil {
 		return nil, err
 	}
 
-	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build()
+	mbb := mailbox.GetBuilder(mailboxnsq.Name)
+	for _, opt := range mailboxOpts {
+		mbb.AddOption(opt)
+	}
+	mb, err := mbb.Build(name, log)
 	if err != nil {
 		return nil, err
 	}
