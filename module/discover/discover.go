@@ -7,7 +7,6 @@ import (
 	"github.com/pojol/braid-go/module/mailbox"
 )
 
-// discover
 const (
 	// DiscoverAddService publish topic
 	DiscoverAddService = "topic_discover_add_service"

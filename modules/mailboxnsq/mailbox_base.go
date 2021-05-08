@@ -1,8 +1,8 @@
 package mailboxnsq
 
 import (
-	"errors"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/nsqio/go-nsq"
@@ -42,29 +42,12 @@ func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (m
 
 	rand.Seed(time.Now().UnixNano())
 
-	cps := make([]*nsq.Producer, 0, len(p.Address))
-	for _, addr := range p.Address {
-		cp, err := nsq.NewProducer(addr, nsq.NewConfig())
-		if err != nil {
-			return nil, err
-		}
-		logger.Infof("mailbox new producer addr:%v", addr)
-		if err = cp.Ping(); err != nil {
-			return nil, err
-		}
-
-		cps = append(cps, cp)
-	}
-
 	nsqm := &nsqMailbox{
-		parm: p,
-		log:  logger,
-		proc: &procMailbox{
-			subscribers: make(map[string]*procSubscriber),
-			exitChan:    make(chan int),
-		},
-		cproducers: cps,
+		parm:     p,
+		log:      logger,
+		topicMap: make(map[string]*mailboxTopic),
 	}
+
 	return nsqm, nil
 }
 
@@ -72,41 +55,36 @@ type nsqMailbox struct {
 	parm Parm
 	log  logger.ILogger
 
-	proc *procMailbox
+	sync.RWMutex
 
-	cproducers   []*nsq.Producer
-	csubsrcibers []*nsqSubscriber
+	topicMap map[string]*mailboxTopic
 }
 
-func (nmb *nsqMailbox) Pub(scope string, topic string, msg *mailbox.Message) error {
+func (nmb *nsqMailbox) Topic(name string) mailbox.ITopic {
 
-	if scope == mailbox.Proc {
-		return nmb.proc.pub(topic, msg)
-	} else if scope == mailbox.Cluster {
-		return nmb.pub(topic, msg)
+	nmb.RLock()
+	t, ok := nmb.topicMap[name]
+	nmb.RUnlock()
+	if ok {
+		return t
 	}
 
-	return errors.New("Can't find scope")
-}
-
-func (nmb *nsqMailbox) PubAsync(scope string, topic string, msg *mailbox.Message) {
-
-	if scope == mailbox.Proc {
-		nmb.proc.pubasync(topic, msg)
-	} else if scope == mailbox.Cluster {
-		nmb.pubasync(topic, msg)
+	nmb.Lock()
+	t, ok = nmb.topicMap[name]
+	if ok {
+		nmb.Unlock()
+		return t
 	}
 
-}
+	t = newTopic(name, nmb)
+	nmb.topicMap[name] = t
+	nmb.Unlock()
+	nmb.log.Infof("Topic %v created", name)
 
-func (nmb *nsqMailbox) Sub(scope string, topic string) mailbox.ISubscriber {
-	if scope == mailbox.Proc {
-		return nmb.proc.sub(topic)
-	} else if scope == mailbox.Cluster {
-		return nmb.sub(topic)
-	}
+	// start loop
+	t.start()
 
-	return nil
+	return t
 }
 
 func init() {

@@ -19,23 +19,12 @@ type Message struct {
 	Body []byte
 }
 
-const (
-	// Proc 发布一个进程内消息
-	Proc = "mailbox.proc"
-
-	// Cluster 发布一个集群消息
-	Cluster = "mailbox.cluster"
-)
+type ScopeTy int32
 
 const (
-	// Undecided 暂未决定的
-	Undecided = "mailbox.undecided"
-
-	// Competition 竞争型的信道（只被消费一次
-	Competition = "mailbox.competition"
-
-	// Shared 共享型的信道, 消息副本会传递到多个消费者
-	Shared = "mailbox.shared"
+	ScopeUndefine ScopeTy = 0 + iota
+	ScopeProc
+	ScopeCluster
 )
 
 // NewMessage 构建消息体
@@ -51,33 +40,21 @@ func NewMessage(body interface{}) *Message {
 	}
 }
 
-// HandlerFunc msg handler
-type HandlerFunc func(message Message) error
-
-// IConsumer consumer
-type IConsumer interface {
-	OnArrived(handle HandlerFunc) error
-
-	PutMsgAsync(msg *Message)
-	PutMsg(msg *Message) error
-
-	Exit()
-	IsExited() bool
+type IChannel interface {
+	Put(*Message)
+	Arrived() <-chan *Message
+	Exit() error
 }
 
-// ISubscriber 订阅者
-type ISubscriber interface {
-	Shared() (IConsumer, error)
-	Competition() (IConsumer, error)
+type ITopic interface {
+	Channel(name string, scope ScopeTy) IChannel
+	Exit() error
+
+	Pub(*Message) error
 }
 
-// IMailbox mailbox
 type IMailbox interface {
-	// publish goroutine -> channel -> consumer goroutine
-	PubAsync(scope string, topic string, msg *Message)
-	Pub(scope string, topic string, msg *Message) error
-
-	Sub(scope string, topic string) ISubscriber
+	Topic(name string) ITopic
 }
 
 var (

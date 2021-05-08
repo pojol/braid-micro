@@ -82,24 +82,27 @@ func TestMutiMailBox(t *testing.T) {
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
 	)
-	topic := "TestMutiSharedProc"
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	sub := Mailbox().Sub(mailbox.Proc, topic)
-	c1, _ := sub.Shared()
-	c1.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		return nil
-	})
+	topic := Mailbox().Topic("TestMutiSharedProc")
+	c1 := topic.Channel("Normal", mailbox.ScopeProc)
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
 		go func() {
-			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
+			topic.Pub(&mailbox.Message{Body: []byte("msg")})
 		}()
 	}
+
+	go func() {
+		for {
+			select {
+			case <-c1.Arrived():
+			}
+		}
+	}()
 
 	go func() {
 		wg.Wait()
