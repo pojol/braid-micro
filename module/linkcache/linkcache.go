@@ -9,11 +9,9 @@ import (
 )
 
 const (
-	// LinkcacheServiceLinkNum topic service link num
-	LinkcacheServiceLinkNum = "topic_linkcache_service_link_num"
+	ServiceLinkNum = "linkcache.serviceLinkNum"
 
-	// LinkcacheTokenUnlink unlink token topic
-	LinkcacheTokenUnlink = "topic_linkcache_token_unlink"
+	TokenUnlink = "linkcache.tokenUnlink"
 )
 
 // LinkNumMsg msg struct

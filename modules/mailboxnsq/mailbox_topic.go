@@ -53,7 +53,7 @@ func (t *mailboxTopic) start() {
 	}
 }
 
-func (t *mailboxTopic) Channel(name string, scope mailbox.ScopeTy) mailbox.IChannel {
+func (t *mailboxTopic) Sub(name string, scope mailbox.ScopeTy) mailbox.IChannel {
 
 	t.Lock()
 	c, isNew := t.getOrCreateChannel(name, scope)
@@ -89,7 +89,7 @@ func (t *mailboxTopic) put(msg *mailbox.Message) error {
 	select {
 	case t.msgch <- msg:
 	default:
-		return fmt.Errorf("the mailbox topic queue is full!")
+		return fmt.Errorf("the mailbox topic %v queue is full!", t.Name)
 	}
 
 	return nil

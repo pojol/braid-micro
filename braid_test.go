@@ -86,8 +86,8 @@ func TestMutiMailBox(t *testing.T) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	topic := Mailbox().Topic("TestMutiSharedProc")
-	c1 := topic.Channel("Normal", mailbox.ScopeProc)
+	topic := Mailbox().Topic("TestMutiMailBox")
+	c1 := topic.Sub("Normal", mailbox.ScopeProc)
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {

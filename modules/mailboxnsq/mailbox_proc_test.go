@@ -21,8 +21,8 @@ func TestProcNotify(t *testing.T) {
 	var tick uint64
 
 	topic := mb.Topic("TestProcNotify")
-	channel1 := topic.Channel("Normal", mailbox.ScopeProc)
-	channel2 := topic.Channel("Normal", mailbox.ScopeProc)
+	channel1 := topic.Sub("Normal", mailbox.ScopeProc)
+	channel2 := topic.Sub("Normal", mailbox.ScopeProc)
 
 	go func() {
 		for {
@@ -53,8 +53,8 @@ func TestProcBoradcast(t *testing.T) {
 	wg.Add(2)
 
 	topic := mb.Topic("TestProcBoradcast")
-	channel1 := topic.Channel("Boradcast_Consumer1", mailbox.ScopeProc)
-	channel2 := topic.Channel("Boradcast_Consumer2", mailbox.ScopeProc)
+	channel1 := topic.Sub("Boradcast_Consumer1", mailbox.ScopeProc)
+	channel2 := topic.Sub("Boradcast_Consumer2", mailbox.ScopeProc)
 
 	go func() {
 		for {
@@ -90,8 +90,8 @@ func BenchmarkTestProc(b *testing.B) {
 	body := []byte("msg")
 
 	topic := mb.Topic("BenchmarkTestProc")
-	c1 := topic.Channel("Normal", mailbox.ScopeProc)
-	c2 := topic.Channel("Normal", mailbox.ScopeProc)
+	c1 := topic.Sub("Normal", mailbox.ScopeProc)
+	c2 := topic.Sub("Normal", mailbox.ScopeProc)
 
 	go func() {
 		for {

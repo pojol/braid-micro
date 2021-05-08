@@ -147,7 +147,7 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		},
 	}
 
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("nil")})
+	//lc.mb.PubAsync(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("nil")})
 
 	return lc, nil
 }
@@ -166,12 +166,6 @@ type redisLinker struct {
 	electorState string
 	mb           mailbox.IMailbox
 
-	unlink     mailbox.IConsumer
-	down       mailbox.IConsumer
-	election   mailbox.IConsumer
-	addService mailbox.IConsumer
-	rmvService mailbox.IConsumer
-
 	logger logger.ILogger
 
 	client *RedisClient
@@ -187,85 +181,49 @@ type redisLinker struct {
 
 func (rl *redisLinker) Init() error {
 	var err error
-	rl.unlink, err = rl.mb.Sub(mailbox.Cluster, linkcache.LinkcacheTokenUnlink).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.LinkcacheTokenUnlink)
-	}
 
-	rl.down, err = rl.mb.Sub(mailbox.Cluster, discover.DiscoverRmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", discover.DiscoverRmvService)
-	}
+	tokenUnlink := rl.mb.Topic(linkcache.TokenUnlink).Sub(Name, mailbox.ScopeCluster)
+	removeService := rl.mb.Topic(discover.RemoveService).Sub(Name, mailbox.ScopeCluster)
+	addService := rl.mb.Topic(discover.AddService).Sub(Name, mailbox.ScopeCluster)
+	changeState := rl.mb.Topic(elector.ChangeState).Sub(Name, mailbox.ScopeProc)
 
-	rl.election, err = rl.mb.Sub(mailbox.Proc, elector.ElectorStateChange).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "elector", elector.ElectorStateChange)
-	}
-
-	rl.addService, err = rl.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.DiscoverAddService)
-	}
-
-	rl.rmvService, err = rl.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.DiscoverRmvService)
-	}
+	go func() {
+		for {
+			select {
+			case msg := <-tokenUnlink.Arrived():
+				token := string(msg.Body)
+				if token != "" && token != "nil" {
+					rl.Unlink(token)
+				}
+			case msg := <-removeService.Arrived():
+				dmsg := discover.DecodeRmvServiceMsg(msg)
+				if dmsg.Service != "" {
+					nod := discover.Node{
+						ID:      dmsg.ID,
+						Name:    dmsg.Service,
+						Address: dmsg.Addr,
+					}
+					rl.rmvOfflineService(nod)
+					rl.Down(nod)
+				}
+			case msg := <-addService.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
+				rl.addOfflineService(nod)
+			case msg := <-changeState.Arrived():
+				statemsg := elector.DecodeStateChangeMsg(msg)
+				if statemsg.State != "" && rl.electorState != statemsg.State {
+					rl.electorState = statemsg.State
+					rl.logger.Debugf("service state change => %v", statemsg.State)
+				}
+			}
+		}
+	}()
 
 	_, err = rl.client.Ping()
 	if err != nil {
 		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "redis", rl.parm.RedisAddr)
 	}
-
-	rl.unlink.OnArrived(func(msg mailbox.Message) error {
-
-		token := string(msg.Body)
-		if token != "" && token != "nil" {
-			return rl.Unlink(token)
-		}
-
-		return nil
-	})
-
-	rl.down.OnArrived(func(msg mailbox.Message) error {
-		dmsg := discover.DecodeRmvServiceMsg(&msg)
-		if dmsg.Service == "" {
-			return errors.New("Can't find service")
-		}
-
-		return rl.Down(discover.Node{
-			ID:      dmsg.ID,
-			Name:    dmsg.Service,
-			Address: dmsg.Addr,
-		})
-	})
-
-	rl.election.OnArrived(func(msg mailbox.Message) error {
-
-		statemsg := elector.DecodeStateChangeMsg(&msg)
-		if statemsg.State != "" && rl.electorState != statemsg.State {
-			rl.electorState = statemsg.State
-			rl.logger.Debugf("service state change => %v", statemsg.State)
-		}
-
-		return nil
-	})
-
-	rl.addService.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		rl.addOfflineService(nod)
-		return nil
-	})
-
-	rl.rmvService.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		rl.rmvOfflineService(nod)
-		return nil
-	})
 
 	return nil
 }
@@ -298,7 +256,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		rl.mb.Pub(mailbox.Cluster, linkcache.LinkcacheServiceLinkNum, linkcache.EncodeLinkNumMsg(id, int(cnt)))
+		rl.mb.Topic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
 	}
 }
 
@@ -522,11 +480,6 @@ func (rl *redisLinker) Down(target discover.Node) error {
 }
 
 func (rl *redisLinker) Close() {
-	rl.down.Exit()
-	rl.unlink.Exit()
-	rl.election.Exit()
-	rl.rmvService.Exit()
-	rl.addService.Exit()
 
 	rl.client.pool.Close()
 }

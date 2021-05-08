@@ -119,11 +119,11 @@ func (e *k8sElector) Init() error {
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == e.parm.NodID {
-					e.mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+					e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 					e.logger.Debugf("new leader %s %s", e.parm.NodID, identity)
 
 				} else {
-					e.mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.ESlave))
+					e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},

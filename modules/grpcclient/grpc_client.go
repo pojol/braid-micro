@@ -83,9 +83,7 @@ type grpcClient struct {
 	bg          balancer.IBalancerGroup
 	logger      logger.ILogger
 
-	mb                mailbox.IMailbox
-	addTargetConsumer mailbox.IConsumer
-	rmvTargetConsumer mailbox.IConsumer
+	mb mailbox.IMailbox
 
 	connmap sync.Map
 }
@@ -156,50 +154,45 @@ func (c *grpcClient) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
 	}
 
-	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.DiscoverAddService)
-	}
+	addService := c.mb.Topic(discover.AddService)
+	addServiceChannel := addService.Channel(Name, mailbox.ScopeProc)
 
-	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
+	rmvService := c.mb.Topic(discover.RemoveService)
+	rmvServiceChannel := rmvService.Channel(Name, mailbox.ScopeProc)
 
-		_, ok := c.connmap.Load(nod.Address)
-		if !ok {
-			conn, err := c.newconn(nod.Address)
-			if err != nil {
-				c.logger.Errorf("new grpc conn err %s", err.Error())
-			} else {
-				c.connmap.Store(nod.Address, conn)
+	go func() {
+		for {
+			select {
+			case msg := <-addServiceChannel.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
+
+				_, ok := c.connmap.Load(nod.Address)
+				if !ok {
+					conn, err := c.newconn(nod.Address)
+					if err != nil {
+						c.logger.Errorf("new grpc conn err %s", err.Error())
+					} else {
+						c.connmap.Store(nod.Address, conn)
+					}
+				}
+			case msg := <-rmvServiceChannel.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
+
+				mc, ok := c.connmap.Load(nod.Address)
+				if ok {
+					conn := mc.(*grpc.ClientConn)
+					err = c.closeconn(conn)
+					if err != nil {
+						c.logger.Errorf("close grpc conn err %s", err.Error())
+					} else {
+						c.connmap.Delete(nod.Address)
+					}
+				}
 			}
 		}
-
-		return nil
-	})
-
-	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.DiscoverRmvService)
-	}
-	c.rmvTargetConsumer.OnArrived(func(msg mailbox.Message) error {
-
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		mc, ok := c.connmap.Load(nod.Address)
-		if ok {
-			conn := mc.(*grpc.ClientConn)
-			err = c.closeconn(conn)
-			if err != nil {
-				c.logger.Errorf("close grpc conn err %s", err.Error())
-			} else {
-				c.connmap.Delete(nod.Address)
-			}
-		}
-
-		return nil
-	})
+	}()
 
 	return nil
 }

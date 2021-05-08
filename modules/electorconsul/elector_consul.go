@@ -99,10 +99,10 @@ func (e *consulElection) watch() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+				e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 				e.logger.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.mb.Pub(mailbox.Proc, elector.ElectorStateChange, elector.EncodeStateChangeMsg(elector.ESlave))
+				e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

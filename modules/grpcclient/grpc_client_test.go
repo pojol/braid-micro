@@ -62,7 +62,7 @@ func TestMain(m *testing.M) {
 	s.Run()
 
 	// 伪造一个节点用于测试
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.Topic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "testnod",
 		Name:    "testgrpcclient",
 		Address: "http://localhost:1216",

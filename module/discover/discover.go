@@ -8,12 +8,9 @@ import (
 )
 
 const (
-	// DiscoverAddService publish topic
-	DiscoverAddService = "topic_discover_add_service"
-	// DiscoverRmvService publish topic
-	DiscoverRmvService = "topic_discover_remove_service"
-	// DiscoverUpdateService publish topic
-	DiscoverUpdateService = "topic_discover_update_service"
+	AddService    = "discover.addService"
+	RemoveService = "discover.removeService"
+	UpdateService = "discover.updateService"
 )
 
 // RmvServiceMsg down msg

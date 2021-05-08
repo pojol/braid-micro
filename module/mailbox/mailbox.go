@@ -47,10 +47,10 @@ type IChannel interface {
 }
 
 type ITopic interface {
-	Channel(name string, scope ScopeTy) IChannel
-	Exit() error
-
 	Pub(*Message) error
+	Sub(name string, scope ScopeTy) IChannel
+
+	Exit() error
 }
 
 type IMailbox interface {

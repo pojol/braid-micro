@@ -31,8 +31,8 @@ func TestClusterBroadcast(t *testing.T) {
 	mb, _ := b.Build("TestClusterBroadcast", log)
 
 	topic := mb.Topic("TestClusterBroadcast")
-	channel1 := topic.Channel("Normal_1", mailbox.ScopeCluster)
-	channel2 := topic.Channel("Normal_2", mailbox.ScopeCluster)
+	channel1 := topic.Sub("Normal_1", mailbox.ScopeCluster)
+	channel2 := topic.Sub("Normal_2", mailbox.ScopeCluster)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
@@ -77,8 +77,8 @@ func TestClusterNotify(t *testing.T) {
 	var tick uint64
 
 	topic := mb.Topic("TestClusterNotify")
-	channel1 := topic.Channel("Normal", mailbox.ScopeCluster)
-	channel2 := topic.Channel("Normal", mailbox.ScopeCluster)
+	channel1 := topic.Sub("Normal", mailbox.ScopeCluster)
+	channel2 := topic.Sub("Normal", mailbox.ScopeCluster)
 
 	go func() {
 		for {
