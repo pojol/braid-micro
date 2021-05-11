@@ -1,7 +1,6 @@
 package balancergroupbase
 
 import (
-	"encoding/json"
 	"errors"
 	"sync"
 
@@ -86,9 +85,7 @@ type baseBalancerGroup struct {
 
 	parm Parm
 
-	addConsumer mailbox.IChannel
-	rmvConsumer mailbox.IChannel
-	upConsumer  mailbox.IChannel
+	serviceUpdate mailbox.IChannel
 
 	logger logger.ILogger
 
@@ -100,9 +97,7 @@ type baseBalancerGroup struct {
 
 func (bbg *baseBalancerGroup) Init() error {
 
-	bbg.addConsumer = bbg.mb.GetTopic(discover.AddService).Sub(Name)
-	bbg.rmvConsumer = bbg.mb.GetTopic(discover.RemoveService).Sub(Name)
-	bbg.upConsumer = bbg.mb.GetTopic(discover.UpdateService).Sub(Name)
+	bbg.serviceUpdate = bbg.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
 
 	return nil
 }
@@ -112,59 +107,53 @@ func (bbg *baseBalancerGroup) Run() {
 	go func() {
 		for {
 			select {
-			case msg := <-bbg.addConsumer.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
+			case msg := <-bbg.serviceUpdate.Arrived():
+				dmsg := discover.DecodeUpdateMsg(msg)
+				if dmsg.Event == discover.EventAddService {
+					bbg.lock.Lock()
+					for strategy := range bbg.group {
 
-				bbg.lock.Lock()
-				for strategy := range bbg.group {
-
-					if !bbg.group[strategy].exist(nod.Name) {
-						b := balancer.GetBuilder(strategy)
-						ib, _ := b.Build(bbg.logger)
-						bbg.group[strategy].targets[nod.Name] = ib
-						bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
-					}
-
-					bbg.group[strategy].targets[nod.Name].Add(nod)
-				}
-				bbg.lock.Unlock()
-			case msg := <-bbg.rmvConsumer.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-
-				bbg.lock.Lock()
-
-				for k := range bbg.group {
-					if _, ok := bbg.group[k]; ok {
-						b, err := bbg.group[k].get(nod.Name)
-						if err != nil {
-							bbg.logger.Errorf("remove service err %s", err.Error())
-							break
+						if !bbg.group[strategy].exist(dmsg.Nod.Name) {
+							b := balancer.GetBuilder(strategy)
+							ib, _ := b.Build(bbg.logger)
+							bbg.group[strategy].targets[dmsg.Nod.Name] = ib
+							bbg.logger.Debugf("add service %s by strategy %s", dmsg.Nod.Name, strategy)
 						}
 
-						b.Rmv(nod)
+						bbg.group[strategy].targets[dmsg.Nod.Name].Add(dmsg.Nod)
 					}
-				}
-				bbg.lock.Unlock()
-			case msg := <-bbg.upConsumer.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
+					bbg.lock.Unlock()
+				} else if dmsg.Event == discover.EventRemoveService {
+					bbg.lock.Lock()
 
-				bbg.lock.Lock()
+					for k := range bbg.group {
+						if _, ok := bbg.group[k]; ok {
+							b, err := bbg.group[k].get(dmsg.Nod.Name)
+							if err != nil {
+								bbg.logger.Errorf("remove service err %s", err.Error())
+								break
+							}
 
-				for k := range bbg.group {
-					if _, ok := bbg.group[k]; ok {
-						b, err := bbg.group[k].get(nod.Name)
-						if err != nil {
-							bbg.logger.Errorf("update service err %s", err.Error())
-							break
+							b.Rmv(dmsg.Nod)
 						}
-
-						b.Update(nod)
 					}
+					bbg.lock.Unlock()
+				} else if dmsg.Event == discover.EventUpdateService {
+					bbg.lock.Lock()
+
+					for k := range bbg.group {
+						if _, ok := bbg.group[k]; ok {
+							b, err := bbg.group[k].get(dmsg.Nod.Name)
+							if err != nil {
+								bbg.logger.Errorf("update service err %s", err.Error())
+								break
+							}
+
+							b.Update(dmsg.Nod)
+						}
+					}
+					bbg.lock.Unlock()
 				}
-				bbg.lock.Unlock()
 			}
 		}
 	}()
@@ -192,9 +181,7 @@ func (bbg *baseBalancerGroup) Pick(ty string, target string) (discover.Node, err
 }
 
 func (bbg *baseBalancerGroup) Close() {
-	bbg.addConsumer.Exit()
-	bbg.rmvConsumer.Exit()
-	bbg.upConsumer.Exit()
+
 }
 
 func init() {

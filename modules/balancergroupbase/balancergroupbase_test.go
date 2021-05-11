@@ -31,34 +31,44 @@ func TestParm(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  4,
-		Name:    serviceName,
-	}))
-
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  2,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "A",
+			Address: "A",
+			Weight:  4,
+			Name:    serviceName,
+		},
+	))
+	mb.GetTopic(discover.EventAddService).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "B",
+			Address: "B",
+			Weight:  2,
+			Name:    serviceName,
+		},
+	))
 
 	time.Sleep(time.Millisecond * 100)
-	mb.GetTopic(discover.UpdateService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  3,
-		Name:    serviceName,
-	}))
-
-	mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  2,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventUpdateService,
+		discover.Node{
+			ID:      "A",
+			Address: "A",
+			Weight:  3,
+			Name:    serviceName,
+		},
+	))
+	mb.GetTopic(discover.EventRemoveService).Pub(discover.EncodeUpdateMsg(
+		discover.EventRemoveService,
+		discover.Node{
+			ID:      "B",
+			Address: "B",
+			Weight:  2,
+			Name:    serviceName,
+		},
+	))
 
 	time.Sleep(time.Millisecond * 500)
 	for i := 0; i < 10; i++ {

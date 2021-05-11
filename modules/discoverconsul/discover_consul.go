@@ -74,9 +74,7 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 		passingMap: make(map[string]*syncNode),
 	}
 
-	mb.RegistTopic(discover.AddService, mailbox.ScopeProc)
-	mb.RegistTopic(discover.RemoveService, mailbox.ScopeProc)
-	mb.RegistTopic(discover.UpdateService, mailbox.ScopeProc)
+	mb.RegistTopic(discover.ServiceUpdate, mailbox.ScopeProc)
 
 	return e, nil
 }
@@ -185,12 +183,15 @@ func (dc *consulDiscover) discoverImpl() {
 			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-				ID:      sn.id,
-				Name:    sn.service,
-				Address: sn.address,
-				Weight:  sn.physWeight,
-			}))
+			dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+				discover.EventAddService,
+				discover.Node{
+					ID:      sn.id,
+					Name:    sn.service,
+					Address: sn.address,
+					Weight:  sn.physWeight,
+				},
+			))
 		}
 	}
 
@@ -198,11 +199,14 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
-				ID:      dc.passingMap[k].id,
-				Name:    dc.passingMap[k].service,
-				Address: dc.passingMap[k].address,
-			}))
+			dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+				discover.EventRemoveService,
+				discover.Node{
+					ID:      dc.passingMap[k].id,
+					Name:    dc.passingMap[k].service,
+					Address: dc.passingMap[k].address,
+				},
+			))
 
 			delete(dc.passingMap, k)
 		}
@@ -230,11 +234,14 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.mb.GetTopic(discover.UpdateService).Pub(mailbox.NewMessage(discover.Node{
-			ID:     v.id,
-			Name:   v.service,
-			Weight: nweight,
-		}))
+		dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+			discover.EventUpdateService,
+			discover.Node{
+				ID:     v.id,
+				Name:   v.service,
+				Weight: nweight,
+			},
+		))
 	}
 }
 

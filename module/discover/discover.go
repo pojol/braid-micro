@@ -8,37 +8,12 @@ import (
 )
 
 const (
-	AddService    = "discover.addService"
-	RemoveService = "discover.removeService"
-	UpdateService = "discover.updateService"
+	ServiceUpdate = "discover.serviceUpdate"
+
+	EventAddService    = "event_add_service"
+	EventRemoveService = "event_remove_service"
+	EventUpdateService = "event_update_service"
 )
-
-// RmvServiceMsg down msg
-type RmvServiceMsg struct {
-	ID      string
-	Service string
-	Addr    string
-}
-
-// EncodeDownMsg encode down msg
-func EncodeRmvServiceMsg(id string, service string, addr string) *mailbox.Message {
-	byt, _ := json.Marshal(&RmvServiceMsg{
-		ID:      id,
-		Service: service,
-		Addr:    addr,
-	})
-
-	return &mailbox.Message{
-		Body: byt,
-	}
-}
-
-// DecodeDownMsg decode down msg
-func DecodeRmvServiceMsg(msg *mailbox.Message) RmvServiceMsg {
-	dmsg := RmvServiceMsg{}
-	json.Unmarshal(msg.Body, &dmsg)
-	return dmsg
-}
 
 // Node 发现节点结构
 type Node struct {
@@ -49,6 +24,28 @@ type Node struct {
 
 	// 节点的权重值
 	Weight int
+}
+
+type UpdateMsg struct {
+	Nod   Node
+	Event string
+}
+
+func EncodeUpdateMsg(event string, nod Node) *mailbox.Message {
+	byt, _ := json.Marshal(&UpdateMsg{
+		Event: event,
+		Nod:   nod,
+	})
+
+	return &mailbox.Message{
+		Body: byt,
+	}
+}
+
+func DecodeUpdateMsg(msg *mailbox.Message) UpdateMsg {
+	dmsg := UpdateMsg{}
+	json.Unmarshal(msg.Body, &dmsg)
+	return dmsg
 }
 
 // IDiscover discover interface

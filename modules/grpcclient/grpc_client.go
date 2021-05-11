@@ -2,7 +2,6 @@ package grpcclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -154,37 +153,33 @@ func (c *grpcClient) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
 	}
 
-	addServiceChannel := c.mb.GetTopic(discover.AddService).Sub(Name)
-	rmvServiceChannel := c.mb.GetTopic(discover.RemoveService).Sub(Name)
+	serviceUpdate := c.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
 
 	go func() {
 		for {
 			select {
-			case msg := <-addServiceChannel.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-
-				_, ok := c.connmap.Load(nod.Address)
-				if !ok {
-					conn, err := c.newconn(nod.Address)
-					if err != nil {
-						c.logger.Errorf("new grpc conn err %s", err.Error())
-					} else {
-						c.connmap.Store(nod.Address, conn)
+			case msg := <-serviceUpdate.Arrived():
+				dmsg := discover.DecodeUpdateMsg(msg)
+				if dmsg.Event == discover.EventAddService {
+					_, ok := c.connmap.Load(dmsg.Nod.Address)
+					if !ok {
+						conn, err := c.newconn(dmsg.Nod.Address)
+						if err != nil {
+							c.logger.Errorf("new grpc conn err %s", err.Error())
+						} else {
+							c.connmap.Store(dmsg.Nod.Address, conn)
+						}
 					}
-				}
-			case msg := <-rmvServiceChannel.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-
-				mc, ok := c.connmap.Load(nod.Address)
-				if ok {
-					conn := mc.(*grpc.ClientConn)
-					err = c.closeconn(conn)
-					if err != nil {
-						c.logger.Errorf("close grpc conn err %s", err.Error())
-					} else {
-						c.connmap.Delete(nod.Address)
+				} else if dmsg.Event == discover.EventRemoveService {
+					mc, ok := c.connmap.Load(dmsg.Nod.Address)
+					if ok {
+						conn := mc.(*grpc.ClientConn)
+						err = c.closeconn(conn)
+						if err != nil {
+							c.logger.Errorf("close grpc conn err %s", err.Error())
+						} else {
+							c.connmap.Delete(dmsg.Nod.Address)
+						}
 					}
 				}
 			}

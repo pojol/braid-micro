@@ -111,7 +111,7 @@ func TestLinkerTarget(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 
 	for _, v := range nods {
-		mb.GetTopic(discover.RemoveService).Pub(discover.EncodeRmvServiceMsg(v.ID, v.Name, v.Address))
+		mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(discover.EventRemoveService, v))
 	}
 
 	time.Sleep(time.Millisecond * 100)

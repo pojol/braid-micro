@@ -1,7 +1,6 @@
 package linkerredis
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -190,8 +189,7 @@ func (rl *redisLinker) Init() error {
 	}
 
 	tokenUnlink := rl.mb.GetTopic(linkcache.TokenUnlink).Sub(Name + "-" + ip)
-	removeService := rl.mb.GetTopic(discover.RemoveService).Sub(Name)
-	addService := rl.mb.GetTopic(discover.AddService).Sub(Name)
+	serviceUpdate := rl.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
 	changeState := rl.mb.GetTopic(elector.ChangeState).Sub(Name)
 
 	go func() {
@@ -202,21 +200,14 @@ func (rl *redisLinker) Init() error {
 				if token != "" && token != "nil" {
 					rl.Unlink(token)
 				}
-			case msg := <-removeService.Arrived():
-				dmsg := discover.DecodeRmvServiceMsg(msg)
-				if dmsg.Service != "" {
-					nod := discover.Node{
-						ID:      dmsg.ID,
-						Name:    dmsg.Service,
-						Address: dmsg.Addr,
-					}
-					rl.rmvOfflineService(nod)
-					rl.Down(nod)
+			case msg := <-serviceUpdate.Arrived():
+				dmsg := discover.DecodeUpdateMsg(msg)
+				if dmsg.Event == discover.EventRemoveService {
+					rl.rmvOfflineService(dmsg.Nod)
+					rl.Down(dmsg.Nod)
+				} else if dmsg.Event == discover.EventAddService {
+					rl.addOfflineService(dmsg.Nod)
 				}
-			case msg := <-addService.Arrived():
-				nod := discover.Node{}
-				json.Unmarshal(msg.Body, &nod)
-				rl.addOfflineService(nod)
 			case msg := <-changeState.Arrived():
 				statemsg := elector.DecodeStateChangeMsg(msg)
 				if statemsg.State != "" && rl.electorState != statemsg.State {

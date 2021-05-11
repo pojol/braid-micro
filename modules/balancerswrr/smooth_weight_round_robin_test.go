@@ -37,24 +37,36 @@ func TestWRR(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  4,
-		Name:    serviceName,
-	}))
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  2,
-		Name:    serviceName,
-	}))
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "C",
-		Address: "C",
-		Weight:  1,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "A",
+				Address: "A",
+				Name:    serviceName,
+				Weight:  4,
+			},
+		),
+	)
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "B",
+				Address: "B",
+				Name:    serviceName,
+				Weight:  2,
+			},
+		),
+	)
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "C",
+				Address: "C",
+				Name:    serviceName,
+				Weight:  1,
+			},
+		),
+	)
 
 	var tests = []struct {
 		ID string
@@ -88,24 +100,36 @@ func TestWRRDymc(t *testing.T) {
 
 	pmap := make(map[string]int)
 
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  1000,
-		Name:    serviceName,
-	}))
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  1000,
-		Name:    serviceName,
-	}))
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "C",
-		Address: "C",
-		Weight:  1000,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "A",
+				Address: "A",
+				Name:    serviceName,
+				Weight:  1000,
+			},
+		),
+	)
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "B",
+				Address: "B",
+				Name:    serviceName,
+				Weight:  1000,
+			},
+		),
+	)
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:      "C",
+				Address: "C",
+				Name:    serviceName,
+				Weight:  1000,
+			},
+		),
+	)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -114,10 +138,14 @@ func TestWRRDymc(t *testing.T) {
 		pmap[nod.ID]++
 	}
 
-	mb.GetTopic(discover.UpdateService).Pub(mailbox.NewMessage(discover.Node{
-		ID:     "A",
-		Weight: 500,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventUpdateService,
+			discover.Node{
+				ID:     "A",
+				Weight: 500,
+			},
+		),
+	)
 	time.Sleep(time.Millisecond * 100)
 
 	for i := 0; i < 100; i++ {
@@ -142,20 +170,34 @@ func TestWRROp(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:     "A",
-		Name:   serviceName,
-		Weight: 4,
-	}))
-	mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
-		ID:   "A",
-		Name: serviceName,
-	}))
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:     "B",
-		Name:   serviceName,
-		Weight: 2,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:     "A",
+				Name:   serviceName,
+				Weight: 4,
+			},
+		),
+	)
+
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventRemoveService,
+			discover.Node{
+				ID:   "A",
+				Name: serviceName,
+			},
+		),
+	)
+
+	mb.GetTopic(discover.ServiceUpdate).Pub(
+		discover.EncodeUpdateMsg(discover.EventAddService,
+			discover.Node{
+				ID:     "B",
+				Name:   serviceName,
+				Weight: 2,
+			},
+		),
+	)
 
 	time.Sleep(time.Millisecond * 500)
 	for i := 0; i < 10; i++ {
@@ -183,11 +225,17 @@ func BenchmarkWRR(b *testing.B) {
 	defer bm.Close()
 
 	for i := 0; i < 100; i++ {
-		mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-			ID:     strconv.Itoa(i),
-			Name:   serviceName,
-			Weight: i,
-		}))
+
+		mb.GetTopic(discover.ServiceUpdate).Pub(
+			discover.EncodeUpdateMsg(discover.EventAddService,
+				discover.Node{
+					ID:     strconv.Itoa(i),
+					Name:   serviceName,
+					Weight: i,
+				},
+			),
+		)
+
 	}
 
 	time.Sleep(time.Millisecond * 1000)

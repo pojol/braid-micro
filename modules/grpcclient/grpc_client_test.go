@@ -63,12 +63,15 @@ func TestMain(m *testing.M) {
 	s.Run()
 
 	// 伪造一个节点用于测试
-	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
-		ID:      "testnod",
-		Name:    "testgrpcclient",
-		Address: "http://localhost:1216",
-		Weight:  100,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "testnod",
+			Name:    "testgrpcclient",
+			Address: "http://localhost:1216",
+			Weight:  100,
+		},
+	))
 
 	m.Run()
 }
