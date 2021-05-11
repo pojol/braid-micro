@@ -49,6 +49,7 @@ func TestMain(m *testing.M) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestMain", log)
 
 	db := module.GetBuilder(discoverconsul.Name)
@@ -62,7 +63,7 @@ func TestMain(m *testing.M) {
 	s.Run()
 
 	// 伪造一个节点用于测试
-	mb.Topic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "testnod",
 		Name:    "testgrpcclient",
 		Address: "http://localhost:1216",
@@ -78,6 +79,7 @@ func TestInvoke(t *testing.T) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestInvoke", log)
 
 	b := client.GetBuilder(Name)
@@ -108,6 +110,7 @@ func TestInvokeByLink(t *testing.T) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestInvokeByLink", log)
 
 	lb := module.GetBuilder(linkerredis.Name)
@@ -147,6 +150,7 @@ func TestParm(t *testing.T) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestParm", log)
 
 	b := client.GetBuilder(Name)

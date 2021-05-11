@@ -28,6 +28,7 @@ func TestPlugin(t *testing.T) {
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+		mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}),
 	)
 
 	b.RegistModule(
@@ -81,13 +82,16 @@ func TestMutiMailBox(t *testing.T) {
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
 		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+		mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}),
 	)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	topic := Mailbox().Topic("TestMutiMailBox")
-	c1 := topic.Sub("Normal", mailbox.ScopeProc)
+	Mailbox().RegistTopic("TestMutiMailBox", mailbox.ScopeProc)
+
+	topic := Mailbox().GetTopic("TestMutiMailBox")
+	c1 := topic.Sub("Normal")
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
@@ -100,6 +104,7 @@ func TestMutiMailBox(t *testing.T) {
 		for {
 			select {
 			case <-c1.Arrived():
+				wg.Done()
 			}
 		}
 	}()
@@ -113,8 +118,9 @@ func TestMutiMailBox(t *testing.T) {
 	case <-done:
 		// pass
 		fmt.Println("done")
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(time.Second):
 		// time out
+		fmt.Println("timeout")
 		t.FailNow()
 	}
 }

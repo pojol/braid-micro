@@ -39,6 +39,7 @@ func TestLinkerTarget(t *testing.T) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("testlinkertarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
@@ -73,7 +74,7 @@ func TestLinkerTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
@@ -104,13 +105,13 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	mb.Topic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token01")})
-	mb.Topic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token02")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token01")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 
 	for _, v := range nods {
-		mb.Topic(discover.RemoveService).Pub(discover.EncodeRmvServiceMsg(v.ID, v.Name, v.Address))
+		mb.GetTopic(discover.RemoveService).Pub(discover.EncodeRmvServiceMsg(v.ID, v.Name, v.Address))
 	}
 
 	time.Sleep(time.Millisecond * 100)
@@ -128,6 +129,7 @@ func TestLocalTarget(t *testing.T) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestLocalTarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
@@ -160,7 +162,7 @@ func TestLocalTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
@@ -213,6 +215,7 @@ func BenchmarkLink(b *testing.B) {
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
 	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("benchmarklink", log)
 
 	eb := module.GetBuilder(electorconsul.Name)

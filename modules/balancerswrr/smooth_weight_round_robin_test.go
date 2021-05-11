@@ -37,21 +37,19 @@ func TestWRR(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
@@ -90,21 +88,19 @@ func TestWRRDymc(t *testing.T) {
 
 	pmap := make(map[string]int)
 
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  1000,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  1000,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1000,
@@ -118,7 +114,7 @@ func TestWRRDymc(t *testing.T) {
 		pmap[nod.ID]++
 	}
 
-	mb.Pub(mailbox.Proc, discover.DiscoverUpdateService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.UpdateService).Pub(mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Weight: 500,
 	}))
@@ -146,18 +142,16 @@ func TestWRROp(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:     "A",
 		Name:   serviceName,
 		Weight: 4,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverRmvService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
 		ID:   "A",
 		Name: serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:     "B",
 		Name:   serviceName,
 		Weight: 2,
@@ -189,7 +183,7 @@ func BenchmarkWRR(b *testing.B) {
 	defer bm.Close()
 
 	for i := 0; i < 100; i++ {
-		mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+		mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 			ID:     strconv.Itoa(i),
 			Name:   serviceName,
 			Weight: i,

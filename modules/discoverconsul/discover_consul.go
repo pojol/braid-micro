@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/3rd/consul"
+	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/linkcache"
@@ -73,6 +74,10 @@ func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, l
 		passingMap: make(map[string]*syncNode),
 	}
 
+	mb.RegistTopic(discover.AddService, mailbox.ScopeProc)
+	mb.RegistTopic(discover.RemoveService, mailbox.ScopeProc)
+	mb.RegistTopic(discover.UpdateService, mailbox.ScopeProc)
+
 	return e, nil
 }
 
@@ -84,18 +89,26 @@ func (dc *consulDiscover) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", dc.parm.Name, "consul", dc.parm.Address)
 	}
 
-	linknumC, _ := dc.mb.Sub(mailbox.Cluster, linkcache.LinkcacheServiceLinkNum).Shared()
+	ip, err := utils.GetLocalIP()
+	if err != nil {
+		return fmt.Errorf("%v GetLocalIP err %v", dc.parm.Name, err.Error())
+	}
+	linkC := dc.mb.GetTopic(linkcache.ServiceLinkNum).Sub(Name + "-" + ip)
 
-	linknumC.OnArrived(func(msg mailbox.Message) error {
-		lninfo := linkcache.DecodeLinkNumMsg(&msg)
-		dc.lock.Lock()
-		defer dc.lock.Unlock()
+	go func() {
+		for {
+			select {
+			case msg := <-linkC.Arrived():
+				lninfo := linkcache.DecodeLinkNumMsg(msg)
+				dc.lock.Lock()
+				defer dc.lock.Unlock()
 
-		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+				if _, ok := dc.passingMap[lninfo.ID]; ok {
+					dc.passingMap[lninfo.ID].linknum = lninfo.Num
+				}
+			}
 		}
-		return nil
-	})
+	}()
 
 	return nil
 }
@@ -172,13 +185,12 @@ func (dc *consulDiscover) discoverImpl() {
 			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.mb.PubAsync(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+			dc.mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 				ID:      sn.id,
 				Name:    sn.service,
 				Address: sn.address,
 				Weight:  sn.physWeight,
 			}))
-
 		}
 	}
 
@@ -186,7 +198,7 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.mb.PubAsync(mailbox.Proc, discover.DiscoverRmvService, mailbox.NewMessage(discover.Node{
+			dc.mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
 				ID:      dc.passingMap[k].id,
 				Name:    dc.passingMap[k].service,
 				Address: dc.passingMap[k].address,
@@ -218,7 +230,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.mb.PubAsync(mailbox.Proc, discover.DiscoverUpdateService, mailbox.NewMessage(discover.Node{
+		dc.mb.GetTopic(discover.UpdateService).Pub(mailbox.NewMessage(discover.Node{
 			ID:     v.id,
 			Name:   v.service,
 			Weight: nweight,

@@ -3,7 +3,6 @@ package balancergroupbase
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/pojol/braid-go/module"
@@ -87,9 +86,9 @@ type baseBalancerGroup struct {
 
 	parm Parm
 
-	addConsumer mailbox.IConsumer
-	rmvConsumer mailbox.IConsumer
-	upConsumer  mailbox.IConsumer
+	addConsumer mailbox.IChannel
+	rmvConsumer mailbox.IChannel
+	upConsumer  mailbox.IChannel
 
 	logger logger.ILogger
 
@@ -100,89 +99,75 @@ type baseBalancerGroup struct {
 }
 
 func (bbg *baseBalancerGroup) Init() error {
-	var err error
 
-	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverAddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverAddService)
-	}
-
-	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverRmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverRmvService)
-	}
-
-	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.DiscoverUpdateService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.DiscoverUpdateService)
-	}
+	bbg.addConsumer = bbg.mb.GetTopic(discover.AddService).Sub(Name)
+	bbg.rmvConsumer = bbg.mb.GetTopic(discover.RemoveService).Sub(Name)
+	bbg.upConsumer = bbg.mb.GetTopic(discover.UpdateService).Sub(Name)
 
 	return nil
 }
 
 func (bbg *baseBalancerGroup) Run() {
 
-	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
+	go func() {
+		for {
+			select {
+			case msg := <-bbg.addConsumer.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
 
-		bbg.lock.Lock()
-		for strategy := range bbg.group {
+				bbg.lock.Lock()
+				for strategy := range bbg.group {
 
-			if !bbg.group[strategy].exist(nod.Name) {
-				b := balancer.GetBuilder(strategy)
-				ib, _ := b.Build(bbg.logger)
-				bbg.group[strategy].targets[nod.Name] = ib
-				bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
-			}
+					if !bbg.group[strategy].exist(nod.Name) {
+						b := balancer.GetBuilder(strategy)
+						ib, _ := b.Build(bbg.logger)
+						bbg.group[strategy].targets[nod.Name] = ib
+						bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
+					}
 
-			bbg.group[strategy].targets[nod.Name].Add(nod)
-		}
-		bbg.lock.Unlock()
-		return nil
-	})
-
-	bbg.rmvConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		bbg.lock.Lock()
-
-		for k := range bbg.group {
-			if _, ok := bbg.group[k]; ok {
-				b, err := bbg.group[k].get(nod.Name)
-				if err != nil {
-					bbg.logger.Errorf("remove service err %s", err.Error())
-					break
+					bbg.group[strategy].targets[nod.Name].Add(nod)
 				}
+				bbg.lock.Unlock()
+			case msg := <-bbg.rmvConsumer.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
 
-				b.Rmv(nod)
-			}
-		}
-		bbg.lock.Unlock()
-		return nil
-	})
+				bbg.lock.Lock()
 
-	bbg.upConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
+				for k := range bbg.group {
+					if _, ok := bbg.group[k]; ok {
+						b, err := bbg.group[k].get(nod.Name)
+						if err != nil {
+							bbg.logger.Errorf("remove service err %s", err.Error())
+							break
+						}
 
-		bbg.lock.Lock()
-
-		for k := range bbg.group {
-			if _, ok := bbg.group[k]; ok {
-				b, err := bbg.group[k].get(nod.Name)
-				if err != nil {
-					bbg.logger.Errorf("update service err %s", err.Error())
-					break
+						b.Rmv(nod)
+					}
 				}
+				bbg.lock.Unlock()
+			case msg := <-bbg.upConsumer.Arrived():
+				nod := discover.Node{}
+				json.Unmarshal(msg.Body, &nod)
 
-				b.Update(nod)
+				bbg.lock.Lock()
+
+				for k := range bbg.group {
+					if _, ok := bbg.group[k]; ok {
+						b, err := bbg.group[k].get(nod.Name)
+						if err != nil {
+							bbg.logger.Errorf("update service err %s", err.Error())
+							break
+						}
+
+						b.Update(nod)
+					}
+				}
+				bbg.lock.Unlock()
 			}
 		}
-		bbg.lock.Unlock()
-		return nil
-	})
+	}()
 
 }
 

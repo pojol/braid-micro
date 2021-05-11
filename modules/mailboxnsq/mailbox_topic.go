@@ -3,9 +3,13 @@ package mailboxnsq
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
 	"sync"
 	"sync/atomic"
 
+	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/internal/braidsync"
 	"github.com/pojol/braid-go/module/mailbox"
 )
@@ -13,9 +17,11 @@ import (
 type mailboxTopic struct {
 	Name    string
 	mailbox *nsqMailbox
+	scope   mailbox.ScopeTy
 
 	msgch    chan *mailbox.Message
 	exitFlag int32
+	producer []*nsq.Producer
 
 	waitGroup braidsync.WaitGroupWrapper
 
@@ -28,16 +34,68 @@ type mailboxTopic struct {
 	channelMap map[string]*mailboxChannel
 }
 
-func newTopic(name string, n *nsqMailbox) *mailboxTopic {
+func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 
 	topic := &mailboxTopic{
 		Name:              name,
 		mailbox:           n,
+		scope:             scope,
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
 		msgch:             make(chan *mailbox.Message, 4096),
 		channelMap:        make(map[string]*mailboxChannel),
+	}
+
+	if scope == mailbox.ScopeCluster {
+		cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
+		var err error
+		var cp *nsq.Producer
+
+		for _, addr := range n.parm.LookupAddress {
+
+			url := fmt.Sprintf("http://%s/topic/create?topic=%s",
+				addr,
+				name,
+			)
+			req, err := http.NewRequest("POST", url, nil)
+			if err != nil {
+				n.log.Warn(err.Error())
+			}
+			resp, _ := http.DefaultClient.Do(req)
+			if resp != nil {
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+			}
+
+		}
+
+		for k, addr := range n.parm.NsqdHttpAddress {
+			cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
+			if err != nil {
+				n.log.Errorf("Channel new nsq producer err %v", err.Error())
+				continue
+			}
+
+			if err = cp.Ping(); err != nil {
+				n.log.Errorf("Channel nsq producer ping err %v", err.Error())
+				continue
+			}
+
+			cps = append(cps, cp)
+
+			url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
+			resp, err := http.Post(url, "application/json", nil)
+			if err != nil {
+				n.log.Warn(err.Error())
+			}
+			if resp != nil {
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+			}
+		}
+
+		topic.producer = cps
 	}
 
 	topic.waitGroup.Wrap(topic.loop)
@@ -53,10 +111,10 @@ func (t *mailboxTopic) start() {
 	}
 }
 
-func (t *mailboxTopic) Sub(name string, scope mailbox.ScopeTy) mailbox.IChannel {
+func (t *mailboxTopic) Sub(name string) mailbox.IChannel {
 
 	t.Lock()
-	c, isNew := t.getOrCreateChannel(name, scope)
+	c, isNew := t.getOrCreateChannel(name, t.scope)
 	t.Unlock()
 
 	if isNew {
@@ -156,10 +214,15 @@ func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
 		return errors.New("exiting")
 	}
 
-	err := t.put(msg)
-	if err != nil {
-		return err
+	if t.scope == mailbox.ScopeProc {
+		err := t.put(msg)
+		if err != nil {
+			return err
+		}
+	} else {
+		t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
 	}
+
 	return nil
 }
 

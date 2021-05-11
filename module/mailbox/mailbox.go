@@ -42,19 +42,29 @@ func NewMessage(body interface{}) *Message {
 
 type IChannel interface {
 	Put(*Message)
+
 	Arrived() <-chan *Message
+
 	Exit() error
 }
 
 type ITopic interface {
+	// Pub 向 topic 中发送一条消息
 	Pub(*Message) error
-	Sub(name string, scope ScopeTy) IChannel
+
+	// Sub 向 topic 中添加一个用于消费的 channel
+	// 如果在一个 topic 中注册同名的 channel 消息仅会被其中的一个消费
+	Sub(name string) IChannel
 
 	Exit() error
 }
 
 type IMailbox interface {
-	Topic(name string) ITopic
+	// RegistTopic 注册 topic
+	RegistTopic(name string, scope ScopeTy) (ITopic, error)
+
+	// GetTopic 获取 mailbox 中的一个 topic （线程安全
+	GetTopic(name string) ITopic
 }
 
 var (

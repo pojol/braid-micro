@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
@@ -147,7 +148,8 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		},
 	}
 
-	//lc.mb.PubAsync(mailbox.Cluster, linkcache.LinkcacheTokenUnlink, &mailbox.Message{Body: []byte("nil")})
+	lc.mb.RegistTopic(linkcache.TokenUnlink, mailbox.ScopeCluster)
+	lc.mb.RegistTopic(linkcache.ServiceLinkNum, mailbox.ScopeCluster)
 
 	return lc, nil
 }
@@ -182,10 +184,15 @@ type redisLinker struct {
 func (rl *redisLinker) Init() error {
 	var err error
 
-	tokenUnlink := rl.mb.Topic(linkcache.TokenUnlink).Sub(Name, mailbox.ScopeCluster)
-	removeService := rl.mb.Topic(discover.RemoveService).Sub(Name, mailbox.ScopeCluster)
-	addService := rl.mb.Topic(discover.AddService).Sub(Name, mailbox.ScopeCluster)
-	changeState := rl.mb.Topic(elector.ChangeState).Sub(Name, mailbox.ScopeProc)
+	ip, err := utils.GetLocalIP()
+	if err != nil {
+		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
+	}
+
+	tokenUnlink := rl.mb.GetTopic(linkcache.TokenUnlink).Sub(Name + "-" + ip)
+	removeService := rl.mb.GetTopic(discover.RemoveService).Sub(Name)
+	addService := rl.mb.GetTopic(discover.AddService).Sub(Name)
+	changeState := rl.mb.GetTopic(elector.ChangeState).Sub(Name)
 
 	go func() {
 		for {
@@ -256,7 +263,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		rl.mb.Topic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
+		rl.mb.GetTopic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
 	}
 }
 

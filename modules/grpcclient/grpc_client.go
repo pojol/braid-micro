@@ -154,11 +154,8 @@ func (c *grpcClient) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
 	}
 
-	addService := c.mb.Topic(discover.AddService)
-	addServiceChannel := addService.Channel(Name, mailbox.ScopeProc)
-
-	rmvService := c.mb.Topic(discover.RemoveService)
-	rmvServiceChannel := rmvService.Channel(Name, mailbox.ScopeProc)
+	addServiceChannel := c.mb.GetTopic(discover.AddService).Sub(Name)
+	rmvServiceChannel := c.mb.GetTopic(discover.RemoveService).Sub(Name)
 
 	go func() {
 		for {

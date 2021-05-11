@@ -52,6 +52,8 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, 
 		logger: logger,
 	}
 
+	e.mb.RegistTopic(elector.ChangeState, mailbox.ScopeProc)
+
 	return e, nil
 }
 
@@ -99,10 +101,10 @@ func (e *consulElection) watch() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+				e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 				e.logger.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.mb.Topic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
+				e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

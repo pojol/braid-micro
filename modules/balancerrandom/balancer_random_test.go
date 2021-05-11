@@ -39,21 +39,19 @@ func TestRandomBalancer(t *testing.T) {
 	_, err := bg.Pick(Name, serviceName)
 	assert.NotEqual(t, err, nil)
 
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "A",
 		Address: "A",
 		Weight:  4,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "B",
 		Address: "B",
 		Weight:  2,
 		Name:    serviceName,
 	}))
-
-	mb.Pub(mailbox.Proc, discover.DiscoverAddService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.AddService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Weight:  1,
@@ -76,7 +74,7 @@ func TestRandomBalancer(t *testing.T) {
 	assert.Equal(t, true, (btick >= 9000 && btick <= 11000))
 	assert.Equal(t, true, (ctick >= 9000 && ctick <= 11000))
 
-	mb.Pub(mailbox.Proc, discover.DiscoverRmvService, mailbox.NewMessage(discover.Node{
+	mb.GetTopic(discover.RemoveService).Pub(mailbox.NewMessage(discover.Node{
 		ID:      "C",
 		Address: "C",
 		Name:    serviceName,

@@ -19,18 +19,24 @@ func TestProcNotify(t *testing.T) {
 	mb, _ := b.Build("TestProcNotify", log)
 
 	var tick uint64
+	var tickmu sync.Mutex
 
-	topic := mb.Topic("TestProcNotify")
-	channel1 := topic.Sub("Normal", mailbox.ScopeProc)
-	channel2 := topic.Sub("Normal", mailbox.ScopeProc)
+	mb.RegistTopic("TestProcNotify", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcNotify")
+	channel1 := topic.Sub("Normal")
+	channel2 := topic.Sub("Normal")
 
 	go func() {
 		for {
 			select {
 			case <-channel1.Arrived():
+				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
+				tickmu.Unlock()
 			case <-channel2.Arrived():
+				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
+				tickmu.Unlock()
 			}
 		}
 	}()
@@ -39,7 +45,9 @@ func TestProcNotify(t *testing.T) {
 
 	select {
 	case <-time.After(time.Second):
+		tickmu.Lock()
 		assert.Equal(t, tick, uint64(1))
+		tickmu.Unlock()
 	}
 }
 
@@ -52,9 +60,10 @@ func TestProcBoradcast(t *testing.T) {
 	done := make(chan struct{})
 	wg.Add(2)
 
-	topic := mb.Topic("TestProcBoradcast")
-	channel1 := topic.Sub("Boradcast_Consumer1", mailbox.ScopeProc)
-	channel2 := topic.Sub("Boradcast_Consumer2", mailbox.ScopeProc)
+	mb.RegistTopic("TestProcBoradcast", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcBoradcast")
+	channel1 := topic.Sub("Boradcast_Consumer1")
+	channel2 := topic.Sub("Boradcast_Consumer2")
 
 	go func() {
 		for {
@@ -89,9 +98,10 @@ func BenchmarkTestProc(b *testing.B) {
 	mb, _ := mbb.Build("BenchmarkTestProc", log)
 	body := []byte("msg")
 
-	topic := mb.Topic("BenchmarkTestProc")
-	c1 := topic.Sub("Normal", mailbox.ScopeProc)
-	c2 := topic.Sub("Normal", mailbox.ScopeProc)
+	mb.RegistTopic("BenchmarkTestProc", mailbox.ScopeProc)
+	topic := mb.GetTopic("BenchmarkTestProc")
+	c1 := topic.Sub("Normal")
+	c2 := topic.Sub("Normal")
 
 	go func() {
 		for {

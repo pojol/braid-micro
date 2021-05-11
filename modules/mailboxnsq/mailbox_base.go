@@ -1,6 +1,7 @@
 package mailboxnsq
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -41,6 +42,9 @@ func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (m
 	}
 
 	rand.Seed(time.Now().UnixNano())
+	if len(p.NsqdAddress) != len(p.NsqdHttpAddress) {
+		return nil, fmt.Errorf("parm nsqd len(tcp addr) != len(http addr)")
+	}
 
 	nsqm := &nsqMailbox{
 		parm:     p,
@@ -60,7 +64,27 @@ type nsqMailbox struct {
 	topicMap map[string]*mailboxTopic
 }
 
-func (nmb *nsqMailbox) Topic(name string) mailbox.ITopic {
+func (nmb *nsqMailbox) RegistTopic(name string, scope mailbox.ScopeTy) (mailbox.ITopic, error) {
+
+	nmb.Lock()
+	t, ok := nmb.topicMap[name]
+	if ok {
+		nmb.Unlock()
+		return t, nil
+	}
+
+	t = newTopic(name, scope, nmb)
+	nmb.topicMap[name] = t
+	nmb.Unlock()
+	nmb.log.Infof("Topic %v created", name)
+
+	// start loop
+	t.start()
+
+	return t, nil
+}
+
+func (nmb *nsqMailbox) GetTopic(name string) mailbox.ITopic {
 
 	nmb.RLock()
 	t, ok := nmb.topicMap[name]
@@ -69,22 +93,13 @@ func (nmb *nsqMailbox) Topic(name string) mailbox.ITopic {
 		return t
 	}
 
-	nmb.Lock()
-	t, ok = nmb.topicMap[name]
-	if ok {
-		nmb.Unlock()
-		return t
+	nt, err := nmb.RegistTopic(name, mailbox.ScopeProc)
+	if err != nil {
+		panic(err)
 	}
+	nmb.log.Warnf("Get topic warning %v undefined! register proc topic", name)
 
-	t = newTopic(name, nmb)
-	nmb.topicMap[name] = t
-	nmb.Unlock()
-	nmb.log.Infof("Topic %v created", name)
-
-	// start loop
-	t.start()
-
-	return t
+	return nt
 }
 
 func init() {

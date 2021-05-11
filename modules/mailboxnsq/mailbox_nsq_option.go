@@ -6,8 +6,9 @@ import "github.com/nsqio/go-nsq"
 type Parm struct {
 	nsqCfg nsq.Config
 
-	LookupAddress []string
-	Address       []string
+	LookupAddress   []string
+	NsqdAddress     []string
+	NsqdHttpAddress []string
 
 	Channel     string
 	ServiceName string
@@ -42,7 +43,13 @@ func WithLookupAddr(addr []string) Option {
 // WithNsqdAddr nsqd addr
 func WithNsqdAddr(addr []string) Option {
 	return func(c *Parm) {
-		c.Address = addr
+		c.NsqdAddress = addr
+	}
+}
+
+func WithNsqdHTTPAddr(addr []string) Option {
+	return func(c *Parm) {
+		c.NsqdHttpAddress = addr
 	}
 }
 

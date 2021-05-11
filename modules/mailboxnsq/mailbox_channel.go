@@ -1,10 +1,11 @@
 package mailboxnsq
 
 import (
-	"math/rand"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
 
-	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/module/mailbox"
 )
 
@@ -18,8 +19,7 @@ type mailboxChannel struct {
 	sync.RWMutex
 	clusterConsumer IConsumer
 
-	producer []*nsq.Producer
-	msgCh    chan *mailbox.Message
+	msgCh chan *mailbox.Message
 
 	mailbox *nsqMailbox
 
@@ -39,26 +39,28 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 	}
 
 	if scope == mailbox.ScopeCluster {
-		cps := make([]*nsq.Producer, 0, len(n.parm.Address))
-		var err error
-		var cp *nsq.Producer
 
-		for _, addr := range n.parm.Address {
-			cp, err = nsq.NewProducer(addr, nsq.NewConfig())
+		for _, addr := range n.parm.NsqdHttpAddress {
+			url := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
+				addr,
+				topicName,
+				channelName,
+			)
+
+			fmt.Println(url)
+			req, _ := http.NewRequest("POST", url, nil)
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				n.log.Errorf("Channel new nsq producer err %v", err.Error())
-				continue
+				n.log.Warnf("%v request err %v", url, err.Error())
 			}
 
-			if err = cp.Ping(); err != nil {
-				n.log.Errorf("Channel nsq producer ping err %v", err.Error())
-				continue
+			if resp != nil {
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
 			}
-
-			cps = append(cps, cp)
-			c.producer = cps
 		}
 
+		var err error
 		c.clusterConsumer, err = newClusterConsumer(topicName, channelName, n)
 		if err != nil {
 			n.log.Errorf("Channel nsq create consumer err %v", err.Error())
@@ -69,14 +71,10 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 }
 
 func (c *mailboxChannel) Put(msg *mailbox.Message) {
-	if c.scope == mailbox.ScopeProc {
-		select {
-		case c.msgCh <- msg:
-			//default: 就阻塞在这里吧。。
-			//	c.mailbox.log.Errorf("put msg err channel %v is full", c.Name)
-		}
-	} else if c.scope == mailbox.ScopeCluster {
-		c.producer[rand.Intn(len(c.producer))].Publish(c.TopicName, msg.Body)
+	select {
+	case c.msgCh <- msg:
+		//default: 就阻塞在这里吧。。
+		//	c.mailbox.log.Errorf("put msg err channel %v is full", c.Name)
 	}
 }
 
