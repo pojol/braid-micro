@@ -64,7 +64,7 @@ func TestClusterBroadcast(t *testing.T) {
 	select {
 	case <-done:
 		// pass
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")
 		t.FailNow()
 	}
@@ -109,7 +109,7 @@ func TestClusterNotify(t *testing.T) {
 	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("msg")})
 
 	select {
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 5):
 		tickmu.Lock()
 		assert.Equal(t, tick, uint64(1))
 		tickmu.Unlock()
