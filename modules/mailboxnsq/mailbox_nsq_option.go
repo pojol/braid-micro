@@ -13,6 +13,8 @@ type Parm struct {
 	Channel     string
 	ServiceName string
 
+	ConcurrentHandler int32 // consumer 接收句柄的并发数（默认1
+
 	nsqLogLv nsq.LogLevel
 }
 
@@ -57,5 +59,12 @@ func WithNsqdHTTPAddr(addr []string) Option {
 func WithNsqLogLv(lv nsq.LogLevel) Option {
 	return func(c *Parm) {
 		c.nsqLogLv = lv
+	}
+}
+
+// WithHandlerConcurrent 消费者接收句柄的并发数量（默认1
+func WithHandlerConcurrent(cnt int32) Option {
+	return func(c *Parm) {
+		c.ConcurrentHandler = cnt
 	}
 }

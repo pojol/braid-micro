@@ -34,8 +34,9 @@ func (nb *nsqMailboxBuilder) Name() string {
 
 func (nb *nsqMailboxBuilder) Build(serviceName string, logger logger.ILogger) (mailbox.IMailbox, error) {
 	p := Parm{
-		ServiceName: serviceName,
-		nsqLogLv:    nsq.LogLevelWarning,
+		ServiceName:       serviceName,
+		nsqLogLv:          nsq.LogLevelWarning,
+		ConcurrentHandler: 1,
 	}
 	for _, opt := range nb.opts {
 		opt.(Option)(&p)

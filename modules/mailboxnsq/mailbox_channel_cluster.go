@@ -44,7 +44,7 @@ func newClusterConsumer(topicName, channelName string, n *nsqMailbox) (IConsumer
 	nsqConsumer.AddConcurrentHandlers(&consumerHandler{
 		c:       consumer,
 		channel: channelName,
-	}, 1)
+	}, int(n.parm.ConcurrentHandler))
 
 	if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
 		err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
