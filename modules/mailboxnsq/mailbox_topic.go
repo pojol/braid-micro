@@ -64,6 +64,9 @@ func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 			}
 			resp, _ := http.DefaultClient.Do(req)
 			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					n.log.Warnf("lookupd create topic request status err %v", resp.StatusCode)
+				}
 				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 			}
@@ -90,6 +93,10 @@ func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 				n.log.Warn(err.Error())
 			}
 			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					n.log.Warnf("nsqd create topic request status err %v", resp.StatusCode)
+				}
+
 				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 			}

@@ -54,6 +54,10 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 			}
 
 			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					n.log.Warnf("nsqd create channel request status err %v", resp.StatusCode)
+				}
+
 				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
 			}
