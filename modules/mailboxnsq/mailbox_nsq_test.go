@@ -69,7 +69,7 @@ func TestClusterBroadcast(t *testing.T) {
 	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")
 
-		res, _ := http.Get("http://127.0.0.1:4151/info")
+		res, _ := http.Get("http://127.0.0.1:4151/stats")
 		byt, _ := ioutil.ReadAll(res.Body)
 		fmt.Println(string(byt))
 		res.Body.Close()
