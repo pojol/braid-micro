@@ -59,7 +59,6 @@ func TestClusterBroadcast(t *testing.T) {
 		close(done)
 	}()
 
-	time.Sleep(time.Second)
 	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("test msg")})
 
 	select {
@@ -102,7 +101,6 @@ func TestClusterNotify(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(time.Second)
 	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("msg")})
 
 	select {
