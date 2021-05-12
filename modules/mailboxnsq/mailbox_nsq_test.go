@@ -74,6 +74,12 @@ func TestClusterBroadcast(t *testing.T) {
 		fmt.Println(string(byt))
 		res.Body.Close()
 
+		fmt.Println("-------------------")
+		lookupdRes, _ := http.Get("http://127.0.0.1:4161/channels")
+		lookupByt, _ := ioutil.ReadAll(lookupdRes.Body)
+		fmt.Println(string(lookupByt))
+		lookupdRes.Body.Close()
+
 		t.FailNow()
 	}
 

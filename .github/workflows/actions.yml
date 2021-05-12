@@ -29,13 +29,13 @@ jobs:
           - 8600:8600/tcp
           - 8600:8600/udp
       nsqd:
-        image: nsqio/nsq
+        image: nsqio/nsq:v1.2.0
         options: --entrypoint /bin/nsqd
         ports:
           - 4150:4150
           - 4151:4151
       nsqlookupd:
-        image: nsqio/nsq
+        image: nsqio/nsq:v1.2.0
         options: --entrypoint /bin/nsqlookupd
         ports:
           - 4160:4160
