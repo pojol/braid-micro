@@ -52,7 +52,7 @@ func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 		var err error
 		var cp *nsq.Producer
 
-		for _, addr := range n.parm.LookupAddress {
+		for _, addr := range n.parm.LookupdAddress {
 
 			url := fmt.Sprintf("http://%s/topic/create?topic=%s",
 				addr,

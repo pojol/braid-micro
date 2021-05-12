@@ -41,14 +41,21 @@ func newClusterConsumer(topicName, channelName string, n *nsqMailbox) (IConsumer
 	}
 	nsqConsumer.SetLoggerLevel(n.parm.nsqLogLv)
 
-	nsqConsumer.AddHandler(&consumerHandler{
+	nsqConsumer.AddConcurrentHandlers(&consumerHandler{
 		c:       consumer,
 		channel: channelName,
-	})
+	}, 1)
 
-	err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupAddress)
-	if err != nil {
-		return nil, err
+	if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
+		err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupdAddress)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	n.log.Infof("Cluster consumer %v created", channelName)

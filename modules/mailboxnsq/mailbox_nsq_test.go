@@ -28,7 +28,7 @@ func TestClusterBroadcast(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	b.AddOption(WithLookupAddr([]string{}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
@@ -74,12 +74,6 @@ func TestClusterBroadcast(t *testing.T) {
 		fmt.Println(string(byt))
 		res.Body.Close()
 
-		fmt.Println("-------------------")
-		lookupdRes, _ := http.Get("http://127.0.0.1:4161/channels")
-		lookupByt, _ := ioutil.ReadAll(lookupdRes.Body)
-		fmt.Println(string(lookupByt))
-		lookupdRes.Body.Close()
-
 		t.FailNow()
 	}
 
@@ -89,7 +83,7 @@ func TestClusterNotify(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	b.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
+	b.AddOption(WithLookupAddr([]string{}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
