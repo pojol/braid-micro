@@ -2,6 +2,8 @@ package mailboxnsq
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -66,6 +68,12 @@ func TestClusterBroadcast(t *testing.T) {
 		// pass
 	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")
+
+		res, _ := http.Get("http://127.0.0.1:4151/info")
+		byt, _ := ioutil.ReadAll(res.Body)
+		fmt.Println(string(byt))
+		res.Body.Close()
+
 		t.FailNow()
 	}
 

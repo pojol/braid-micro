@@ -11,7 +11,6 @@ type consumerHandler struct {
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
-	ch.c.mailbox.log.Debug("recv msg")
 	ch.c.Put(&mailbox.Message{
 		Body: msg.Body,
 	})

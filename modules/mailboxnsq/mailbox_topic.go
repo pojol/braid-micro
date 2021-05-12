@@ -227,7 +227,6 @@ func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
 			return err
 		}
 	} else {
-		t.mailbox.log.Debugf("pub msg %v", t.Name)
 		t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
 	}
 
