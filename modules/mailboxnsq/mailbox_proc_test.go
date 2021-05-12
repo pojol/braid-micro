@@ -19,7 +19,6 @@ func TestProcNotify(t *testing.T) {
 	mb, _ := b.Build("TestProcNotify", log)
 
 	var tick uint64
-	var tickmu sync.Mutex
 
 	mb.RegistTopic("TestProcNotify", mailbox.ScopeProc)
 	topic := mb.GetTopic("TestProcNotify")
@@ -30,13 +29,9 @@ func TestProcNotify(t *testing.T) {
 		for {
 			select {
 			case <-channel1.Arrived():
-				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
-				tickmu.Unlock()
 			case <-channel2.Arrived():
-				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
-				tickmu.Unlock()
 			}
 		}
 	}()
@@ -45,9 +40,7 @@ func TestProcNotify(t *testing.T) {
 
 	select {
 	case <-time.After(time.Second):
-		tickmu.Lock()
-		assert.Equal(t, tick, uint64(1))
-		tickmu.Unlock()
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 	}
 }
 

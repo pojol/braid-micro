@@ -47,7 +47,6 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 				channelName,
 			)
 
-			fmt.Println(url)
 			req, _ := http.NewRequest("POST", url, nil)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {

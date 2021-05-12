@@ -82,7 +82,6 @@ func TestClusterNotify(t *testing.T) {
 	mb, _ := b.Build("TestClusterNotify", log)
 
 	var tick uint64
-	var tickmu sync.Mutex
 
 	topic := "test.clusterNotify"
 
@@ -95,13 +94,9 @@ func TestClusterNotify(t *testing.T) {
 		for {
 			select {
 			case <-channel1.Arrived():
-				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
-				tickmu.Unlock()
 			case <-channel2.Arrived():
-				tickmu.Lock()
 				atomic.AddUint64(&tick, 1)
-				tickmu.Unlock()
 			}
 		}
 	}()
@@ -110,9 +105,7 @@ func TestClusterNotify(t *testing.T) {
 
 	select {
 	case <-time.After(time.Second * 5):
-		tickmu.Lock()
-		assert.Equal(t, tick, uint64(1))
-		tickmu.Unlock()
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 	}
 
 }
