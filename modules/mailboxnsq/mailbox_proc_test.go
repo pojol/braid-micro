@@ -34,10 +34,11 @@ func TestProcNotify(t *testing.T) {
 
 	topic.Pub(&mailbox.Message{Body: []byte("msg")})
 
-	select {
-	case <-time.After(time.Second):
+	for {
+		<-time.After(time.Second)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 	}
+
 }
 
 func TestProcExit(t *testing.T) {
@@ -64,8 +65,8 @@ func TestProcExit(t *testing.T) {
 
 	topic.Pub(&mailbox.Message{Body: []byte("msg")})
 
-	select {
-	case <-time.After(time.Second * 2):
+	for {
+		<-time.After(time.Second * 2)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 
 		err := mb.RemoveTopic("TestProcExit")

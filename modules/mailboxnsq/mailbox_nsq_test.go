@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,7 +22,7 @@ func TestMain(m *testing.M) {
 
 	mock.Init()
 
-	m.Run()
+	os.Exit(m.Run())
 }
 
 func TestClusterBroadcast(t *testing.T) {
@@ -104,8 +105,8 @@ func TestClusterNotify(t *testing.T) {
 
 	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("msg")})
 
-	select {
-	case <-time.After(time.Second * 3):
+	for {
+		<-time.After(time.Second * 3)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 	}
 

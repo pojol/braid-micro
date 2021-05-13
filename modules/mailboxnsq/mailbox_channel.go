@@ -117,8 +117,8 @@ func (c *mailboxChannel) Put(msg *mailbox.Message) {
 
 	select {
 	case c.msgCh <- msg:
-		//default: 就阻塞在这里吧。。
-		//	c.mailbox.log.Errorf("put msg err channel %v is full", c.Name)
+	default: // channel 被写满，且没有来得及消费掉
+		c.mailbox.log.Errorf("put msg err channel %v is full", c.Name)
 	}
 }
 
