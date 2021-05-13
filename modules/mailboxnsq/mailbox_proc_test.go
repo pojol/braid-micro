@@ -64,15 +64,15 @@ func TestProcExit(t *testing.T) {
 
 	topic.Pub(&mailbox.Message{Body: []byte("msg")})
 
-	err := topic.Pub(&mailbox.Message{Body: []byte("msg")})
-	assert.NotEqual(t, err, nil)
-
 	select {
 	case <-time.After(time.Second * 2):
-		err = mb.RemoveTopic("TestProcExit")
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+
+		err := mb.RemoveTopic("TestProcExit")
 		assert.Equal(t, err, nil)
 
-		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+		err = topic.Pub(&mailbox.Message{Body: []byte("msg")})
+		assert.NotEqual(t, err, nil)
 	}
 }
 
