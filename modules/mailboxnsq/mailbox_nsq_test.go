@@ -108,6 +108,7 @@ func TestClusterNotify(t *testing.T) {
 	for {
 		<-time.After(time.Second * 3)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+		break
 	}
 
 }

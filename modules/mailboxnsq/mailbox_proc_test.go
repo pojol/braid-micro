@@ -37,6 +37,7 @@ func TestProcNotify(t *testing.T) {
 	for {
 		<-time.After(time.Second)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+		break
 	}
 
 }
@@ -74,6 +75,7 @@ func TestProcExit(t *testing.T) {
 
 		err = topic.Pub(&mailbox.Message{Body: []byte("msg")})
 		assert.NotEqual(t, err, nil)
+		break
 	}
 }
 
