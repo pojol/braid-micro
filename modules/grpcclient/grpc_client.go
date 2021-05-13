@@ -154,37 +154,31 @@ func (c *grpcClient) Init() error {
 	}
 
 	serviceUpdate := c.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
-
-	go func() {
-		for {
-			select {
-			case msg := <-serviceUpdate.Arrived():
-				dmsg := discover.DecodeUpdateMsg(msg)
-				if dmsg.Event == discover.EventAddService {
-					_, ok := c.connmap.Load(dmsg.Nod.Address)
-					if !ok {
-						conn, err := c.newconn(dmsg.Nod.Address)
-						if err != nil {
-							c.logger.Errorf("new grpc conn err %s", err.Error())
-						} else {
-							c.connmap.Store(dmsg.Nod.Address, conn)
-						}
-					}
-				} else if dmsg.Event == discover.EventRemoveService {
-					mc, ok := c.connmap.Load(dmsg.Nod.Address)
-					if ok {
-						conn := mc.(*grpc.ClientConn)
-						err = c.closeconn(conn)
-						if err != nil {
-							c.logger.Errorf("close grpc conn err %s", err.Error())
-						} else {
-							c.connmap.Delete(dmsg.Nod.Address)
-						}
-					}
+	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventAddService {
+			_, ok := c.connmap.Load(dmsg.Nod.Address)
+			if !ok {
+				conn, err := c.newconn(dmsg.Nod.Address)
+				if err != nil {
+					c.logger.Errorf("new grpc conn err %s", err.Error())
+				} else {
+					c.connmap.Store(dmsg.Nod.Address, conn)
+				}
+			}
+		} else if dmsg.Event == discover.EventRemoveService {
+			mc, ok := c.connmap.Load(dmsg.Nod.Address)
+			if ok {
+				conn := mc.(*grpc.ClientConn)
+				err = c.closeconn(conn)
+				if err != nil {
+					c.logger.Errorf("close grpc conn err %s", err.Error())
+				} else {
+					c.connmap.Delete(dmsg.Nod.Address)
 				}
 			}
 		}
-	}()
+	})
 
 	return nil
 }

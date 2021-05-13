@@ -103,6 +103,25 @@ func (nmb *nsqMailbox) GetTopic(name string) mailbox.ITopic {
 	return nt
 }
 
+func (nmb *nsqMailbox) RemoveTopic(name string) error {
+	nmb.RLock()
+	topic, ok := nmb.topicMap[name]
+	nmb.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("topic %v dose not exist", name)
+	}
+
+	nmb.log.Infof("deleting topic %v", name)
+	topic.Exit()
+
+	nmb.Lock()
+	delete(nmb.topicMap, name)
+	nmb.Unlock()
+
+	return nil
+}
+
 func init() {
 	mailbox.Register(newNsqMailbox())
 }

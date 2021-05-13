@@ -150,6 +150,29 @@ func (t *mailboxTopic) getOrCreateChannel(name string, scope mailbox.ScopeTy) (m
 
 }
 
+func (t *mailboxTopic) RemoveChannel(name string) error {
+	t.RLock()
+	channel, ok := t.channelMap[name]
+	t.RUnlock()
+	if !ok {
+		return fmt.Errorf("channel %v does not exist", name)
+	}
+
+	t.mailbox.log.Infof("topic %v deleting channel %v", t.Name, name)
+	channel.Exit()
+
+	t.Lock()
+	delete(t.channelMap, name)
+	t.Unlock()
+
+	select {
+	case t.channelUpdateChan <- 1:
+	case <-t.exitChan:
+	}
+
+	return nil
+}
+
 func (t *mailboxTopic) put(msg *mailbox.Message) error {
 	select {
 	case t.msgch <- msg:
@@ -211,6 +234,7 @@ func (t *mailboxTopic) loop() {
 	}
 
 EXT:
+	t.mailbox.log.Infof("topic %v out of the loop", t.Name)
 }
 
 func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
@@ -239,8 +263,18 @@ func (t *mailboxTopic) Exit() error {
 		return errors.New("exiting")
 	}
 
+	t.mailbox.log.Infof("topic %v exiting", t.Name)
+
 	close(t.exitChan)
+	// 等待 loop 中止后处理余下逻辑
 	t.waitGroup.Wait()
+
+	t.Lock()
+	for _, channel := range t.channelMap {
+		delete(t.channelMap, channel.Name)
+		channel.Exit()
+	}
+	t.Unlock()
 
 	return nil
 }

@@ -45,16 +45,12 @@ func TestClusterBroadcast(t *testing.T) {
 	done := make(chan struct{})
 	wg.Add(2)
 
-	go func() {
-		for {
-			select {
-			case <-channel1.Arrived():
-				wg.Done()
-			case <-channel2.Arrived():
-				wg.Done()
-			}
-		}
-	}()
+	channel1.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
 
 	go func() {
 		wg.Wait()
@@ -65,6 +61,7 @@ func TestClusterBroadcast(t *testing.T) {
 
 	select {
 	case <-done:
+		mb.RemoveTopic(topic)
 		// pass
 	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")
@@ -98,21 +95,17 @@ func TestClusterNotify(t *testing.T) {
 	channel1 := mb.GetTopic(topic).Sub("Normal")
 	channel2 := mb.GetTopic(topic).Sub("Normal")
 
-	go func() {
-		for {
-			select {
-			case <-channel1.Arrived():
-				atomic.AddUint64(&tick, 1)
-			case <-channel2.Arrived():
-				atomic.AddUint64(&tick, 1)
-			}
-		}
-	}()
+	channel1.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
 
 	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("msg")})
 
 	select {
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 3):
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 	}
 
@@ -135,14 +128,10 @@ func BenchmarkClusterBoardcast(b *testing.B) {
 	c1 := mb.GetTopic(topic).Sub("Normal_1")
 	c2 := mb.GetTopic(topic).Sub("Normal_2")
 
-	go func() {
-		for {
-			select {
-			case <-c1.Arrived():
-			case <-c2.Arrived():
-			}
-		}
-	}()
+	c1.Arrived(func(msg *mailbox.Message) {
+	})
+	c2.Arrived(func(msg *mailbox.Message) {
+	})
 
 	b.SetParallelism(8)
 	b.ResetTimer()

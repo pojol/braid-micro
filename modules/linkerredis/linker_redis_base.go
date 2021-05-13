@@ -192,31 +192,30 @@ func (rl *redisLinker) Init() error {
 	serviceUpdate := rl.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
 	changeState := rl.mb.GetTopic(elector.ChangeState).Sub(Name)
 
-	go func() {
-		for {
-			select {
-			case msg := <-tokenUnlink.Arrived():
-				token := string(msg.Body)
-				if token != "" && token != "nil" {
-					rl.Unlink(token)
-				}
-			case msg := <-serviceUpdate.Arrived():
-				dmsg := discover.DecodeUpdateMsg(msg)
-				if dmsg.Event == discover.EventRemoveService {
-					rl.rmvOfflineService(dmsg.Nod)
-					rl.Down(dmsg.Nod)
-				} else if dmsg.Event == discover.EventAddService {
-					rl.addOfflineService(dmsg.Nod)
-				}
-			case msg := <-changeState.Arrived():
-				statemsg := elector.DecodeStateChangeMsg(msg)
-				if statemsg.State != "" && rl.electorState != statemsg.State {
-					rl.electorState = statemsg.State
-					rl.logger.Debugf("service state change => %v", statemsg.State)
-				}
-			}
+	tokenUnlink.Arrived(func(msg *mailbox.Message) {
+		token := string(msg.Body)
+		if token != "" && token != "nil" {
+			rl.Unlink(token)
 		}
-	}()
+	})
+
+	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventRemoveService {
+			rl.rmvOfflineService(dmsg.Nod)
+			rl.Down(dmsg.Nod)
+		} else if dmsg.Event == discover.EventAddService {
+			rl.addOfflineService(dmsg.Nod)
+		}
+	})
+
+	changeState.Arrived(func(msg *mailbox.Message) {
+		statemsg := elector.DecodeStateChangeMsg(msg)
+		if statemsg.State != "" && rl.electorState != statemsg.State {
+			rl.electorState = statemsg.State
+			rl.logger.Debugf("service state change => %v", statemsg.State)
+		}
+	})
 
 	_, err = rl.client.Ping()
 	if err != nil {

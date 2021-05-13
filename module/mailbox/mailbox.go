@@ -19,6 +19,8 @@ type Message struct {
 	Body []byte
 }
 
+type Handler func(*Message)
+
 type ScopeTy int32
 
 const (
@@ -41,11 +43,7 @@ func NewMessage(body interface{}) *Message {
 }
 
 type IChannel interface {
-	Put(*Message)
-
-	Arrived() <-chan *Message
-
-	Exit() error
+	Arrived(Handler)
 }
 
 type ITopic interface {
@@ -54,17 +52,21 @@ type ITopic interface {
 
 	// Sub 向 topic 中添加一个用于消费的 channel
 	// 如果在一个 topic 中注册同名的 channel 消息仅会被其中的一个消费
-	Sub(name string) IChannel
+	Sub(channelName string) IChannel
 
-	Exit() error
+	// 删除 topic 中存在的 channel
+	RemoveChannel(channelName string) error
 }
 
 type IMailbox interface {
 	// RegistTopic 注册 topic
-	RegistTopic(name string, scope ScopeTy) (ITopic, error)
+	RegistTopic(topicName string, scope ScopeTy) (ITopic, error)
 
 	// GetTopic 获取 mailbox 中的一个 topic （线程安全
-	GetTopic(name string) ITopic
+	GetTopic(topicName string) ITopic
+
+	// 删除 mailbox 中存在的 topic
+	RemoveTopic(topicName string) error
 }
 
 var (

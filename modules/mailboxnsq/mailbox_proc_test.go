@@ -25,18 +25,50 @@ func TestProcNotify(t *testing.T) {
 	channel1 := topic.Sub("Normal")
 	channel2 := topic.Sub("Normal")
 
-	go func() {
-		for {
-			select {
-			case <-channel1.Arrived():
-				atomic.AddUint64(&tick, 1)
-			case <-channel2.Arrived():
-				atomic.AddUint64(&tick, 1)
-			}
-		}
-	}()
+	channel1.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
 
 	topic.Pub(&mailbox.Message{Body: []byte("msg")})
+
+	select {
+	case <-time.After(time.Second):
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+	}
+}
+
+func TestProcExit(t *testing.T) {
+
+	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestProcExit", log)
+
+	var tick uint64
+
+	mb.RegistTopic("TestProcExit", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcExit")
+	channel1 := topic.Sub("Normal_1")
+	channel2 := topic.Sub("Normal_2")
+
+	channel1.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+
+	topic.RemoveChannel("Normal_1")
+
+	topic.Pub(&mailbox.Message{Body: []byte("msg")})
+
+	err := mb.RemoveTopic("TestProcExit")
+	assert.Equal(t, err, nil)
+
+	err = topic.Pub(&mailbox.Message{Body: []byte("msg")})
+	assert.NotEqual(t, err, nil)
 
 	select {
 	case <-time.After(time.Second):
@@ -58,16 +90,12 @@ func TestProcBoradcast(t *testing.T) {
 	channel1 := topic.Sub("Boradcast_Consumer1")
 	channel2 := topic.Sub("Boradcast_Consumer2")
 
-	go func() {
-		for {
-			select {
-			case <-channel1.Arrived():
-				wg.Done()
-			case <-channel2.Arrived():
-				wg.Done()
-			}
-		}
-	}()
+	channel1.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
 
 	go func() {
 		wg.Wait()
@@ -96,14 +124,12 @@ func BenchmarkTestProc(b *testing.B) {
 	c1 := topic.Sub("Normal")
 	c2 := topic.Sub("Normal")
 
-	go func() {
-		for {
-			select {
-			case <-c1.Arrived():
-			case <-c2.Arrived():
-			}
-		}
-	}()
+	c1.Arrived(func(msg *mailbox.Message) {
+
+	})
+	c2.Arrived(func(msg *mailbox.Message) {
+
+	})
 
 	b.SetParallelism(8)
 	b.ResetTimer()

@@ -100,14 +100,9 @@ func TestMutiMailBox(t *testing.T) {
 		}()
 	}
 
-	go func() {
-		for {
-			select {
-			case <-c1.Arrived():
-				wg.Done()
-			}
-		}
-	}()
+	c1.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
 
 	go func() {
 		wg.Wait()

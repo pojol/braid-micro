@@ -104,59 +104,54 @@ func (bbg *baseBalancerGroup) Init() error {
 
 func (bbg *baseBalancerGroup) Run() {
 
-	go func() {
-		for {
-			select {
-			case msg := <-bbg.serviceUpdate.Arrived():
-				dmsg := discover.DecodeUpdateMsg(msg)
-				if dmsg.Event == discover.EventAddService {
-					bbg.lock.Lock()
-					for strategy := range bbg.group {
+	bbg.serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventAddService {
+			bbg.lock.Lock()
+			for strategy := range bbg.group {
 
-						if !bbg.group[strategy].exist(dmsg.Nod.Name) {
-							b := balancer.GetBuilder(strategy)
-							ib, _ := b.Build(bbg.logger)
-							bbg.group[strategy].targets[dmsg.Nod.Name] = ib
-							bbg.logger.Debugf("add service %s by strategy %s", dmsg.Nod.Name, strategy)
-						}
+				if !bbg.group[strategy].exist(dmsg.Nod.Name) {
+					b := balancer.GetBuilder(strategy)
+					ib, _ := b.Build(bbg.logger)
+					bbg.group[strategy].targets[dmsg.Nod.Name] = ib
+					bbg.logger.Debugf("add service %s by strategy %s", dmsg.Nod.Name, strategy)
+				}
 
-						bbg.group[strategy].targets[dmsg.Nod.Name].Add(dmsg.Nod)
+				bbg.group[strategy].targets[dmsg.Nod.Name].Add(dmsg.Nod)
+			}
+			bbg.lock.Unlock()
+		} else if dmsg.Event == discover.EventRemoveService {
+			bbg.lock.Lock()
+
+			for k := range bbg.group {
+				if _, ok := bbg.group[k]; ok {
+					b, err := bbg.group[k].get(dmsg.Nod.Name)
+					if err != nil {
+						bbg.logger.Errorf("remove service err %s", err.Error())
+						break
 					}
-					bbg.lock.Unlock()
-				} else if dmsg.Event == discover.EventRemoveService {
-					bbg.lock.Lock()
 
-					for k := range bbg.group {
-						if _, ok := bbg.group[k]; ok {
-							b, err := bbg.group[k].get(dmsg.Nod.Name)
-							if err != nil {
-								bbg.logger.Errorf("remove service err %s", err.Error())
-								break
-							}
-
-							b.Rmv(dmsg.Nod)
-						}
-					}
-					bbg.lock.Unlock()
-				} else if dmsg.Event == discover.EventUpdateService {
-					bbg.lock.Lock()
-
-					for k := range bbg.group {
-						if _, ok := bbg.group[k]; ok {
-							b, err := bbg.group[k].get(dmsg.Nod.Name)
-							if err != nil {
-								bbg.logger.Errorf("update service err %s", err.Error())
-								break
-							}
-
-							b.Update(dmsg.Nod)
-						}
-					}
-					bbg.lock.Unlock()
+					b.Rmv(dmsg.Nod)
 				}
 			}
+			bbg.lock.Unlock()
+		} else if dmsg.Event == discover.EventUpdateService {
+			bbg.lock.Lock()
+
+			for k := range bbg.group {
+				if _, ok := bbg.group[k]; ok {
+					b, err := bbg.group[k].get(dmsg.Nod.Name)
+					if err != nil {
+						bbg.logger.Errorf("update service err %s", err.Error())
+						break
+					}
+
+					b.Update(dmsg.Nod)
+				}
+			}
+			bbg.lock.Unlock()
 		}
-	}()
+	})
 
 }
 

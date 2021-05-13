@@ -11,8 +11,7 @@
 [![](https://img.shields.io/badge/slack-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
-### 交互模型
-> braid.Mailbox 统一的交互模型
+### 消息模型
 
 | 共享（多个消息副本 | 竞争（只被消费一次 | 进程内 | 集群内 | 发布 | 订阅 |
 | ---- | ---- | ---- | ---- | ---- | ---- |

@@ -91,22 +91,17 @@ func (dc *consulDiscover) Init() error {
 	if err != nil {
 		return fmt.Errorf("%v GetLocalIP err %v", dc.parm.Name, err.Error())
 	}
+
 	linkC := dc.mb.GetTopic(linkcache.ServiceLinkNum).Sub(Name + "-" + ip)
+	linkC.Arrived(func(msg *mailbox.Message) {
+		lninfo := linkcache.DecodeLinkNumMsg(msg)
+		dc.lock.Lock()
+		defer dc.lock.Unlock()
 
-	go func() {
-		for {
-			select {
-			case msg := <-linkC.Arrived():
-				lninfo := linkcache.DecodeLinkNumMsg(msg)
-				dc.lock.Lock()
-				defer dc.lock.Unlock()
-
-				if _, ok := dc.passingMap[lninfo.ID]; ok {
-					dc.passingMap[lninfo.ID].linknum = lninfo.Num
-				}
-			}
+		if _, ok := dc.passingMap[lninfo.ID]; ok {
+			dc.passingMap[lninfo.ID].linknum = lninfo.Num
 		}
-	}()
+	})
 
 	return nil
 }
