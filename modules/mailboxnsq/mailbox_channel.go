@@ -75,7 +75,9 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 			}
 		}
 
-		nsqConsumer, err := nsq.NewConsumer(topicName, channelName, nsq.NewConfig())
+		cfg := nsq.NewConfig()
+		cfg.MaxInFlight = len(n.parm.NsqdHttpAddress)
+		nsqConsumer, err := nsq.NewConsumer(topicName, channelName, cfg)
 		if err != nil {
 			n.log.Errorf("channel %v nsq.NewConsumer err %v", channelName, err)
 			return nil

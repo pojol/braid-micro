@@ -81,7 +81,7 @@ func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 			}
 
 			if err = cp.Ping(); err != nil {
-				n.log.Errorf("Channel nsq producer ping err %v", err.Error())
+				n.log.Errorf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
 				continue
 			}
 

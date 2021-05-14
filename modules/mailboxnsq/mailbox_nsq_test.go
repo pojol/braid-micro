@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
@@ -32,7 +31,6 @@ func TestClusterBroadcast(t *testing.T) {
 	b.AddOption(WithLookupAddr([]string{}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
-	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
 	mb, _ := b.Build("TestClusterBroadcast", log)
 
 	topic := "test.clusterBroadcast"
@@ -84,7 +82,6 @@ func TestClusterNotify(t *testing.T) {
 	b.AddOption(WithLookupAddr([]string{}))
 	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
-	b.AddOption(WithNsqLogLv(nsq.LogLevelDebug))
 	mb, _ := b.Build("TestClusterNotify", log)
 
 	var tick uint64
@@ -113,7 +110,39 @@ func TestClusterNotify(t *testing.T) {
 
 }
 
-func BenchmarkClusterBoardcast(b *testing.B) {
+func TestClusterMutiNSQD(t *testing.T) {
+	// 非常规测试，需要开启多个nsqd进程
+
+	/*
+		b := mailbox.GetBuilder(Name)
+		log, _ := logger.GetBuilder(zaplogger.Name).Build()
+		b.AddOption(WithLookupAddr([]string{"127.0.0.1:4161"}))
+		b.AddOption(WithNsqdAddr([]string{"127.0.0.1:4150", "127.0.0.1:4152"}))
+		b.AddOption(WithNsqdHTTPAddr([]string{"127.0.0.1:4151", "127.0.0.1:4153"}))
+
+		topic := "test.clusterMutiNsqd"
+		mb, _ := b.Build("TestClusterMutiNSQD", log)
+		mb.RegistTopic(topic, mailbox.ScopeCluster)
+
+		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *mailbox.Message) {
+			fmt.Println("consumer a receive", string(msg.Body))
+		})
+		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *mailbox.Message) {
+			fmt.Println("consumer b receive", string(msg.Body))
+		})
+
+		for i := 0; i < 10; i++ {
+			mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte(strconv.Itoa(i))})
+		}
+
+		for {
+			<-time.After(time.Second * 2)
+			t.FailNow()
+		}
+	*/
+}
+
+func BenchmarkClusterBroadcast(b *testing.B) {
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
 	mbb := mailbox.GetBuilder(Name)
@@ -121,7 +150,7 @@ func BenchmarkClusterBoardcast(b *testing.B) {
 	mbb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
 	mbb.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
 
-	mb, _ := mbb.Build("BenchmarkClusterBoardcast", log)
+	mb, _ := mbb.Build("BenchmarkClusterBroadcast", log)
 	topic := "benchmark.ClusterBroadcast"
 	body := []byte("msg")
 

@@ -39,7 +39,6 @@ func TestProcNotify(t *testing.T) {
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 		break
 	}
-
 }
 
 func TestProcExit(t *testing.T) {
@@ -79,19 +78,19 @@ func TestProcExit(t *testing.T) {
 	}
 }
 
-func TestProcBoradcast(t *testing.T) {
+func TestProcBroadcast(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mb, _ := b.Build("TestProcBoradcast", log)
+	mb, _ := b.Build("TestProcBroadcast", log)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 	wg.Add(2)
 
-	mb.RegistTopic("TestProcBoradcast", mailbox.ScopeProc)
-	topic := mb.GetTopic("TestProcBoradcast")
-	channel1 := topic.Sub("Boradcast_Consumer1")
-	channel2 := topic.Sub("Boradcast_Consumer2")
+	mb.RegistTopic("TestProcBroadcast", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcBroadcast")
+	channel1 := topic.Sub("Broadcast_Consumer1")
+	channel2 := topic.Sub("Broadcast_Consumer2")
 
 	channel1.Arrived(func(msg *mailbox.Message) {
 		wg.Done()
@@ -118,7 +117,9 @@ func TestProcBoradcast(t *testing.T) {
 // 9257995	       130 ns/op	      77 B/op	       2 allocs/op
 func BenchmarkTestProc(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	logb := logger.GetBuilder(zaplogger.Name)
+	logb.AddOption(zaplogger.WithLv(logger.ERROR))
+	log, _ := logb.Build()
 	mb, _ := mbb.Build("BenchmarkTestProc", log)
 	body := []byte("msg")
 
