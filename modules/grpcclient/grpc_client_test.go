@@ -48,8 +48,7 @@ func TestMain(m *testing.M) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestMain", log)
 
 	db := module.GetBuilder(discoverconsul.Name)
@@ -81,8 +80,7 @@ func TestInvoke(t *testing.T) {
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestInvoke", log)
 
 	b := client.GetBuilder(Name)
@@ -112,8 +110,7 @@ func TestInvokeByLink(t *testing.T) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestInvokeByLink", log)
 
 	lb := module.GetBuilder(linkerredis.Name)
@@ -152,8 +149,7 @@ func TestParm(t *testing.T) {
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestParm", log)
 
 	b := client.GetBuilder(Name)

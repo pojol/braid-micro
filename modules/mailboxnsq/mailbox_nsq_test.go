@@ -29,8 +29,7 @@ func TestClusterBroadcast(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{}))
-	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := b.Build("TestClusterBroadcast", log)
 
 	topic := "test.clusterBroadcast"
@@ -80,8 +79,7 @@ func TestClusterNotify(t *testing.T) {
 	b := mailbox.GetBuilder(Name)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	b.AddOption(WithLookupAddr([]string{}))
-	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	b.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := b.Build("TestClusterNotify", log)
 
 	var tick uint64
@@ -147,8 +145,7 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 
 	mbb := mailbox.GetBuilder(Name)
 	mbb.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 
 	mb, _ := mbb.Build("BenchmarkClusterBroadcast", log)
 	topic := "benchmark.ClusterBroadcast"

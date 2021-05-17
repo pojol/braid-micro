@@ -27,8 +27,7 @@ func TestPlugin(t *testing.T) {
 	b, _ := New(
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
-		mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	b.RegistModule(
@@ -81,8 +80,7 @@ func TestMutiMailBox(t *testing.T) {
 	New(
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
-		mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	var wg sync.WaitGroup

@@ -38,8 +38,7 @@ func TestLinkerTarget(t *testing.T) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("testlinkertarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
@@ -128,8 +127,7 @@ func TestLocalTarget(t *testing.T) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("TestLocalTarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
@@ -214,8 +212,7 @@ func BenchmarkLink(b *testing.B) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdHTTPAddr([]string{mock.NsqdHttpAddr}))
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 	mb, _ := mbb.Build("benchmarklink", log)
 
 	eb := module.GetBuilder(electorconsul.Name)

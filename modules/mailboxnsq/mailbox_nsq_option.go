@@ -43,15 +43,14 @@ func WithLookupAddr(addr []string) Option {
 }
 
 // WithNsqdAddr nsqd addr
-func WithNsqdAddr(addr []string) Option {
+func WithNsqdAddr(tcpAddr []string, httpAddr []string) Option {
 	return func(c *Parm) {
-		c.NsqdAddress = addr
-	}
-}
+		if len(tcpAddr) != len(httpAddr) {
+			panic("The addresses of tcp and http should match")
+		}
 
-func WithNsqdHTTPAddr(addr []string) Option {
-	return func(c *Parm) {
-		c.NsqdHttpAddress = addr
+		c.NsqdAddress = tcpAddr
+		c.NsqdHttpAddress = httpAddr
 	}
 }
 
