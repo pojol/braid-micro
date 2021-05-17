@@ -11,6 +11,54 @@
 [![](https://img.shields.io/badge/slack-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
+### 简介
+> braid 中主要提供两套系统
+
+1. **模块化**
+   * 提供基于模块接口实现的各种微服务，通过注册到braid中运行。
+2. **统一的消息模型**
+   * RPC 消息，用于服务和服务之间的调用
+   * Pub-sub 消息，用于模块和模块之间的消息通知
+
+
+### 模块
+> 默认提供的微服务模块，[**文档地址**](https://docs.braid-go.fun/)
+
+|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
+|-|-|-|-|-|-|-|
+|服务发现|负载均衡|选举|RPC|发布-订阅|分布式追踪|链路缓存|
+|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
+||balancerswrr|electork8s|grpc-server|||
+
+### 构建
+> 构建braid的运行环境。
+
+```go
+b, _ := braid.New(ServiceName)
+
+// 将模块注册到braid
+b.RegistModule(
+  braid.Discover(         // Discover 模块
+    discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
+    discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
+  braid.Client(grpcclient.Name),
+  braid.Elector(
+    electorconsul.Name,
+    electorconsul.WithConsulAddr(consulAddr),
+  ),
+  braid.LinkCache(linkerredis.Name),
+  braid.Tracing(
+    jaegertracing.Name,
+    jaegertracing.WithHTTP(jaegerAddr), 
+    jaegertracing.WithProbabilistic(0.01)))
+
+b.Init()  // 初始化注册在braid中的模块
+b.Run()   // 运行
+defer b.Close() // 释放
+```
+
+
+
 ### 消息模型
 
 #### API 消息
@@ -70,46 +118,6 @@ consumer a receive 2
 consumer b receive 3
 consumer a receive 4
 ```
-
-
-
-### 模块
-> 默认提供的微服务组件，[**文档地址**](https://docs.braid-go.fun/)
-
-|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
-|-|-|-|-|-|-|-|
-|服务发现|负载均衡|选举|RPC|发布-订阅|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
-||balancerswrr|electork8s|grpc-server|||
-
-### 构建
-> 构建braid的运行环境。
-
-```go
-b, _ := braid.New(ServiceName)
-
-// 将模块注册到braid
-b.RegistModule(
-  braid.Discover(         // Discover 模块
-    discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
-    discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
-  braid.Client(grpcclient.Name),
-  braid.Elector(
-    electorconsul.Name,
-    electorconsul.WithConsulAddr(consulAddr),
-  ),
-  braid.LinkCache(linkerredis.Name),
-  braid.Tracing(
-    jaegertracing.Name,
-    jaegertracing.WithHTTP(jaegerAddr), 
-    jaegertracing.WithProbabilistic(0.01)))
-
-b.Init()  // 初始化注册在braid中的模块
-b.Run()   // 运行
-defer b.Close() // 释放
-```
-
-
 
 
 
