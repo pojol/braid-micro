@@ -1,7 +1,6 @@
 package linkerredis
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
@@ -147,8 +147,8 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 		},
 	}
 
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("nil")})
-	lc.mb.PubAsync(mailbox.Cluster, linkcache.TopicDown, linkcache.EncodeDownMsg("", "", ""))
+	lc.mb.RegistTopic(linkcache.TokenUnlink, mailbox.ScopeCluster)
+	lc.mb.RegistTopic(linkcache.ServiceLinkNum, mailbox.ScopeCluster)
 
 	return lc, nil
 }
@@ -167,12 +167,6 @@ type redisLinker struct {
 	electorState string
 	mb           mailbox.IMailbox
 
-	unlink     mailbox.IConsumer
-	down       mailbox.IConsumer
-	election   mailbox.IConsumer
-	addService mailbox.IConsumer
-	rmvService mailbox.IConsumer
-
 	logger logger.ILogger
 
 	client *RedisClient
@@ -188,85 +182,45 @@ type redisLinker struct {
 
 func (rl *redisLinker) Init() error {
 	var err error
-	rl.unlink, err = rl.mb.Sub(mailbox.Cluster, linkcache.TopicUnlink).Shared()
+
+	ip, err := utils.GetLocalIP()
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.TopicUnlink)
+		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	rl.down, err = rl.mb.Sub(mailbox.Cluster, linkcache.TopicDown).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "mailbox", linkcache.TopicDown)
-	}
+	tokenUnlink := rl.mb.GetTopic(linkcache.TokenUnlink).Sub(Name + "-" + ip)
+	serviceUpdate := rl.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
+	changeState := rl.mb.GetTopic(elector.ChangeState).Sub(Name)
 
-	rl.election, err = rl.mb.Sub(mailbox.Proc, elector.StateChange).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "elector", elector.StateChange)
-	}
+	tokenUnlink.Arrived(func(msg *mailbox.Message) {
+		token := string(msg.Body)
+		if token != "" && token != "nil" {
+			rl.Unlink(token)
+		}
+	})
 
-	rl.addService, err = rl.mb.Sub(mailbox.Proc, discover.AddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.AddService)
-	}
+	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventRemoveService {
+			rl.rmvOfflineService(dmsg.Nod)
+			rl.Down(dmsg.Nod)
+		} else if dmsg.Event == discover.EventAddService {
+			rl.addOfflineService(dmsg.Nod)
+		}
+	})
 
-	rl.rmvService, err = rl.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "discover", discover.RmvService)
-	}
+	changeState.Arrived(func(msg *mailbox.Message) {
+		statemsg := elector.DecodeStateChangeMsg(msg)
+		if statemsg.State != "" && rl.electorState != statemsg.State {
+			rl.electorState = statemsg.State
+			rl.logger.Debugf("service state change => %v", statemsg.State)
+		}
+	})
 
 	_, err = rl.client.Ping()
 	if err != nil {
 		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "redis", rl.parm.RedisAddr)
 	}
-
-	rl.unlink.OnArrived(func(msg mailbox.Message) error {
-
-		token := string(msg.Body)
-		if token != "" && token != "nil" {
-			return rl.Unlink(token)
-		}
-
-		return nil
-	})
-
-	rl.down.OnArrived(func(msg mailbox.Message) error {
-		dmsg := linkcache.DecodeDownMsg(&msg)
-		if dmsg.Service == "" {
-			return errors.New("Can't find service")
-		}
-
-		return rl.Down(discover.Node{
-			ID:      dmsg.ID,
-			Name:    dmsg.Service,
-			Address: dmsg.Addr,
-		})
-	})
-
-	rl.election.OnArrived(func(msg mailbox.Message) error {
-
-		statemsg := elector.DecodeStateChangeMsg(&msg)
-		if statemsg.State != "" && rl.electorState != statemsg.State {
-			rl.electorState = statemsg.State
-			rl.logger.Debugf("service state change => %v", statemsg.State)
-		}
-
-		return nil
-	})
-
-	rl.addService.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		rl.addOfflineService(nod)
-		return nil
-	})
-
-	rl.rmvService.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		rl.rmvOfflineService(nod)
-		return nil
-	})
 
 	return nil
 }
@@ -299,7 +253,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		rl.mb.Pub(mailbox.Cluster, linkcache.ServiceLinkNum, linkcache.EncodeLinkNumMsg(id, int(cnt)))
+		rl.mb.GetTopic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
 	}
 }
 
@@ -523,11 +477,6 @@ func (rl *redisLinker) Down(target discover.Node) error {
 }
 
 func (rl *redisLinker) Close() {
-	rl.down.Exit()
-	rl.unlink.Exit()
-	rl.election.Exit()
-	rl.rmvService.Exit()
-	rl.addService.Exit()
 
 	rl.client.pool.Close()
 }

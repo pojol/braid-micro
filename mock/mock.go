@@ -15,6 +15,8 @@ var (
 	// NsqdAddr NSQd address
 	NsqdAddr string
 
+	NsqdHttpAddr string
+
 	// NSQLookupdAddr NSQ lookupd address
 	NSQLookupdAddr string
 
@@ -27,6 +29,7 @@ const (
 	mockConsulEnv     = "MOCK_CONSUL_ADDR"
 	mockJaegerEnv     = "MOCK_JAEGER_ADDR"
 	mockNsqdEnv       = "MOCK_NSQD_ADDR"
+	mockNsqdHTTPEnv   = "MOCK_NSQD_HTTP_ADDR"
 	mockNsqLookupdEnv = "MOCK_NSQ_LOOKUPD_ADDR"
 	ownerEnv          = "DRONE_REPO_OWNER"
 )
@@ -54,6 +57,11 @@ func Init() {
 	NsqdAddr = os.Getenv(mockNsqdEnv)
 	if NsqdAddr == "" {
 		NsqdAddr = "127.0.0.1:4150"
+	}
+
+	NsqdHttpAddr = os.Getenv(mockNsqdHTTPEnv)
+	if NsqdHttpAddr == "" {
+		NsqdHttpAddr = "127.0.0.1:4151"
 	}
 
 	NSQLookupdAddr = os.Getenv(mockNsqLookupdEnv)

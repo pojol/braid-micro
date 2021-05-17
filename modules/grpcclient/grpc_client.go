@@ -2,7 +2,6 @@ package grpcclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -83,9 +82,7 @@ type grpcClient struct {
 	bg          balancer.IBalancerGroup
 	logger      logger.ILogger
 
-	mb                mailbox.IMailbox
-	addTargetConsumer mailbox.IConsumer
-	rmvTargetConsumer mailbox.IConsumer
+	mb mailbox.IMailbox
 
 	connmap sync.Map
 }
@@ -156,49 +153,31 @@ func (c *grpcClient) Init() error {
 		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
 	}
 
-	c.addTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.AddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.AddService)
-	}
-
-	c.addTargetConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		_, ok := c.connmap.Load(nod.Address)
-		if !ok {
-			conn, err := c.newconn(nod.Address)
-			if err != nil {
-				c.logger.Errorf("new grpc conn err %s", err.Error())
-			} else {
-				c.connmap.Store(nod.Address, conn)
+	serviceUpdate := c.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
+	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventAddService {
+			_, ok := c.connmap.Load(dmsg.Nod.Address)
+			if !ok {
+				conn, err := c.newconn(dmsg.Nod.Address)
+				if err != nil {
+					c.logger.Errorf("new grpc conn err %s", err.Error())
+				} else {
+					c.connmap.Store(dmsg.Nod.Address, conn)
+				}
+			}
+		} else if dmsg.Event == discover.EventRemoveService {
+			mc, ok := c.connmap.Load(dmsg.Nod.Address)
+			if ok {
+				conn := mc.(*grpc.ClientConn)
+				err = c.closeconn(conn)
+				if err != nil {
+					c.logger.Errorf("close grpc conn err %s", err.Error())
+				} else {
+					c.connmap.Delete(dmsg.Nod.Address)
+				}
 			}
 		}
-
-		return nil
-	})
-
-	c.rmvTargetConsumer, err = c.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "mailbox", discover.RmvService)
-	}
-	c.rmvTargetConsumer.OnArrived(func(msg mailbox.Message) error {
-
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		mc, ok := c.connmap.Load(nod.Address)
-		if ok {
-			conn := mc.(*grpc.ClientConn)
-			err = c.closeconn(conn)
-			if err != nil {
-				c.logger.Errorf("close grpc conn err %s", err.Error())
-			} else {
-				c.connmap.Delete(nod.Address)
-			}
-		}
-
-		return nil
 	})
 
 	return nil

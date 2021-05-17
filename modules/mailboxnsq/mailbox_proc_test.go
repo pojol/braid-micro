@@ -1,200 +1,145 @@
 package mailboxnsq
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMain(m *testing.M) {
-
-	mock.Init()
-
-	m.Run()
-}
-
-func TestSharedProc(t *testing.T) {
+func TestProcNotify(t *testing.T) {
 
 	b := mailbox.GetBuilder(Name)
-	mb, _ := b.Build("TestSharedProc")
-	topic := "TestSharedProc"
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestProcNotify", log)
+
+	var tick uint64
+
+	mb.RegistTopic("TestProcNotify", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcNotify")
+	channel1 := topic.Sub("Normal")
+	channel2 := topic.Sub("Normal")
+
+	channel1.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+
+	topic.Pub(&mailbox.Message{Body: []byte("msg")})
+
+	for {
+		<-time.After(time.Second)
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+		break
+	}
+}
+
+func TestProcExit(t *testing.T) {
+
+	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestProcExit", log)
+
+	var tick uint64
+
+	mb.RegistTopic("TestProcExit", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcExit")
+	channel1 := topic.Sub("Normal_1")
+	channel2 := topic.Sub("Normal_2")
+
+	channel1.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		atomic.AddUint64(&tick, 1)
+	})
+
+	topic.RemoveChannel("Normal_1")
+
+	topic.Pub(&mailbox.Message{Body: []byte("msg")})
+
+	for {
+		<-time.After(time.Second * 2)
+		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
+
+		err := mb.RemoveTopic("TestProcExit")
+		assert.Equal(t, err, nil)
+
+		err = topic.Pub(&mailbox.Message{Body: []byte("msg")})
+		assert.NotEqual(t, err, nil)
+		break
+	}
+}
+
+func TestProcBroadcast(t *testing.T) {
+	b := mailbox.GetBuilder(Name)
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := b.Build("TestProcBroadcast", log)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
-
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Shared()
-	defer c1.Exit()
-	c2, _ := sub.Shared()
-	defer c2.Exit()
-
-	c1.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		fmt.Printf("%p %s\n", &msg, msg.Body)
-		return nil
-	})
-
-	c2.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		fmt.Printf("%p %s\n", &msg, msg.Body)
-		return nil
-	})
-
 	wg.Add(2)
-	mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
+
+	mb.RegistTopic("TestProcBroadcast", mailbox.ScopeProc)
+	topic := mb.GetTopic("TestProcBroadcast")
+	channel1 := topic.Sub("Broadcast_Consumer1")
+	channel2 := topic.Sub("Broadcast_Consumer2")
+
+	channel1.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
+	channel2.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
 
 	go func() {
 		wg.Wait()
 		close(done)
 	}()
 
+	topic.Pub(&mailbox.Message{Body: []byte("msg")})
+
 	select {
 	case <-done:
-		//pass
-	case <-time.After(time.Millisecond * 500):
+		// pass
+	case <-time.After(time.Second):
 		t.FailNow()
 	}
-
 }
 
-func TestCompetition(t *testing.T) {
-	b := mailbox.GetBuilder(Name)
-	mb, _ := b.Build("TestCompetition")
-	var carrived uint64
-	var race sync.Mutex
-	topic := "TestCompetition"
-
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Competition()
-	c2, _ := sub.Competition()
-
-	c1.OnArrived(func(msg mailbox.Message) error {
-		race.Lock()
-		atomic.AddUint64(&carrived, 1)
-		race.Unlock()
-		return nil
-	})
-
-	c2.OnArrived(func(msg mailbox.Message) error {
-		race.Lock()
-		atomic.AddUint64(&carrived, 1)
-		race.Unlock()
-		return nil
-	})
-
-	mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
-	time.Sleep(time.Second)
-
-	race.Lock()
-	assert.Equal(t, carrived, uint64(1))
-	race.Unlock()
-}
-
-// BenchmarkShared-8   	 2102298	       527 ns/op	      94 B/op	       2 allocs/op
-func BenchmarkShared(b *testing.B) {
+// 9257995	       130 ns/op	      77 B/op	       2 allocs/op
+func BenchmarkTestProc(b *testing.B) {
 	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkShared")
-	topic := "BenchmarkShared"
+	logb := logger.GetBuilder(zaplogger.Name)
+	logb.AddOption(zaplogger.WithLv(logger.ERROR))
+	log, _ := logb.Build()
+	mb, _ := mbb.Build("BenchmarkTestProc", log)
 	body := []byte("msg")
 
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Shared()
-	c2, _ := sub.Shared()
+	mb.RegistTopic("BenchmarkTestProc", mailbox.ScopeProc)
+	topic := mb.GetTopic("BenchmarkTestProc")
+	c1 := topic.Sub("Normal")
+	c2 := topic.Sub("Normal")
 
-	c1.OnArrived(func(msg mailbox.Message) error {
-		return nil
+	c1.Arrived(func(msg *mailbox.Message) {
+
 	})
-	c2.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
+	c2.Arrived(func(msg *mailbox.Message) {
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: body})
-	}
-}
-
-func BenchmarkSharedAsync(b *testing.B) {
-	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkShared")
-	topic := "BenchmarkShared"
-	body := []byte("msg")
-
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Shared()
-	c2, _ := sub.Shared()
-
-	c1.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
-	c2.OnArrived(func(msg mailbox.Message) error {
-		return nil
 	})
 
 	b.SetParallelism(8)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.PubAsync(mailbox.Proc, topic, &mailbox.Message{Body: body})
-		}
-	})
-
-}
-
-//BenchmarkCompetition-8   	 3238792	       335 ns/op	      79 B/op	       2 allocs/op
-func BenchmarkCompetition(b *testing.B) {
-	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkCompetition")
-	topic := "BenchmarkCompetition"
-	body := []byte("msg")
-
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Competition()
-	c2, _ := sub.Competition()
-
-	c1.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
-
-	c2.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: body})
-	}
-}
-
-func BenchmarkCompetitionAsync(b *testing.B) {
-	mbb := mailbox.GetBuilder(Name)
-	mb, _ := mbb.Build("BenchmarkCompetition")
-	topic := "BenchmarkCompetition"
-	body := []byte("msg")
-
-	sub := mb.Sub(mailbox.Proc, topic)
-	c1, _ := sub.Competition()
-	c2, _ := sub.Competition()
-
-	c1.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
-
-	c2.OnArrived(func(msg mailbox.Message) error {
-		return nil
-	})
-
-	b.SetParallelism(8)
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			mb.PubAsync(mailbox.Proc, topic, &mailbox.Message{Body: body})
+			topic.Pub(&mailbox.Message{Body: body})
 		}
 	})
 }

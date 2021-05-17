@@ -34,12 +34,12 @@ func TestLinkerTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLinkerTarget-"
 	tmu.Unlock()
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("testlinkertarget")
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("testlinkertarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
@@ -73,8 +73,7 @@ func TestLinkerTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	// test set service state == master
-	mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
@@ -105,14 +104,13 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token01")})
-	mb.Pub(mailbox.Cluster, linkcache.TopicUnlink, &mailbox.Message{Body: []byte("token02")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token01")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
+
 	for _, v := range nods {
-		mb.Pub(mailbox.Cluster,
-			linkcache.TopicDown,
-			linkcache.EncodeDownMsg(v.ID, v.Name, v.Address))
+		mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(discover.EventRemoveService, v))
 	}
 
 	time.Sleep(time.Millisecond * 100)
@@ -125,12 +123,12 @@ func TestLocalTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLocalTarget-"
 	tmu.Unlock()
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestLocalTarget")
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("TestLocalTarget", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
@@ -162,8 +160,7 @@ func TestLocalTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	// test set service state == master
-	mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+	mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []discover.Node{
 		{
@@ -215,8 +212,8 @@ func BenchmarkLink(b *testing.B) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("benchmarklink")
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("benchmarklink", log)
 
 	eb := module.GetBuilder(electorconsul.Name)
 	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))

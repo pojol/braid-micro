@@ -1,6 +1,45 @@
 
 
+# v1.2.23
+> 重新设计mailbox的接口， 主要的理由有
+1. 消息的类型 `广播消息` 和 `普通消息` 不应该由接收端指定
+2. 分开 `topic` 和 `channel` 的定义（不在内部自己处理，让用户感知
+3. `统一` proc & cluster 的消息发布内部逻辑（都采用nsq的消息发布-订阅模型
 
-### v1.2.8
-* 添加mailbox中的并行接口 PubAsync()
- > 原有的接口目前作为串行发布接口，并可以获取到错误返回，新的并行接口将用于(go - chan - go)模型上，避免消费端阻塞调度器。
+### 几个主要的概念
+* 作用域
+    * mailbox.ScopeProc 消息作用于`自身进程`中的模块
+    * mailbox.ScopeCluster 消息将作用于`整个集群`中的模块
+* Topic
+    > 某个消息的集合，当调用 pub 发布消息时，消息会被投递到加入到这个 topic 的所有 channel 中
+    * 单一接收 （一个topic `+` channel x 1 : consumer x 1
+    * 广播逻辑 （一个topic `+` channel x N : consumer x N
+    * 竞争接收 （一个topic `+` channel x 1 : consumer x N
+* Channel
+    > topic 中的管道，每一个管道都会接收到来自topic 的消息，并且每个管道都可以拥有多个`消费者`
+
+
+### 样例
+
+```go
+    // old
+    consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
+    consumer.OnArrived(func (msg *mailbox.Message) error {
+        // todo
+        return nil
+    })
+
+    braid.Mailbox().Pub("topic", &message{})
+
+    // new
+    braid.Mailbox().RegistTopic("topic name", mailbox.ScopeProc)
+    
+    topic := braid.Mailbox().GetTopic("topic name")
+    consumer := topic.Sub("channel name")
+    consumer.Arrived(func(msg *mailbox.Message){
+        // todo
+    })
+
+    topic.Pub( &message{} )
+
+```

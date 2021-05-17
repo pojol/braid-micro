@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	// StateChange topic_elector_state
-	StateChange = "topic_elector_state"
+	ChangeState = "elector.changeState"
 )
 
 // StateChangeMsg become master msg

@@ -1,0 +1,61 @@
+name: CI
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  [push, pull_request]
+
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        ports:
+         - 6379:6379
+      consul:
+        image: consul:1.6.2
+        env:
+          CONSUL_BIND_INTERFACE: eth0
+        ports:
+          - 8300-8302:8300-8302/tcp
+          - 8301-8302:8301-8302/udp
+          - 8500:8500/tcp
+          - 8600:8600/tcp
+          - 8600:8600/udp
+      nsqd:
+        image: nsqio/nsq:v1.2.0
+        options: --entrypoint /bin/nsqd
+        ports:
+          - 4150:4150
+          - 4151:4151
+      nsqlookupd:
+        image: nsqio/nsq:v1.2.0
+        options: --entrypoint /bin/nsqlookupd
+        ports:
+          - 4160:4160
+          - 4161:4161
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+
+      # Runs a single command using the runners shell
+      - name: unit test
+        run: |
+          ip a
+          go test -race -coverprofile=coverage.out ./... -count=1
+        env:
+          MOCK_NSQD_ADDR: 172.17.0.1:4150
+          MOCK_NSQD_HTTP_ADDR: 172.17.0.1:4151

@@ -7,6 +7,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pojol/braid-go/module/tracer"
+	"github.com/uber/jaeger-client-go"
 )
 
 const (
@@ -62,6 +63,16 @@ func (r *RedisTracer) SetTag(key string, val interface{}) {
 	if r.span != nil {
 		r.span.SetTag(key, val)
 	}
+}
+
+func (r *RedisTracer) GetID() string {
+	if r.span != nil {
+		if sc, ok := r.span.Context().(jaeger.SpanContext); ok {
+			return sc.TraceID().String()
+		}
+	}
+
+	return ""
 }
 
 // End 结束监听

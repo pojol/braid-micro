@@ -4,66 +4,86 @@
 ---
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/pojol/braid-go)](https://goreportcard.com/report/github.com/pojol/braid-go)
-[![drone](http://123.207.198.57:8001/api/badges/pojol/braid-go/status.svg?branch=develop)](dev)
+![workflow](https://github.com/pojol/braid-go/actions/workflows/actions.yml/badge.svg)
 [![codecov](https://codecov.io/gh/pojol/braid/branch/master/graph/badge.svg)](https://codecov.io/gh/pojol/braid)
 [![](https://img.shields.io/badge/sample-%E6%A0%B7%E4%BE%8B-2ca5e0?style=flat&logo=appveyor)](https://github.com/pojol/braidgo-sample)
-[![](https://img.shields.io/badge/doc-%E6%96%87%E6%A1%A3-2ca5e0?style=flat&logo=appveyor)](https://github.com/pojol/braid-go/wiki)
+[![](https://img.shields.io/badge/doc-%E6%96%87%E6%A1%A3-2ca5e0?style=flat&logo=appveyor)](https://docs.braid-go.fun)
 [![](https://img.shields.io/badge/slack-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
-### 交互模型
-> braid.Mailbox 统一的交互模型
+### 消息模型
 
-| 共享（多个消息副本 | 竞争（只被消费一次 | 进程内 | 集群内 | 发布 | 订阅 |
-| ---- | ---- | ---- | ---- | ---- | ---- |
-|Shared | Competition | Proc | Cluster | Pub | Sub |
+#### API 消息
+> API消息主要用于**服务**`->`**服务**之间
 
-> `范例` 发布订阅消息
+* ctx 用于分布式追踪，存储调用链路的上下文信息
+* target 目标服务节点 例 "mail", braid 会依据服务发现和负载均衡信息，自动将消息发送到合适的节点
+* methon 目标节点支持的方法
+* token 如果为`""`则随机指向一个目标服务，如果传入用户唯一凭据则可以使用平滑加权负载均衡，以及链路缓存
+* args 输入参数
+* reply 回复参数
+* opts... gpc调用的额外参数选项
 
 ```go
-// 订阅一个信道`topic` 这个信道在进程（Proc 内广播（Shared
-consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
+client.Invoke(ctx, target, methon, token, args, reply, opts...)
+```
 
-// 收取消息
-consumer.OnArrived(func(msg mailbox.Message) error {
-  return nil
+#### Pub-sub 消息
+> Pub-sub消息主要用于**模块**`->`**模块**之间
+
+* 作用域
+    * mailbox.ScopeProc 消息作用于`自身进程`中的模块
+    * mailbox.ScopeCluster 消息将作用于`整个集群`中的模块
+* Topic
+    > 某个消息的集合，当调用 pub 发布消息时，消息会被投递到加入到这个 topic 的所有 channel 中
+    * 单一接收 （一个topic `+` channel x 1 : consumer x 1
+    * 广播逻辑 （一个topic `+` channel x N : consumer x N
+    * 竞争接收 （一个topic `+` channel x 1 : consumer x N
+* Channel
+    > topic 中的管道，每一个管道都会接收到来自topic 的消息，并且每个管道都可以拥有多个`消费者`
+
+####  示例
+* `多个`消费者`单个` Channel
+
+```go
+
+topic := "test.procNotify"
+
+mailbox.RegistTopic(topic, mailbox.ScopeProc)
+
+mailbox.GetTopic(topic).Sub("channel_1").Arrived(func(msg *mailbox.Message) {
+    fmt.Println("consumer a receive", string(msg.Body))
+})
+mailbox.GetTopic(topic).Sub("channel_1").Arrived(func(msg *mailbox.Message) {
+    fmt.Println("consumer b receive", string(msg.Body))
 })
 
-// 发送（串行
-err := braid.Mailbox().Pub("topic", message)
-// 发送（并行
-braid.Mailbox().PubAsync("topic", message)
-
-```
-
-> `范例` 发起一次rpc请求
-
-```go
-// ctx 用于分布式追踪，存储调用链路的上下文信息
-// target 目标服务节点 例("mail")
-// methon 目标节点支持的方法 例("api.mail/send")
-// token 调用者的唯一凭据（用于链路缓存
-// args 输入参数
-// reply 回复参数
-// opts 调用的额外参数选项
-err := braid.GetClient().Invoke(ctx, target, methon, token, args, reply, opts...)
-if err != nil {
-  // todo ...
+for i := 0; i < 5; i++ {
+    mailbox.GetTopic(topic).Pub(&mailbox.Message{Body: []byte(strconv.Itoa(i))})
 }
-
+```
+```shell
+# 两个consumer从一个管道中竞争获取消息
+consumer a receive 0
+consumer b receive 1
+consumer a receive 2
+consumer b receive 3
+consumer a receive 4
 ```
 
-### 微服务
-> braid.Module 默认提供的微服务组件
 
-|**Discover**|**Balancer**|**Elector**|**RPC**|**Tracer**|**LinkCache**|
-|-|-|-|-|-|-|
-|服务发现|负载均衡|选举|RPC|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|[jaegertracer](https://github.com/pojol/braid-go-go/wiki/Guide-7.-%E4%BD%BF%E7%94%A8Tracer)|[linkerredis](https://github.com/pojol/braid-go-go/wiki/Guide-4.-%E4%BD%BF%E7%94%A8Link-cahe)|
-||[balancerswrr](https://github.com/pojol/braid-go-go/wiki/Guide-6.-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1)|electork8s|grpc-server|||
+
+### 模块
+> 默认提供的微服务组件，[**文档地址**](https://docs.braid-go.fun/)
+
+|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
+|-|-|-|-|-|-|-|
+|服务发现|负载均衡|选举|RPC|发布-订阅|分布式追踪|链路缓存|
+|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
+||balancerswrr|electork8s|grpc-server|||
 
 ### 构建
-> 通过注册模块(braid.Module)，构建braid的运行环境。
+> 构建braid的运行环境。
 
 ```go
 b, _ := braid.New(ServiceName)

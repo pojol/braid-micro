@@ -1,9 +1,7 @@
 package balancergroupbase
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/pojol/braid-go/module"
@@ -87,9 +85,7 @@ type baseBalancerGroup struct {
 
 	parm Parm
 
-	addConsumer mailbox.IConsumer
-	rmvConsumer mailbox.IConsumer
-	upConsumer  mailbox.IConsumer
+	serviceUpdate mailbox.IChannel
 
 	logger logger.ILogger
 
@@ -100,88 +96,61 @@ type baseBalancerGroup struct {
 }
 
 func (bbg *baseBalancerGroup) Init() error {
-	var err error
 
-	bbg.addConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.AddService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.AddService)
-	}
-
-	bbg.rmvConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.RmvService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.RmvService)
-	}
-
-	bbg.upConsumer, err = bbg.mb.Sub(mailbox.Proc, discover.UpdateService).Shared()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", Name, "mailbox", discover.UpdateService)
-	}
+	bbg.serviceUpdate = bbg.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
 
 	return nil
 }
 
 func (bbg *baseBalancerGroup) Run() {
 
-	bbg.addConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
+	bbg.serviceUpdate.Arrived(func(msg *mailbox.Message) {
+		dmsg := discover.DecodeUpdateMsg(msg)
+		if dmsg.Event == discover.EventAddService {
+			bbg.lock.Lock()
+			for strategy := range bbg.group {
 
-		bbg.lock.Lock()
-		for strategy := range bbg.group {
-
-			if !bbg.group[strategy].exist(nod.Name) {
-				b := balancer.GetBuilder(strategy)
-				ib, _ := b.Build(bbg.logger)
-				bbg.group[strategy].targets[nod.Name] = ib
-				bbg.logger.Debugf("add service %s by strategy %s", nod.Name, strategy)
-			}
-
-			bbg.group[strategy].targets[nod.Name].Add(nod)
-		}
-		bbg.lock.Unlock()
-		return nil
-	})
-
-	bbg.rmvConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
-
-		bbg.lock.Lock()
-
-		for k := range bbg.group {
-			if _, ok := bbg.group[k]; ok {
-				b, err := bbg.group[k].get(nod.Name)
-				if err != nil {
-					bbg.logger.Errorf("remove service err %s", err.Error())
-					break
+				if !bbg.group[strategy].exist(dmsg.Nod.Name) {
+					b := balancer.GetBuilder(strategy)
+					ib, _ := b.Build(bbg.logger)
+					bbg.group[strategy].targets[dmsg.Nod.Name] = ib
+					bbg.logger.Debugf("add service %s by strategy %s", dmsg.Nod.Name, strategy)
 				}
 
-				b.Rmv(nod)
+				bbg.group[strategy].targets[dmsg.Nod.Name].Add(dmsg.Nod)
 			}
-		}
-		bbg.lock.Unlock()
-		return nil
-	})
+			bbg.lock.Unlock()
+		} else if dmsg.Event == discover.EventRemoveService {
+			bbg.lock.Lock()
 
-	bbg.upConsumer.OnArrived(func(msg mailbox.Message) error {
-		nod := discover.Node{}
-		json.Unmarshal(msg.Body, &nod)
+			for k := range bbg.group {
+				if _, ok := bbg.group[k]; ok {
+					b, err := bbg.group[k].get(dmsg.Nod.Name)
+					if err != nil {
+						bbg.logger.Errorf("remove service err %s", err.Error())
+						break
+					}
 
-		bbg.lock.Lock()
-
-		for k := range bbg.group {
-			if _, ok := bbg.group[k]; ok {
-				b, err := bbg.group[k].get(nod.Name)
-				if err != nil {
-					bbg.logger.Errorf("update service err %s", err.Error())
-					break
+					b.Rmv(dmsg.Nod)
 				}
-
-				b.Update(nod)
 			}
+			bbg.lock.Unlock()
+		} else if dmsg.Event == discover.EventUpdateService {
+			bbg.lock.Lock()
+
+			for k := range bbg.group {
+				if _, ok := bbg.group[k]; ok {
+					b, err := bbg.group[k].get(dmsg.Nod.Name)
+					if err != nil {
+						bbg.logger.Errorf("update service err %s", err.Error())
+						break
+					}
+
+					b.Update(dmsg.Nod)
+				}
+			}
+			bbg.lock.Unlock()
 		}
-		bbg.lock.Unlock()
-		return nil
 	})
 
 }
@@ -207,9 +176,7 @@ func (bbg *baseBalancerGroup) Pick(ty string, target string) (discover.Node, err
 }
 
 func (bbg *baseBalancerGroup) Close() {
-	bbg.addConsumer.Exit()
-	bbg.rmvConsumer.Exit()
-	bbg.upConsumer.Exit()
+
 }
 
 func init() {

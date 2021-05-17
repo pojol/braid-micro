@@ -3,11 +3,13 @@ package mailbox
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/pojol/braid-go/module/logger"
 )
 
 // Builder 构建器接口
 type Builder interface {
-	Build(serviceName string) (IMailbox, error)
+	Build(serviceName string, logger logger.ILogger) (IMailbox, error)
 	Name() string
 	AddOption(opt interface{})
 }
@@ -17,23 +19,14 @@ type Message struct {
 	Body []byte
 }
 
-const (
-	// Proc 发布一个进程内消息
-	Proc = "mailbox.proc"
+type Handler func(*Message)
 
-	// Cluster 发布一个集群消息
-	Cluster = "mailbox.cluster"
-)
+type ScopeTy int32
 
 const (
-	// Undecided 暂未决定的
-	Undecided = "mailbox.undecided"
-
-	// Competition 竞争型的信道（只被消费一次
-	Competition = "mailbox.competition"
-
-	// Shared 共享型的信道, 消息副本会传递到多个消费者
-	Shared = "mailbox.shared"
+	ScopeUndefine ScopeTy = 0 + iota
+	ScopeProc
+	ScopeCluster
 )
 
 // NewMessage 构建消息体
@@ -49,33 +42,31 @@ func NewMessage(body interface{}) *Message {
 	}
 }
 
-// HandlerFunc msg handler
-type HandlerFunc func(message Message) error
-
-// IConsumer consumer
-type IConsumer interface {
-	OnArrived(handle HandlerFunc) error
-
-	PutMsgAsync(msg *Message)
-	PutMsg(msg *Message) error
-
-	Exit()
-	IsExited() bool
+type IChannel interface {
+	Arrived(Handler)
 }
 
-// ISubscriber 订阅者
-type ISubscriber interface {
-	Shared() (IConsumer, error)
-	Competition() (IConsumer, error)
+type ITopic interface {
+	// Pub 向 topic 中发送一条消息
+	Pub(*Message) error
+
+	// Sub 向 topic 中添加一个用于消费的 channel
+	// 如果在一个 topic 中注册同名的 channel 消息仅会被其中的一个消费
+	Sub(channelName string) IChannel
+
+	// 删除 topic 中存在的 channel
+	RemoveChannel(channelName string) error
 }
 
-// IMailbox mailbox
 type IMailbox interface {
-	// publish goroutine -> channel -> consumer goroutine
-	PubAsync(scope string, topic string, msg *Message)
-	Pub(scope string, topic string, msg *Message) error
+	// RegistTopic 注册 topic
+	RegistTopic(topicName string, scope ScopeTy) (ITopic, error)
 
-	Sub(scope string, topic string) ISubscriber
+	// GetTopic 获取 mailbox 中的一个 topic （线程安全
+	GetTopic(topicName string) ITopic
+
+	// 删除 mailbox 中存在的 topic
+	RemoveTopic(topicName string) error
 }
 
 var (

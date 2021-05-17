@@ -88,6 +88,8 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logg
 		logger: logger,
 	}
 
+	el.mb.RegistTopic(elector.ChangeState, mailbox.ScopeProc)
+
 	return el, nil
 }
 
@@ -119,11 +121,11 @@ func (e *k8sElector) Init() error {
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == e.parm.NodID {
-					e.mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.EMaster))
+					e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 					e.logger.Debugf("new leader %s %s", e.parm.NodID, identity)
 
 				} else {
-					e.mb.Pub(mailbox.Proc, elector.StateChange, elector.EncodeStateChangeMsg(elector.ESlave))
+					e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},

@@ -6,11 +6,14 @@ import "github.com/nsqio/go-nsq"
 type Parm struct {
 	nsqCfg nsq.Config
 
-	LookupAddress []string
-	Address       []string
+	LookupdAddress  []string
+	NsqdAddress     []string
+	NsqdHttpAddress []string
 
 	Channel     string
 	ServiceName string
+
+	ConcurrentHandler int32 // consumer 接收句柄的并发数（默认1
 
 	nsqLogLv nsq.LogLevel
 }
@@ -35,14 +38,19 @@ func WithNsqConfig(cfg nsq.Config) Option {
 // WithLookupAddr lookup addr
 func WithLookupAddr(addr []string) Option {
 	return func(c *Parm) {
-		c.LookupAddress = addr
+		c.LookupdAddress = addr
 	}
 }
 
 // WithNsqdAddr nsqd addr
-func WithNsqdAddr(addr []string) Option {
+func WithNsqdAddr(tcpAddr []string, httpAddr []string) Option {
 	return func(c *Parm) {
-		c.Address = addr
+		if len(tcpAddr) != len(httpAddr) {
+			panic("The addresses of tcp and http should match")
+		}
+
+		c.NsqdAddress = tcpAddr
+		c.NsqdHttpAddress = httpAddr
 	}
 }
 
@@ -50,5 +58,12 @@ func WithNsqdAddr(addr []string) Option {
 func WithNsqLogLv(lv nsq.LogLevel) Option {
 	return func(c *Parm) {
 		c.nsqLogLv = lv
+	}
+}
+
+// WithHandlerConcurrent 消费者接收句柄的并发数量（默认1
+func WithHandlerConcurrent(cnt int32) Option {
+	return func(c *Parm) {
+		c.ConcurrentHandler = cnt
 	}
 }

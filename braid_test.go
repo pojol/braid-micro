@@ -27,7 +27,7 @@ func TestPlugin(t *testing.T) {
 	b, _ := New(
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	b.RegistModule(
@@ -80,26 +80,27 @@ func TestMutiMailBox(t *testing.T) {
 	New(
 		"test_plugin",
 		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}),
+		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
-	topic := "TestMutiSharedProc"
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	sub := Mailbox().Sub(mailbox.Proc, topic)
-	c1, _ := sub.Shared()
-	c1.OnArrived(func(msg mailbox.Message) error {
-		wg.Done()
-		return nil
-	})
+	Mailbox().RegistTopic("TestMutiMailBox", mailbox.ScopeProc)
+
+	topic := Mailbox().GetTopic("TestMutiMailBox")
+	c1 := topic.Sub("Normal")
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
 		go func() {
-			Mailbox().Pub(mailbox.Proc, topic, &mailbox.Message{Body: []byte("msg")})
+			topic.Pub(&mailbox.Message{Body: []byte("msg")})
 		}()
 	}
+
+	c1.Arrived(func(msg *mailbox.Message) {
+		wg.Done()
+	})
 
 	go func() {
 		wg.Wait()
@@ -110,8 +111,9 @@ func TestMutiMailBox(t *testing.T) {
 	case <-done:
 		// pass
 		fmt.Println("done")
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(time.Second):
 		// time out
+		fmt.Println("timeout")
 		t.FailNow()
 	}
 }

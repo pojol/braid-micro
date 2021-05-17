@@ -44,12 +44,12 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 func TestMain(m *testing.M) {
 	mock.Init()
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestMain")
-
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("TestMain", log)
 
 	db := module.GetBuilder(discoverconsul.Name)
 	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
@@ -62,24 +62,28 @@ func TestMain(m *testing.M) {
 	s.Run()
 
 	// 伪造一个节点用于测试
-	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
-		ID:      "testnod",
-		Name:    "testgrpcclient",
-		Address: "http://localhost:1216",
-		Weight:  100,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "testnod",
+			Name:    "testgrpcclient",
+			Address: "http://localhost:1216",
+			Weight:  100,
+		},
+	))
 
 	m.Run()
 }
 
 func TestInvoke(t *testing.T) {
+
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestInvoke")
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("TestInvoke", log)
 
 	b := client.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	cb, _ := b.Build("TestInvoke", mb, log)
 
 	cb.Init()
@@ -106,8 +110,8 @@ func TestInvokeByLink(t *testing.T) {
 
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestInvokeByLink")
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("TestInvokeByLink", log)
 
 	lb := module.GetBuilder(linkerredis.Name)
 	lb.AddOption(linkerredis.WithRedisAddr(mock.RedisAddr))
@@ -142,10 +146,11 @@ func TestInvokeByLink(t *testing.T) {
 
 func TestParm(t *testing.T) {
 
+	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	mbb := mailbox.GetBuilder(mailboxnsq.Name)
 	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}))
-	mb, _ := mbb.Build("TestParm")
+	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb, _ := mbb.Build("TestParm", log)
 
 	b := client.GetBuilder(Name)
 	b.AddOption(WithPoolInitNum(100))
@@ -154,7 +159,6 @@ func TestParm(t *testing.T) {
 	//b.AddOption(Tracing())
 	b.AddOption(AutoLinkCache(nil))
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 	cb, _ := b.Build("TestCaller", mb, log)
 	gc := cb.(*grpcClient)
 

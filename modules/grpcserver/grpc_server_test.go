@@ -28,7 +28,6 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 		err = nil
 	} else {
 		err = errors.New("routing err")
-		panic(errors.New("panic err"))
 	}
 
 	return out, err

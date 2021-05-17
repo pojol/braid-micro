@@ -17,8 +17,8 @@ import (
 func TestParm(t *testing.T) {
 	serviceName := "TestParm"
 
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName)
 	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName, log)
 
 	bgb := module.GetBuilder(Name)
 	bgb.AddOption(WithStrategy([]string{balancerrandom.Name}))
@@ -31,34 +31,44 @@ func TestParm(t *testing.T) {
 	b.Run()
 	defer b.Close()
 
-	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  4,
-		Name:    serviceName,
-	}))
-
-	mb.Pub(mailbox.Proc, discover.AddService, mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  2,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "A",
+			Address: "A",
+			Weight:  4,
+			Name:    serviceName,
+		},
+	))
+	mb.GetTopic(discover.EventAddService).Pub(discover.EncodeUpdateMsg(
+		discover.EventAddService,
+		discover.Node{
+			ID:      "B",
+			Address: "B",
+			Weight:  2,
+			Name:    serviceName,
+		},
+	))
 
 	time.Sleep(time.Millisecond * 100)
-	mb.Pub(mailbox.Proc, discover.UpdateService, mailbox.NewMessage(discover.Node{
-		ID:      "A",
-		Address: "A",
-		Weight:  3,
-		Name:    serviceName,
-	}))
-
-	mb.Pub(mailbox.Proc, discover.RmvService, mailbox.NewMessage(discover.Node{
-		ID:      "B",
-		Address: "B",
-		Weight:  2,
-		Name:    serviceName,
-	}))
+	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		discover.EventUpdateService,
+		discover.Node{
+			ID:      "A",
+			Address: "A",
+			Weight:  3,
+			Name:    serviceName,
+		},
+	))
+	mb.GetTopic(discover.EventRemoveService).Pub(discover.EncodeUpdateMsg(
+		discover.EventRemoveService,
+		discover.Node{
+			ID:      "B",
+			Address: "B",
+			Weight:  2,
+			Name:    serviceName,
+		},
+	))
 
 	time.Sleep(time.Millisecond * 500)
 	for i := 0; i < 10; i++ {
