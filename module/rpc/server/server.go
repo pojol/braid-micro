@@ -18,7 +18,7 @@ type Builder interface {
 type IServer interface {
 	module.IModule
 
-	// ...
+	// Server 获取 rpc 的 server 接口
 	Server() interface{}
 }
 

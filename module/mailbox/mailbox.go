@@ -60,21 +60,21 @@ type ITopic interface {
 	// 这个时候如果同时有多个 sub 指向同一个 channel 则代表有多个 consumer 对该 channel 进行消费（随机获得
 	Sub(channelName string) IChannel
 
-	// 删除 topic 中存在的 channel
+	// RemoveChannel 删除 topic 中存在的 channel
 	RemoveChannel(channelName string) error
 }
 
 // IMailbox 邮箱，管理集群中的所有 Topic
 type IMailbox interface {
-	// 注册 topic 到 mailbox 中
+	// RegistTopic 注册 topic 到 mailbox 中
 	RegistTopic(topicName string, scope ScopeTy) (ITopic, error)
 
-	// 获取 mailbox 中的一个 topic
+	// GetTopic 获取 mailbox 中的一个 topic
 	//
 	// 如果该 topic 不存在，则创建一个新的 topic （但是作用域是 mailbox.SocpeProc
 	GetTopic(topicName string) ITopic
 
-	// 删除 mailbox 中存在的 topic
+	// RemoveTopic 删除 mailbox 中存在的 topic
 	RemoveTopic(topicName string) error
 }
 
