@@ -1,3 +1,4 @@
+// server 模块，主要用于包装 rpc-server
 package server
 
 import (
