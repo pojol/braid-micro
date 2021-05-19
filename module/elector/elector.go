@@ -1,6 +1,6 @@
-// elector 模块，主要用于分布式系统中的选举
+// 接口文件 elector 选举，主要用于分布式系统中的选举
 //
-// 这个模块主要通过 topic : ChangeState 消息，发布当前进程所处于的状态
+// 这个模块会创建 ChangeState Topic，通过这个 Topic 发布当前进程所处于的状态
 package elector
 
 import (

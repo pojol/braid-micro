@@ -1,3 +1,4 @@
+// 实现文件 balancerrandom 随机负载均衡算法实现
 package balancerrandom
 
 import (

@@ -1,4 +1,4 @@
-// balancer 负载均衡模块
+// 接口文件 balancer 负载均衡
 //
 package balancer
 

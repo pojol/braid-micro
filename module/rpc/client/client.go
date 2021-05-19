@@ -1,4 +1,4 @@
-// rpc-client 模块
+// 接口文件 client 定义 RPC 服务的客户端接口
 //
 package client
 

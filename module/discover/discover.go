@@ -1,6 +1,6 @@
-// discover 模块，主要用于服务发现
+// 接口文件 discover 服务发现
 //
-// 这个模块主要通过 topic : ServiceUpdate 消息，发布集群中相关服务的变更信息
+// 这个模块会创建 ServiceUpdate Topic，通过这个 Topic 发布集群中相关服务的变更信息
 package discover
 
 import (

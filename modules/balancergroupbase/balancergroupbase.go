@@ -1,3 +1,4 @@
+// 实现文件 balancergroupbase 负载均衡管理器，主要用于统筹管理 服务:负载均衡算法
 package balancergroupbase
 
 import (

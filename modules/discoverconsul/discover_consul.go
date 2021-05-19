@@ -1,3 +1,4 @@
+// 实现文件 基于 consul 实现的服务发现
 package discoverconsul
 
 import (

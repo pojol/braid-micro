@@ -1,3 +1,4 @@
+// 实现文件 electorconsul 基于 consul 实现的选举
 package electorconsul
 
 import (

@@ -1,5 +1,4 @@
-// maiblox 模块，主要用于构建 Pub-sub 模型
-//
+// 接口文件 mailbox 邮箱，主要用于包装 Pub-sub 消息模型
 package mailbox
 
 import (

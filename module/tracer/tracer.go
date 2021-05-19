@@ -1,3 +1,4 @@
+// 接口文件 tracer 分布式追踪服务
 package tracer
 
 import (

@@ -1,4 +1,4 @@
-// server 模块，主要用于包装 rpc-server
+// 接口文件 server 定义 RPC 服务的服务端接口
 package server
 
 import (
