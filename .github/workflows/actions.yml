@@ -63,8 +63,8 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          ip a
-          go test -race -coverprofile=coverage.out ./... -count=1
+          cd $SRCDIR
+          go test -race ./... -count=1
         env:
           MOCK_NSQD_ADDR: 172.17.0.1:4150
           MOCK_NSQD_HTTP_ADDR: 172.17.0.1:4151
@@ -74,4 +74,4 @@ jobs:
           COVERALLS_TOKEN: ${{secrets.CODECOV_TOKEN}}
         run: |
           cd $SRCDIR
-          ./coverage.sh --coveralls
+          ./cover.sh --coveralls
