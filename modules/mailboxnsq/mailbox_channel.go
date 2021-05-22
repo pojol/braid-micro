@@ -15,7 +15,7 @@ import (
 type mailboxChannel struct {
 	sync.RWMutex
 
-	msgCh chan *mailbox.Message
+	msgCh *UnboundedMsg
 
 	mailbox  *nsqMailbox
 	exitFlag int32
@@ -47,7 +47,7 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 		TopicName: topicName,
 		scope:     scope,
 		mailbox:   n,
-		msgCh:     make(chan *mailbox.Message, 10000),
+		msgCh:     NewUnbounded(),
 	}
 
 	if scope == mailbox.ScopeCluster {
@@ -117,20 +117,17 @@ func (c *mailboxChannel) Put(msg *mailbox.Message) {
 		return
 	}
 
-	select {
-	case c.msgCh <- msg:
-	default: // channel 被写满，且没有来得及消费掉
-		c.mailbox.log.Errorf("put msg err channel %v is full", c.Name)
-	}
+	c.msgCh.Put(msg)
 }
 
 func (c *mailboxChannel) addHandlers(handler mailbox.Handler) {
 	go func() {
 		for {
-			m, ok := <-c.msgCh
+			m, ok := <-c.msgCh.Get()
 			if !ok {
 				goto EXT
 			}
+			c.msgCh.Load()
 
 			handler(m)
 		}
@@ -153,7 +150,6 @@ func (c *mailboxChannel) Exit() error {
 	if c.scope == mailbox.ScopeCluster {
 		c.consumer.Stop()
 	}
-	close(c.msgCh)
 
 	return nil
 }
