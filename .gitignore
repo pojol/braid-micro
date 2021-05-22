@@ -10,3 +10,4 @@ testNormal.log
 *.braid
 web_linux
 appendonly.aof
+.cover
