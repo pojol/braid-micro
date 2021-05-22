@@ -7,7 +7,6 @@ import (
 )
 
 // Unbounded 一个支持任意长度的channel实现
-// 如果有性能要求，将interface类型实例出来，避免一次转换。
 type UnboundedMsg struct {
 	c       chan *mailbox.Message
 	backlog []*mailbox.Message

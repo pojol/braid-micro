@@ -74,4 +74,4 @@ jobs:
           COVERALLS_TOKEN: ${{secrets.CODECOV_TOKEN}}
         run: |
           cd $SRCDIR
-          sudo ./cover.sh --coveralls
+          sudo sh ./coverage.sh --coveralls
