@@ -1,3 +1,6 @@
+// 接口文件 discover 服务发现
+//
+// 这个模块会创建 ServiceUpdate Topic，通过这个 Topic 发布集群中相关服务的变更信息
 package discover
 
 import (
@@ -10,8 +13,13 @@ import (
 const (
 	ServiceUpdate = "discover.serviceUpdate"
 
-	EventAddService    = "event_add_service"
+	// EventAddService 有一个新的服务加入到集群
+	EventAddService = "event_add_service"
+
+	// EventRemoveService 有一个旧的服务从集群中退出
 	EventRemoveService = "event_remove_service"
+
+	// EventUpdateService 有一个旧的服务产生了信息的变更（通常是指权重
 	EventUpdateService = "event_update_service"
 )
 

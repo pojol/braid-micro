@@ -15,13 +15,16 @@ type Builder interface {
 
 // IBalancer 负载均衡
 type IBalancer interface {
-	// 从服务节点列表中选取一个对应的节点，
-	// 节点列表可以订阅discover模块的消息进行填充或更改，
-	// braid 提供默认的`平滑加权轮询算法`如果有其他的需求，用户可以选择实现自定义的Pick接口。
+	// Pick 从当前的负载均衡算法中，选取一个匹配的节点
 	Pick() (nod discover.Node, err error)
 
+	// Add 为当前的服务添加一个新的节点 service gate : [ gate1, gate2 ]
 	Add(discover.Node)
+
+	// Rmv 从当前的服务中移除一个旧的节点
 	Rmv(discover.Node)
+
+	// Update 更新一个当前服务中的节点（通常是权重信息
 	Update(discover.Node)
 }
 

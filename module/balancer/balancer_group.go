@@ -1,3 +1,5 @@
+// 接口文件 balancer 负载均衡
+//
 package balancer
 
 import (
@@ -5,9 +7,12 @@ import (
 	"github.com/pojol/braid-go/module/discover"
 )
 
-// IBalancerGroup balancer group interface
+// IBalancerGroup 负载均衡器
 type IBalancerGroup interface {
 	module.IModule
 
-	Pick(ty string, target string) (discover.Node, error)
+	// Pick 为 target 服务选取一个合适的节点
+	//
+	// strategy 选取所使用的策略，在构建阶段通过 opt 传入
+	Pick(strategy string, target string) (discover.Node, error)
 }

@@ -1,4 +1,3 @@
-cover.sh
 coverage.html
 coverage.out
 caller/brpc/gen.sh
@@ -10,3 +9,4 @@ testNormal.log
 *.braid
 web_linux
 appendonly.aof
+.cover

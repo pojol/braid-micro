@@ -6,9 +6,13 @@ on:
   [push, pull_request]
 
 jobs:
-  build:
+  test:
     # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    env:
+      GOPATH: "${{github.workspace}}/go"
+      SRCDIR: "go/src/github.com/pojol/braid-go"
+
 
     # Service containers to run with `container-job`
     services:
@@ -45,6 +49,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+        with:
+            path: ${{env.SRCDIR}}
 
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
@@ -54,8 +60,22 @@ jobs:
       # Runs a single command using the runners shell
       - name: unit test
         run: |
-          ip a
-          go test -race -coverprofile=coverage.out ./... -count=1
+          cd $SRCDIR
+          go test -race -covermode atomic -coverprofile=covprofile ./...
+          ls
         env:
           MOCK_NSQD_ADDR: 172.17.0.1:4150
           MOCK_NSQD_HTTP_ADDR: 172.17.0.1:4151
+
+      - name: Install goveralls
+        env:
+          GO111MODULE: off
+        run: |
+          go get github.com/mattn/goveralls
+
+      - name: Send coverage
+        env:
+          COVERALLS_TOKEN: ${{secrets.CODECOV_TOKEN}}
+        run: |
+          cd $SRCDIR
+          goveralls -coverprofile=covprofile -service=github

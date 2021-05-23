@@ -1,3 +1,4 @@
+// 实现文件 electork8s 基于 k8sclient 实现的选举
 package electork8s
 
 import (

@@ -1,3 +1,4 @@
+// 实现文件 基于 nsq 实现的mailbox
 package mailboxnsq
 
 import (

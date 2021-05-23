@@ -1,3 +1,4 @@
+// 实现文件 linkerredis 基于 redis 实现的链路缓存
 package linkerredis
 
 import (
