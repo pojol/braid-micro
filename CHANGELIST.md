@@ -1,4 +1,8 @@
-
+# v1.2.24
+> 1.2.23 版本补充
+1. 从 codecov 切换到 coveralls.io
+2. 将默认的 channel 切换为 Unbounded channel 用于避免消费过快导致阻塞。
+3. 添加一些接口中的注释
 
 # v1.2.23
 > 重新设计mailbox的接口， 主要的理由有
