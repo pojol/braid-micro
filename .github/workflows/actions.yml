@@ -58,7 +58,10 @@ jobs:
           go-version: ^1.13
 
       - name: Install goveralls
-        run: GO111MODULE=off go get github.com/mattn/goveralls
+        run: |
+          go get github.com/mattn/goveralls
+          cd $GOPATH/bin
+          ls
 
       # Runs a single command using the runners shell
       - name: unit test
