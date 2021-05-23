@@ -62,6 +62,7 @@ jobs:
         run: |
           cd $SRCDIR
           go test -race -covermode atomic -coverprofile=covprofile ./...
+          ls
         env:
           MOCK_NSQD_ADDR: 172.17.0.1:4150
           MOCK_NSQD_HTTP_ADDR: 172.17.0.1:4151
