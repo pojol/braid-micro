@@ -11,6 +11,8 @@
 [![](https://img.shields.io/badge/slack-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
+[![image.png](https://i.postimg.cc/sf0FcCYr/image.png)](https://postimg.cc/yW9r15pQ)
+
 ### 简介
 > braid 中主要提供两套系统
 
