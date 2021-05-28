@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/pojol/braid-go/modules/grpcclient/bproto"
 	"github.com/pojol/braid-go/modules/grpcserver"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -34,11 +36,11 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 
 func TestMain(m *testing.M) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("TestMain").(logger.ILogger)
 
-	sb := server.GetBuilder(grpcserver.Name)
-	sb.AddOption(grpcserver.WithListen(":1205"))
-	s, _ := sb.Build("test", log)
+	sb := module.GetBuilder(grpcserver.Name)
+	sb.AddModuleOption(grpcserver.WithListen(":1205"))
+	s := sb.Build("test", moduleparm.WithLogger(log)).(server.IServer)
 	s.Init()
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})

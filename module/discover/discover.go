@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
@@ -39,18 +39,18 @@ type UpdateMsg struct {
 	Event string
 }
 
-func EncodeUpdateMsg(event string, nod Node) *mailbox.Message {
+func EncodeUpdateMsg(event string, nod Node) *pubsub.Message {
 	byt, _ := json.Marshal(&UpdateMsg{
 		Event: event,
 		Nod:   nod,
 	})
 
-	return &mailbox.Message{
+	return &pubsub.Message{
 		Body: byt,
 	}
 }
 
-func DecodeUpdateMsg(msg *mailbox.Message) UpdateMsg {
+func DecodeUpdateMsg(msg *pubsub.Message) UpdateMsg {
 	dmsg := UpdateMsg{}
 	json.Unmarshal(msg.Body, &dmsg)
 	return dmsg

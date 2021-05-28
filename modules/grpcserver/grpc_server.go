@@ -8,9 +8,11 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/pojol/braid-go/modules/jaegertracing"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"google.golang.org/grpc"
 )
 
@@ -21,18 +23,18 @@ var (
 	// ErrServiceUnavailiable 没有可用的服务
 	ErrServiceUnavailiable = errors.New("service not registered")
 	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("Convert linker config")
+	ErrConfigConvert = errors.New("convert linker config")
 )
 
 type grpcServerBuilder struct {
 	opts []interface{}
 }
 
-func newGRPCServer() server.Builder {
+func newGRPCServer() module.IBuilder {
 	return &grpcServerBuilder{}
 }
 
-func (b *grpcServerBuilder) AddOption(opt interface{}) {
+func (b *grpcServerBuilder) AddModuleOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
@@ -40,7 +42,16 @@ func (b *grpcServerBuilder) Name() string {
 	return Name
 }
 
-func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (server.IServer, error) {
+func (b *grpcServerBuilder) Type() module.ModuleType {
+	return module.Server
+}
+
+func (b *grpcServerBuilder) Build(serviceName string, buildOpts ...interface{}) interface{} {
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
+
 	p := Parm{
 		ListenAddr:  ":14222",
 		openRecover: false,
@@ -51,13 +62,14 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 
 	s := &grpcServer{
 		parm:        p,
-		logger:      logger,
+		logger:      bp.Logger,
 		serviceName: serviceName,
 	}
 
 	interceptors := []grpc.UnaryServerInterceptor{}
-	if p.tracer != nil {
-		interceptors = append(interceptors, jaegertracing.ServerInterceptor(p.tracer))
+	if bp.Tracer != nil {
+		s.tracer = bp.Tracer.GetTracing().(opentracing.Tracer)
+		interceptors = append(interceptors, jaegertracing.ServerInterceptor(s.tracer))
 	}
 
 	if p.openRecover {
@@ -71,7 +83,7 @@ func (b *grpcServerBuilder) Build(serviceName string, logger logger.ILogger) (se
 		s.rpc = grpc.NewServer()
 	}
 
-	return s, nil
+	return s
 }
 
 // Server RPC 服务端
@@ -82,6 +94,8 @@ type grpcServer struct {
 	listen net.Listener
 	logger logger.ILogger
 	parm   Parm
+
+	tracer opentracing.Tracer
 }
 
 func (s *grpcServer) Init() error {
@@ -118,5 +132,5 @@ func (s *grpcServer) Close() {
 }
 
 func init() {
-	server.Register(newGRPCServer())
+	module.Register(newGRPCServer())
 }

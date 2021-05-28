@@ -1,22 +1,16 @@
+// 接口文件 balancer 负载均衡
+//
 package balancer
 
 import (
-	"strings"
-
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
-	"github.com/pojol/braid-go/module/logger"
 )
 
-// Builder balancer builder
-type Builder interface {
-	Build(logger logger.ILogger) (IBalancer, error)
-	Name() string
-}
-
-// IBalancer 负载均衡
-type IBalancer interface {
-	// Pick 从当前的负载均衡算法中，选取一个匹配的节点
-	Pick() (nod discover.Node, err error)
+// IPicker 选取器
+type IPicker interface {
+	// Get 从当前的负载均衡算法中，选取一个匹配的节点
+	Get() (nod discover.Node, err error)
 
 	// Add 为当前的服务添加一个新的节点 service gate : [ gate1, gate2 ]
 	Add(discover.Node)
@@ -28,19 +22,12 @@ type IBalancer interface {
 	Update(discover.Node)
 }
 
-var (
-	m = make(map[string]Builder)
-)
+// IBalancer 负载均衡器
+type IBalancer interface {
+	module.IModule
 
-// Register 注册balancer
-func Register(b Builder) {
-	m[strings.ToLower(b.Name())] = b
-}
-
-// GetBuilder 获取构建器
-func GetBuilder(name string) Builder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
-	}
-	return nil
+	// Pick 为 target 服务选取一个合适的节点
+	//
+	// strategy 选取所使用的策略，在构建阶段通过 opt 传入
+	Pick(strategy string, target string) (discover.Node, error)
 }

@@ -14,7 +14,8 @@ import (
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
 )
 
 const (
@@ -39,7 +40,7 @@ type consulDiscoverBuilder struct {
 	opts []interface{}
 }
 
-func newConsulDiscover() module.Builder {
+func newConsulDiscover() module.IBuilder {
 	return &consulDiscoverBuilder{}
 }
 
@@ -47,37 +48,43 @@ func (b *consulDiscoverBuilder) Name() string {
 	return Name
 }
 
-func (b *consulDiscoverBuilder) Type() string {
-	return module.TyDiscover
+func (b *consulDiscoverBuilder) Type() module.ModuleType {
+	return module.Discover
 }
 
-func (b *consulDiscoverBuilder) AddOption(opt interface{}) {
+func (b *consulDiscoverBuilder) AddModuleOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *consulDiscoverBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+func (b *consulDiscoverBuilder) Build(name string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
 		Tag:                       "braid",
-		Name:                      serviceName,
+		Name:                      name,
 		SyncServicesInterval:      time.Second * 2,
 		SyncServiceWeightInterval: time.Second * 10,
 		Address:                   "http://127.0.0.1:8500",
 	}
+
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
 	}
 
 	e := &consulDiscover{
 		parm:       p,
-		mb:         mb,
-		logger:     logger,
+		ps:         bp.PS,
+		logger:     bp.Logger,
 		passingMap: make(map[string]*syncNode),
 	}
 
-	mb.RegistTopic(discover.ServiceUpdate, mailbox.ScopeProc)
+	e.ps.RegistTopic(discover.ServiceUpdate, pubsub.ScopeProc)
 
-	return e, nil
+	return e
 }
 
 func (dc *consulDiscover) Init() error {
@@ -93,8 +100,8 @@ func (dc *consulDiscover) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", dc.parm.Name, err.Error())
 	}
 
-	linkC := dc.mb.GetTopic(linkcache.ServiceLinkNum).Sub(Name + "-" + ip)
-	linkC.Arrived(func(msg *mailbox.Message) {
+	linkC := dc.ps.GetTopic(linkcache.ServiceLinkNum).Sub(Name + "-" + ip)
+	linkC.Arrived(func(msg *pubsub.Message) {
 		lninfo := linkcache.DecodeLinkNumMsg(msg)
 		dc.lock.Lock()
 		defer dc.lock.Unlock()
@@ -114,7 +121,7 @@ type consulDiscover struct {
 
 	// parm
 	parm   Parm
-	mb     mailbox.IMailbox
+	ps     pubsub.IPubsub
 	logger logger.ILogger
 
 	// service id : service nod
@@ -179,7 +186,7 @@ func (dc *consulDiscover) discoverImpl() {
 			dc.logger.Infof("new service %s addr %s", service.ServiceName, sn.address)
 			dc.passingMap[service.ServiceID] = &sn
 
-			dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+			dc.ps.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
 				discover.EventAddService,
 				discover.Node{
 					ID:      sn.id,
@@ -195,7 +202,7 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := services[k]; !ok { // rmv nod
 			dc.logger.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+			dc.ps.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
 				discover.EventRemoveService,
 				discover.Node{
 					ID:      dc.passingMap[k].id,
@@ -230,7 +237,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		dc.ps.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
 			discover.EventUpdateService,
 			discover.Node{
 				ID:     v.id,

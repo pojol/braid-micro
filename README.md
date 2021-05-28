@@ -11,17 +11,23 @@
 [![](https://img.shields.io/badge/slack-%E4%BA%A4%E6%B5%81-2ca5e0?style=flat&logo=slack)](https://join.slack.com/t/braid-world/shared_invite/zt-mw95pa7m-0Kak8lwE3o4KGMaTuxatJw)
 
 
-[![image.png](https://i.postimg.cc/sf0FcCYr/image.png)](https://postimg.cc/yW9r15pQ)
+# 简介
 
-### 简介
-> braid 中主要提供两套系统
+> 这个图用于描述下面讲述到的几个关键字 `服务` `节点` `模块` `RPC` `Pub-sub`
 
-1. **模块化**
-   * 提供基于模块接口实现的各种微服务，通过注册到braid中运行。
-2. **统一的消息模型**
-   * RPC 消息，用于服务和服务之间的调用
-   * Pub-sub 消息，用于模块和模块之间的消息通知
+[![image.png](https://i.postimg.cc/13qmxQqk/image.png)](https://postimg.cc/CRwTD9J7)
 
+---
+
+> braid 可以通过`模块`的组合，构建出适用于大多数场景的微服务架构，默认提供了如下模块;
+
+* **RPC** - 用于`服务`到`服务`之间的接口调用
+* **Pub-sub** - 用于`模块`到`模块`之间的消息发布&接收
+* **Discover** - 服务发现，用于感知微服务中各个服务中节点的状态变更（进入，离开，更新权重等，并将变更同步给进程内的其他模块
+* **Balancer** - 负载均衡模块，主要用于将 RPC 调用，合理的分配到各个同名服务中
+* **Elector** - 选举模块，为注册模块的同名服务，选出一个唯一的主节点
+* **Tracer** - 分布式追踪，主要用于监控微服务中程序运行的内部状态
+* **Linkcache** - 链路缓存，主要用于维护，传入用户唯一凭证（token，的调用链路，使该 token 的调用 a1->b1->c2 ... 保持不变
 
 ### 模块
 > 默认提供的微服务模块，[**文档地址**](https://docs.braid-go.fun/)
@@ -36,89 +42,27 @@
 > 构建braid的运行环境。
 
 ```go
-b, _ := braid.New(ServiceName)
 
-// 将模块注册到braid
-b.RegistModule(
-  braid.Discover(         // Discover 模块
-    discoverconsul.Name,  // 模块名（基于consul实现的discover模块，通过模块名可以获取到模块的构建器
-    discoverconsul.WithConsulAddr(consulAddr)), // 模块的可选项
-  braid.Client(grpcclient.Name),
-  braid.Elector(
-    electorconsul.Name,
-    electorconsul.WithConsulAddr(consulAddr),
-  ),
-  braid.LinkCache(linkerredis.Name),
-  braid.Tracing(
-    jaegertracing.Name,
-    jaegertracing.WithHTTP(jaegerAddr), 
-    jaegertracing.WithProbabilistic(0.01)))
+s := braid.NewService("gate")   // 在服务 gate 中，创建一个新的节点
 
-b.Init()  // 初始化注册在braid中的模块
-b.Run()   // 运行
-defer b.Close() // 释放
-```
+// 将功能模块注册到节点中
+s.Register(
+    braid.Module(braid.LoggerZap),
+    braid.Module(braid.PubsubNsq,
+        pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+        pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+    ),
+    braid.Module(               // Discover 模块
+        discoverconsul.Name,    // 也可以 braid.DiscoverConsul
+        discoverconsul.WithConsulAddr(consulAddr)
+    ),
+)
 
+s.Init()    // 节点初始化
+s.Run()     // 节点运行
 
+defer s.Close() // 释放节点中相关的模块
 
-### 消息模型
-
-#### API 消息
-> API消息主要用于**服务**`->`**服务**之间
-
-* ctx 用于分布式追踪，存储调用链路的上下文信息
-* target 目标服务节点 例 "mail", braid 会依据服务发现和负载均衡信息，自动将消息发送到合适的节点
-* methon 目标节点支持的方法
-* token 如果为`""`则随机指向一个目标服务，如果传入用户唯一凭据则可以使用平滑加权负载均衡，以及链路缓存
-* args 输入参数
-* reply 回复参数
-* opts... gpc调用的额外参数选项
-
-```go
-client.Invoke(ctx, target, methon, token, args, reply, opts...)
-```
-
-#### Pub-sub 消息
-> Pub-sub消息主要用于**模块**`->`**模块**之间
-
-* 作用域
-    * mailbox.ScopeProc 消息作用于`自身进程`中的模块
-    * mailbox.ScopeCluster 消息将作用于`整个集群`中的模块
-* Topic
-    > 某个消息的集合，当调用 pub 发布消息时，消息会被投递到加入到这个 topic 的所有 channel 中
-    * 单一接收 （一个topic `+` channel x 1 : consumer x 1
-    * 广播逻辑 （一个topic `+` channel x N : consumer x N
-    * 竞争接收 （一个topic `+` channel x 1 : consumer x N
-* Channel
-    > topic 中的管道，每一个管道都会接收到来自topic 的消息，并且每个管道都可以拥有多个`消费者`
-
-####  示例
-* `多个`消费者`单个` Channel
-
-```go
-
-topic := "test.procNotify"
-
-mailbox.RegistTopic(topic, mailbox.ScopeProc)
-
-mailbox.GetTopic(topic).Sub("channel_1").Arrived(func(msg *mailbox.Message) {
-    fmt.Println("consumer a receive", string(msg.Body))
-})
-mailbox.GetTopic(topic).Sub("channel_1").Arrived(func(msg *mailbox.Message) {
-    fmt.Println("consumer b receive", string(msg.Body))
-})
-
-for i := 0; i < 5; i++ {
-    mailbox.GetTopic(topic).Pub(&mailbox.Message{Body: []byte(strconv.Itoa(i))})
-}
-```
-```shell
-# 两个consumer从一个管道中竞争获取消息
-consumer a receive 0
-consumer b receive 1
-consumer a receive 2
-consumer b receive 3
-consumer a receive 4
 ```
 
 

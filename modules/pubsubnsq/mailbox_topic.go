@@ -1,4 +1,4 @@
-package mailboxnsq
+package pubsubnsq
 
 import (
 	"errors"
@@ -11,15 +11,15 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/internal/braidsync"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
-type mailboxTopic struct {
-	Name    string
-	mailbox *nsqMailbox
-	scope   mailbox.ScopeTy
+type pubsubTopic struct {
+	Name  string
+	ps    *nsqPubsub
+	scope pubsub.ScopeTy
 
-	msgch    chan *mailbox.Message
+	msgch    chan *pubsub.Message
 	exitFlag int32
 	producer []*nsq.Producer
 
@@ -31,23 +31,23 @@ type mailboxTopic struct {
 
 	sync.RWMutex
 
-	channelMap map[string]*mailboxChannel
+	channelMap map[string]*pubsubChannel
 }
 
-func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
+func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 
-	topic := &mailboxTopic{
+	topic := &pubsubTopic{
 		Name:              name,
-		mailbox:           n,
+		ps:                n,
 		scope:             scope,
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
-		msgch:             make(chan *mailbox.Message, 4096),
-		channelMap:        make(map[string]*mailboxChannel),
+		msgch:             make(chan *pubsub.Message, 4096),
+		channelMap:        make(map[string]*pubsubChannel),
 	}
 
-	if scope == mailbox.ScopeCluster {
+	if scope == pubsub.ScopeCluster {
 		cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
 		var err error
 		var cp *nsq.Producer
@@ -111,14 +111,14 @@ func newTopic(name string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxTopic {
 
 }
 
-func (t *mailboxTopic) start() {
+func (t *pubsubTopic) start() {
 	select {
 	case t.startChan <- 1:
 	default:
 	}
 }
 
-func (t *mailboxTopic) Sub(name string) mailbox.IChannel {
+func (t *pubsubTopic) Sub(name string) pubsub.IChannel {
 
 	t.Lock()
 	c, isNew := t.getOrCreateChannel(name, t.scope)
@@ -135,14 +135,14 @@ func (t *mailboxTopic) Sub(name string) mailbox.IChannel {
 	return c
 }
 
-func (t *mailboxTopic) getOrCreateChannel(name string, scope mailbox.ScopeTy) (mailbox.IChannel, bool) {
+func (t *pubsubTopic) getOrCreateChannel(name string, scope pubsub.ScopeTy) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
-		channel = newChannel(t.Name, name, scope, t.mailbox)
+		channel = newChannel(t.Name, name, scope, t.ps)
 		t.channelMap[name] = channel
 
-		t.mailbox.log.Infof("Topic %v new channel %v", t.Name, name)
+		t.ps.log.Infof("Topic %v new channel %v", t.Name, name)
 		return channel, true
 	}
 
@@ -150,7 +150,7 @@ func (t *mailboxTopic) getOrCreateChannel(name string, scope mailbox.ScopeTy) (m
 
 }
 
-func (t *mailboxTopic) RemoveChannel(name string) error {
+func (t *pubsubTopic) RemoveChannel(name string) error {
 	t.RLock()
 	channel, ok := t.channelMap[name]
 	t.RUnlock()
@@ -158,7 +158,7 @@ func (t *mailboxTopic) RemoveChannel(name string) error {
 		return fmt.Errorf("channel %v does not exist", name)
 	}
 
-	t.mailbox.log.Infof("topic %v deleting channel %v", t.Name, name)
+	t.ps.log.Infof("topic %v deleting channel %v", t.Name, name)
 	channel.Exit()
 
 	t.Lock()
@@ -173,20 +173,20 @@ func (t *mailboxTopic) RemoveChannel(name string) error {
 	return nil
 }
 
-func (t *mailboxTopic) put(msg *mailbox.Message) error {
+func (t *pubsubTopic) put(msg *pubsub.Message) error {
 	select {
 	case t.msgch <- msg:
 	default:
-		return fmt.Errorf("the mailbox topic %v queue is full", t.Name)
+		return fmt.Errorf("the pubsub topic %v queue is full", t.Name)
 	}
 
 	return nil
 }
 
-func (t *mailboxTopic) loop() {
-	var msg *mailbox.Message
-	var chans []*mailboxChannel
-	var msgChan chan *mailbox.Message
+func (t *pubsubTopic) loop() {
+	var msg *pubsub.Message
+	var chans []*pubsubChannel
+	var msgChan chan *pubsub.Message
 
 	for {
 		select {
@@ -234,10 +234,10 @@ func (t *mailboxTopic) loop() {
 	}
 
 EXT:
-	t.mailbox.log.Infof("topic %v out of the loop", t.Name)
+	t.ps.log.Infof("topic %v out of the loop", t.Name)
 }
 
-func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
+func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 	t.RLock()
 	defer t.RUnlock()
 
@@ -245,7 +245,7 @@ func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
 		return errors.New("exiting")
 	}
 
-	if t.scope == mailbox.ScopeProc {
+	if t.scope == pubsub.ScopeProc {
 		err := t.put(msg)
 		if err != nil {
 			return err
@@ -257,13 +257,13 @@ func (t *mailboxTopic) Pub(msg *mailbox.Message) error {
 	return nil
 }
 
-func (t *mailboxTopic) Exit() error {
+func (t *pubsubTopic) Exit() error {
 
 	if !atomic.CompareAndSwapInt32(&t.exitFlag, 0, 1) {
 		return errors.New("exiting")
 	}
 
-	t.mailbox.log.Infof("topic %v exiting", t.Name)
+	t.ps.log.Infof("topic %v exiting", t.Name)
 
 	close(t.exitChan)
 	// 等待 loop 中止后处理余下逻辑

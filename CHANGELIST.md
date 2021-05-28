@@ -1,3 +1,8 @@
+# v1.2.25
+1. 统一所有module的builder接口
+2. 将 Mailbox 更名为 Pubsub （更贴近逻辑的名字
+3. 调整一下构建阶段的代码（原来有些凌乱
+
 # v1.2.24
 > 1.2.23 版本补充
 1. 从 codecov 切换到 coveralls.io
@@ -28,7 +33,7 @@
 ```go
     // old
     consumer := braid.Mailbox().Sub(mailbox.Proc, topic).Shared()
-    consumer.OnArrived(func (msg *mailbox.Message) error {
+    consumer.OnArrived(func (msg *pubsub.Message) error {
         // todo
         return nil
     })
@@ -40,7 +45,7 @@
     
     topic := braid.Mailbox().GetTopic("topic name")
     consumer := topic.Sub("channel name")
-    consumer.Arrived(func(msg *mailbox.Message){
+    consumer.Arrived(func(msg *pubsub.Message){
         // todo
     })
 

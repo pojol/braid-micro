@@ -1,18 +1,5 @@
 // 接口文件 mailbox 邮箱，主要用于包装 Pub-sub 消息模型
-package mailbox
-
-import (
-	"strings"
-
-	"github.com/pojol/braid-go/module/logger"
-)
-
-// Builder 构建器接口
-type Builder interface {
-	Build(serviceName string, logger logger.ILogger) (IMailbox, error)
-	Name() string
-	AddOption(opt interface{})
-}
+package pubsub
 
 // Message 消息体
 type Message struct {
@@ -63,8 +50,8 @@ type ITopic interface {
 	RemoveChannel(channelName string) error
 }
 
-// IMailbox 邮箱，管理集群中的所有 Topic
-type IMailbox interface {
+// IPubsub 发布-订阅，管理集群中的所有 Topic
+type IPubsub interface {
 	// RegistTopic 注册 topic 到 mailbox 中
 	RegistTopic(topicName string, scope ScopeTy) (ITopic, error)
 
@@ -75,21 +62,4 @@ type IMailbox interface {
 
 	// RemoveTopic 删除 mailbox 中存在的 topic
 	RemoveTopic(topicName string) error
-}
-
-var (
-	m = make(map[string]Builder)
-)
-
-// Register 注册 builder
-func Register(b Builder) {
-	m[strings.ToLower(b.Name())] = b
-}
-
-// GetBuilder 获取 builder
-func GetBuilder(name string) Builder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
-	}
-	return nil
 }

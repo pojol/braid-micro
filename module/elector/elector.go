@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
@@ -20,18 +20,18 @@ type StateChangeMsg struct {
 }
 
 // EncodeStateChangeMsg encode
-func EncodeStateChangeMsg(state string) *mailbox.Message {
+func EncodeStateChangeMsg(state string) *pubsub.Message {
 	byt, _ := json.Marshal(&StateChangeMsg{
 		State: state,
 	})
 
-	return &mailbox.Message{
+	return &pubsub.Message{
 		Body: byt,
 	}
 }
 
 // DecodeStateChangeMsg decode
-func DecodeStateChangeMsg(msg *mailbox.Message) StateChangeMsg {
+func DecodeStateChangeMsg(msg *pubsub.Message) StateChangeMsg {
 	bmmsg := StateChangeMsg{}
 	json.Unmarshal(msg.Body, &bmmsg)
 	return bmmsg
@@ -49,7 +49,7 @@ const (
 	EMaster = "elector_master"
 )
 
-// IElection election interface
-type IElection interface {
+// IElector election interface
+type IElector interface {
 	module.IModule
 }
