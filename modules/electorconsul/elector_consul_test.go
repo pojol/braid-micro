@@ -6,9 +6,11 @@ import (
 
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,13 +22,15 @@ func TestMain(m *testing.M) {
 
 func TestElection(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestElection").(logger.ILogger)
+	mb := module.GetBuilder(pubsubnsq.Name).Build("TestElection", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	eb := module.GetBuilder(Name)
-	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
+	eb.AddModuleOption(WithConsulAddr(mock.ConsulAddr))
 
-	e, _ := eb.Build("test_elector_with_consul", mb, log)
+	e := eb.Build("test_elector_with_consul",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(elector.IElector)
 
 	e.Run()
 	time.Sleep(time.Second)
@@ -35,18 +39,19 @@ func TestElection(t *testing.T) {
 
 func TestParm(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build("TestDiscover", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestParm").(logger.ILogger)
+	mb := module.GetBuilder(pubsubnsq.Name).Build("TestParm", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	eb := module.GetBuilder(Name)
-	eb.AddOption(WithConsulAddr(mock.ConsulAddr))
-	eb.AddOption(WithLockTick(time.Second))
-	eb.AddOption(WithSessionTick(time.Second))
+	eb.AddModuleOption(WithConsulAddr(mock.ConsulAddr))
+	eb.AddModuleOption(WithLockTick(time.Second))
+	eb.AddModuleOption(WithSessionTick(time.Second))
 
-	e, _ := eb.Build("test_elector_with_consul", mb, log)
+	e := eb.Build("test_elector_with_consul",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(*consulElection)
 
-	ec := e.(*consulElection)
-	assert.Equal(t, ec.parm.ConsulAddr, mock.ConsulAddr)
-	assert.Equal(t, ec.parm.LockTick, time.Second)
-	assert.Equal(t, ec.parm.RefushSessionTick, time.Second)
+	assert.Equal(t, e.parm.ConsulAddr, mock.ConsulAddr)
+	assert.Equal(t, e.parm.LockTick, time.Second)
+	assert.Equal(t, e.parm.RefushSessionTick, time.Second)
 }

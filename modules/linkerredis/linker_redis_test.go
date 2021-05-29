@@ -14,9 +14,10 @@ import (
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/modules/electorconsul"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/moduleparm"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,27 +35,28 @@ func TestLinkerTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLinkerTarget-"
 	tmu.Unlock()
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("TestLinkerTarget").(logger.ILogger)
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("testlinkertarget", log)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestLinkerTarget", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	eb := module.GetBuilder(electorconsul.Name)
-	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget", mb, log)
+	eb.AddModuleOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
+	e := eb.Build("TestLinkerTarget",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(elector.IElector)
 	defer e.Close()
 
 	b := module.GetBuilder(Name)
-	b.AddOption(WithRedisAddr(mock.RedisAddr))
-	b.AddOption(WithRedisMaxIdle(8))
-	b.AddOption(WithRedisMaxActive(16))
-	b.AddOption(WithSyncTick(100))
+	b.AddModuleOption(WithRedisAddr(mock.RedisAddr))
+	b.AddModuleOption(WithRedisMaxIdle(8))
+	b.AddModuleOption(WithRedisMaxActive(16))
+	b.AddModuleOption(WithSyncTick(100))
 
-	lk, err := b.Build("gate", mb, log)
-	lc := lk.(linkcache.ILinkCache)
-	assert.Equal(t, err, nil)
+	lc := b.Build("gate", moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(linkcache.ILinkCache)
 
 	// clean
 	rclient := redis.New()
@@ -88,7 +90,7 @@ func TestLinkerTarget(t *testing.T) {
 		},
 	}
 
-	err = lc.Link("token01", nods[0])
+	err := lc.Link("token01", nods[0])
 	assert.Equal(t, err, nil)
 
 	err = lc.Link("token01", nods[1])
@@ -104,8 +106,8 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token01")})
-	mb.GetTopic(linkcache.TokenUnlink).Pub(&mailbox.Message{Body: []byte("token02")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
+	mb.GetTopic(linkcache.TokenUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 
@@ -123,25 +125,26 @@ func TestLocalTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLocalTarget-"
 	tmu.Unlock()
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("TestLocalTarget").(logger.ILogger)
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("TestLocalTarget", log)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestLocalTarget", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	eb := module.GetBuilder(electorconsul.Name)
-	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("TestLocalTarget", mb, log)
+	eb.AddModuleOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
+	e := eb.Build("TestLocalTarget",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(elector.IElector)
 	defer e.Close()
 
 	b := module.GetBuilder(Name)
-	b.AddOption(WithRedisAddr(mock.RedisAddr))
-	b.AddOption(WithMode(LinkerRedisModeLocal))
+	b.AddModuleOption(WithRedisAddr(mock.RedisAddr))
+	b.AddModuleOption(WithMode(LinkerRedisModeLocal))
 
-	lk, err := b.Build("localgate", mb, log)
-	lc := lk.(linkcache.ILinkCache)
-	assert.Equal(t, err, nil)
+	lc := b.Build("localgate", moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(linkcache.ILinkCache)
 
 	// clean
 	rclient := redis.New()
@@ -175,7 +178,7 @@ func TestLocalTarget(t *testing.T) {
 		},
 	}
 
-	err = lc.Link("localtoken01", nods[0])
+	err := lc.Link("localtoken01", nods[0])
 	assert.Equal(t, err, nil)
 
 	err = lc.Link("localtoken01", nods[1])
@@ -208,24 +211,25 @@ func TestDown(t *testing.T) {
 func BenchmarkLink(b *testing.B) {
 	LinkerRedisPrefix = "benchmarklink"
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("BenchmarkLink").(logger.ILogger)
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("benchmarklink", log)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("BenchmarkLink", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	eb := module.GetBuilder(electorconsul.Name)
-	eb.AddOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e, _ := eb.Build("testlinkertarget", mb, log)
+	eb.AddModuleOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
+	e := eb.Build("TestLinkerTarget",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(elector.IElector)
 	defer e.Close()
 
 	lb := module.GetBuilder(Name)
-	lb.AddOption(WithRedisAddr(mock.RedisAddr))
+	lb.AddModuleOption(WithRedisAddr(mock.RedisAddr))
 
-	lk, err := lb.Build("gate", mb, log)
-	lc := lk.(linkcache.ILinkCache)
-	assert.Equal(b, err, nil)
+	lc := lb.Build("gate", moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(linkcache.ILinkCache)
 	rand.Seed(time.Now().UnixNano())
 
 	lc.Init()

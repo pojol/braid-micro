@@ -4,19 +4,9 @@ package client
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
 )
-
-// Builder grpc-client builder
-type Builder interface {
-	Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (IClient, error)
-	Name() string
-	AddOption(opt interface{})
-}
 
 // IClient rpc-client interface
 type IClient interface {
@@ -44,21 +34,4 @@ type IClient interface {
 		ctx context.Context, target, methon, token string,
 		args, reply interface{},
 		opts ...interface{}) error
-}
-
-var (
-	m = make(map[string]Builder)
-)
-
-// Register 注册 builder
-func Register(b Builder) {
-	m[strings.ToLower(b.Name())] = b
-}
-
-// GetBuilder 获取 builder
-func GetBuilder(name string) Builder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
-	}
-	return nil
 }

@@ -10,7 +10,8 @@ import (
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
 )
 
 const (
@@ -27,19 +28,28 @@ type consulElectionBuilder struct {
 	opts []interface{}
 }
 
-func newConsulElection() module.Builder {
+func newConsulElection() module.IBuilder {
 	return &consulElectionBuilder{}
 }
 
-func (eb *consulElectionBuilder) AddOption(opt interface{}) {
+func (eb *consulElectionBuilder) AddModuleOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+func (eb *consulElectionBuilder) Type() module.ModuleType {
+	return module.Elector
+}
+
+func (eb *consulElectionBuilder) Build(name string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
 		ConsulAddr:        "http://127.0.0.1:8500",
-		ServiceName:       serviceName,
+		ServiceName:       name,
 		LockTick:          time.Second * 2,
 		RefushSessionTick: time.Second * 5,
 	}
@@ -49,13 +59,13 @@ func (eb *consulElectionBuilder) Build(serviceName string, mb mailbox.IMailbox, 
 
 	e := &consulElection{
 		parm:   p,
-		mb:     mb,
-		logger: logger,
+		ps:     bp.PS,
+		logger: bp.Logger,
 	}
 
-	e.mb.RegistTopic(elector.ChangeState, mailbox.ScopeProc)
+	e.ps.RegistTopic(elector.ChangeState, pubsub.ScopeProc)
 
-	return e, nil
+	return e
 }
 
 func (e *consulElection) Init() error {
@@ -73,10 +83,6 @@ func (*consulElectionBuilder) Name() string {
 	return Name
 }
 
-func (*consulElectionBuilder) Type() string {
-	return module.TyElector
-}
-
 type consulElection struct {
 	lockTicker   *time.Ticker
 	refushTicker *time.Ticker
@@ -86,7 +92,7 @@ type consulElection struct {
 
 	logger logger.ILogger
 
-	mb   mailbox.IMailbox
+	ps   pubsub.IPubsub
 	parm Parm
 }
 
@@ -102,10 +108,10 @@ func (e *consulElection) watch() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+				e.ps.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 				e.logger.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
+				e.ps.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

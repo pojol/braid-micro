@@ -9,9 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/pojol/braid-go/modules/grpcclient/bproto"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"google.golang.org/grpc"
 )
@@ -35,11 +37,11 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 
 func TestNew(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("TestProcNotify").(logger.ILogger)
 
-	b := server.GetBuilder(Name)
-	b.AddOption(WithListen(":14111"))
-	s, _ := b.Build("TestNew", log)
+	b := module.GetBuilder(Name)
+	b.AddModuleOption(WithListen(":14111"))
+	s := b.Build("TestNew", moduleparm.WithLogger(log)).(server.IServer)
 	s.Init()
 
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})

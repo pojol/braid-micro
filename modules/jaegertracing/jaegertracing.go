@@ -8,8 +8,9 @@ import (
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pojol/braid-go/module/logger"
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/tracer"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"github.com/uber/jaeger-client-go"
 	jaegerCfg "github.com/uber/jaeger-client-go/config"
 	"github.com/uber/jaeger-client-go/transport"
@@ -30,7 +31,7 @@ type jaegerTracingBuilder struct {
 	opts []interface{}
 }
 
-func newJaegerTracingBuilder() tracer.Builder {
+func newJaegerTracingBuilder() module.IBuilder {
 	jtb := &jaegerTracingBuilder{}
 	return jtb
 }
@@ -39,7 +40,11 @@ func (jtb *jaegerTracingBuilder) Name() string {
 	return Name
 }
 
-func (jtb *jaegerTracingBuilder) AddOption(opt interface{}) {
+func (jtb *jaegerTracingBuilder) Type() module.ModuleType {
+	return module.Tracer
+}
+
+func (jtb *jaegerTracingBuilder) AddModuleOption(opt interface{}) {
 	jtb.opts = append(jtb.opts, opt)
 }
 
@@ -56,7 +61,12 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 	}
 }
 
-func (jtb *jaegerTracingBuilder) Build(name string, logger logger.ILogger) (tracer.ITracer, error) {
+func (jtb *jaegerTracingBuilder) Build(name string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
 		Probabilistic: 1,
@@ -96,7 +106,7 @@ func (jtb *jaegerTracingBuilder) Build(name string, logger logger.ILogger) (trac
 
 	sender, err := newTransport(jt.jcfg.Reporter)
 	if err != nil {
-		return nil, fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
+		panic(fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error()))
 	}
 
 	r := jaegerCfg.Reporter(NewSlowReporter(sender, nil, jt.parm.Probabilistic))
@@ -104,13 +114,13 @@ func (jtb *jaegerTracingBuilder) Build(name string, logger logger.ILogger) (trac
 
 	jtracing, closer, err := jt.jcfg.NewTracer(r, m)
 	if err != nil {
-		return nil, fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error())
+		panic(fmt.Errorf("%v Dependency check error %v [%v]", jt.serviceName, "jaegertracing", err.Error()))
 	}
 
 	jt.tracing = jtracing
 	jt.closer = closer
 
-	return jt, nil
+	return jt
 }
 
 func (jt *jaegerTracing) Init() error {
@@ -157,5 +167,5 @@ func (jt *jaegerTracing) Close() {
 }
 
 func init() {
-	tracer.Register(newJaegerTracingBuilder())
+	module.Register(newJaegerTracingBuilder())
 }

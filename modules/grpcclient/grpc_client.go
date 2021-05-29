@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/balancer"
 	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
-	"github.com/pojol/braid-go/module/rpc/client"
-	"github.com/pojol/braid-go/modules/balancergroupbase"
-	"github.com/pojol/braid-go/modules/balancerrandom"
-	"github.com/pojol/braid-go/modules/balancerswrr"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/balancernormal"
 	"github.com/pojol/braid-go/modules/jaegertracing"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 )
@@ -41,7 +41,7 @@ type grpcClientBuilder struct {
 	opts []interface{}
 }
 
-func newGRPCClient() client.Builder {
+func newGRPCClient() module.IBuilder {
 	return &grpcClientBuilder{}
 }
 
@@ -49,41 +49,62 @@ func (b *grpcClientBuilder) Name() string {
 	return Name
 }
 
-func (b *grpcClientBuilder) AddOption(opt interface{}) {
+func (b *grpcClientBuilder) Type() module.ModuleType {
+	return module.Client
+}
+
+func (b *grpcClientBuilder) AddModuleOption(opt interface{}) {
 	b.opts = append(b.opts, opt)
 }
 
-func (b *grpcClientBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (client.IClient, error) {
+func (b *grpcClientBuilder) Build(name string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
-		PoolInitNum:      8,
-		PoolCapacity:     64,
-		PoolIdle:         time.Second * 100,
-		balancerStrategy: []string{balancerrandom.Name, balancerswrr.Name},
-		balancerGroup:    balancergroupbase.Name,
+		PoolInitNum:  8,
+		PoolCapacity: 64,
+		PoolIdle:     time.Second * 100,
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
 	}
 
-	c := &grpcClient{
-		serviceName: serviceName,
-		parm:        p,
-		logger:      logger,
-		mb:          mb,
+	if bp.Balancer == nil {
+		panic("")
 	}
 
-	return c, nil
+	c := &grpcClient{
+		serviceName: name,
+		parm:        p,
+		logger:      bp.Logger,
+		ps:          bp.PS,
+		b:           bp.Balancer,
+		linkcache:   bp.Linkcache,
+	}
+
+	if bp.Tracer != nil {
+		c.tracer = bp.Tracer.GetTracing().(opentracing.Tracer)
+	}
+
+	return c
 }
 
 // Client 调用器
 type grpcClient struct {
 	serviceName string
 	parm        Parm
-	bg          balancer.IBalancerGroup
-	logger      logger.ILogger
 
-	mb mailbox.IMailbox
+	b      balancer.IBalancer
+	logger logger.ILogger
+
+	tracer    opentracing.Tracer
+	linkcache linkcache.ILinkCache
+
+	ps pubsub.IPubsub
 
 	connmap sync.Map
 }
@@ -95,8 +116,8 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	var conn *grpc.ClientConn
 	var err error
 
-	if c.parm.tracer != nil {
-		interceptor := jaegertracing.ClientInterceptor(c.parm.tracer)
+	if c.tracer != nil {
+		interceptor := jaegertracing.ClientInterceptor(c.tracer)
 		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
 		if err != nil {
 			goto EXT
@@ -141,21 +162,9 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 
 func (c *grpcClient) Init() error {
 	var err error
-	bgb := module.GetBuilder(c.parm.balancerGroup)
-	bgb.AddOption(balancergroupbase.WithStrategy(c.parm.balancerStrategy))
-	bg, err := bgb.Build(c.serviceName, c.mb, c.logger)
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
-	}
 
-	c.bg = bg.(balancer.IBalancerGroup)
-	err = c.bg.Init()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", c.parm.Name, "balancer", err.Error())
-	}
-
-	serviceUpdate := c.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
-	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+	serviceUpdate := c.ps.GetTopic(discover.ServiceUpdate).Sub(Name)
+	serviceUpdate.Arrived(func(msg *pubsub.Message) {
 		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {
 			_, ok := c.connmap.Load(dmsg.Nod.Address)
@@ -185,7 +194,7 @@ func (c *grpcClient) Init() error {
 }
 
 func (c *grpcClient) Run() {
-	c.bg.Run()
+
 }
 
 func (c *grpcClient) getConn(address string) (*grpc.ClientConn, error) {
@@ -213,9 +222,9 @@ func (c *grpcClient) pick(nodName string, token string, link bool) (discover.Nod
 	var err error
 
 	if token == "" && link {
-		nod, err = c.bg.Pick(balancerrandom.Name, nodName)
+		nod, err = c.b.Pick(balancernormal.StrategyRandom, nodName)
 	} else {
-		nod, err = c.bg.Pick(balancerswrr.Name, nodName)
+		nod, err = c.b.Pick(balancernormal.StrategySwrr, nodName)
 	}
 
 	if err != nil {
@@ -234,20 +243,20 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	var err error
 	var nod discover.Node
 
-	if c.parm.byLink && token != "" {
-		address, _ = c.parm.linker.Target(token, target)
+	if (c.linkcache != nil) && token != "" {
+		address, _ = c.linkcache.Target(token, target)
 	}
 
 	if address == "" {
-		nod, err = c.pick(target, token, c.parm.byLink)
+		nod, err = c.pick(target, token, c.linkcache != nil)
 		if err != nil {
 			c.logger.Debugf("pick warning %s", err.Error())
 			return ""
 		}
 
 		address = nod.Address
-		if c.parm.byLink && token != "" {
-			err = c.parm.linker.Link(token, nod)
+		if (c.linkcache != nil) && token != "" {
+			err = c.linkcache.Link(token, nod)
 			if err != nil {
 				c.logger.Debugf("link warning %s %s %s", token, target, err.Error())
 			}
@@ -287,8 +296,8 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	err = conn.Invoke(ctx, methon, args, reply, grpcopts...)
 	if err != nil {
 		c.logger.Warnf("client invoke warning %s, target = %s, methon = %s, addr = %s, token = %s", err.Error(), nodName, methon, address, token)
-		if c.parm.byLink {
-			c.parm.linker.Unlink(token)
+		if c.linkcache != nil {
+			c.linkcache.Unlink(token)
 		}
 	}
 
@@ -296,9 +305,8 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 }
 
 func (c *grpcClient) Close() {
-	c.bg.Close()
 }
 
 func init() {
-	client.Register(newGRPCClient())
+	module.Register(newGRPCClient())
 }

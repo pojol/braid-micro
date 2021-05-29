@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/mock"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/modules/discoverconsul"
 	"github.com/pojol/braid-go/modules/electorconsul"
-	"github.com/pojol/braid-go/modules/grpcserver"
 	"github.com/pojol/braid-go/modules/linkerredis"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
-	"github.com/stretchr/testify/assert"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
+	"github.com/pojol/braid-go/modules/zaplogger"
 )
 
 func TestMain(m *testing.M) {
@@ -24,20 +23,19 @@ func TestMain(m *testing.M) {
 
 func TestPlugin(t *testing.T) {
 
-	b, _ := New(
+	b, _ := NewService(
 		"test_plugin",
-		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
-	b.RegistModule(
-		LinkCache(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
-		Discover(
-			discoverconsul.Name,
-			discoverconsul.WithConsulAddr(mock.ConsulAddr),
+	b.Register(
+		Module(LoggerZap),
+		Module(PubsubNsq,
+			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 		),
-		Elector(
-			electorconsul.Name,
+		Module(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
+		Module(discoverconsul.Name, discoverconsul.WithConsulAddr(mock.ConsulAddr)),
+		Module(electorconsul.Name,
 			electorconsul.WithConsulAddr(mock.ConsulAddr),
 			electorconsul.WithLockTick(time.Second*2),
 		),
@@ -62,43 +60,35 @@ func TestWithClient(t *testing.T) {
 	*/
 }
 
-func TestServerInterface(t *testing.T) {
-	s := GetServer()
-	assert.Equal(t, s, nil)
+func TestMutiPubsub(t *testing.T) {
 
-	b, _ := New("testserverinterface")
-	b.RegistModule(Server(
-		grpcserver.Name,
-		grpcserver.WithListen(":14222")))
-
-	s = GetServer()
-	assert.NotEqual(t, s, nil)
-}
-
-func TestMutiMailBox(t *testing.T) {
-
-	New(
+	b, _ := NewService(
 		"test_plugin",
-		mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	)
+	b.Register(
+		Module(zaplogger.Name),
+		Module(pubsubnsq.Name,
+			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		),
 	)
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	Mailbox().RegistTopic("TestMutiMailBox", mailbox.ScopeProc)
+	Pubsub().RegistTopic("TestMutiPubsub", pubsub.ScopeProc)
 
-	topic := Mailbox().GetTopic("TestMutiMailBox")
+	topic := Pubsub().GetTopic("TestMutiPubsub")
 	c1 := topic.Sub("Normal")
 
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
 		go func() {
-			topic.Pub(&mailbox.Message{Body: []byte("msg")})
+			topic.Pub(&pubsub.Message{Body: []byte("msg")})
 		}()
 	}
 
-	c1.Arrived(func(msg *mailbox.Message) {
+	c1.Arrived(func(msg *pubsub.Message) {
 		wg.Done()
 	})
 

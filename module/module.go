@@ -2,36 +2,35 @@ package module
 
 import (
 	"strings"
-
-	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
 )
 
-// module type
+type ModuleType int32
+
 const (
-	TyDiscover      = "discover"
-	TyBalancer      = "balancer"
-	TyBalancerGroup = "balancer_group"
-	TyElector       = "elector"
-	TyLinkCache     = "link-cache"
-	TyTracer        = "tracer"
-	TyClient        = "client"
-	TyServer        = "server"
+	Discover ModuleType = iota + 1
+	Balancer
+	Elector
+	Linkcache
+	Tracer
+	Client
+	Server
+	Pubsub
+	Logger
 )
 
 // Builder builder
-type Builder interface {
-	// Build 模块的构建阶段
-	// 这个阶段主要职责是：构建数据结构，配置各种参数行为等...
-	Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (IModule, error)
+type IBuilder interface {
+	Build(name string, buildOpts ...interface{}) interface{}
 
 	Name() string
-	Type() string
-	AddOption(opt interface{})
+	Type() ModuleType
+
+	AddModuleOption(opt interface{})
 }
 
 // IModule module
 type IModule interface {
+
 	// Init 模块的初始化阶段
 	// 这个阶段主要职责是：部署和检测支撑本模块的运行依赖等...
 	Init() error
@@ -46,16 +45,16 @@ type IModule interface {
 }
 
 var (
-	m = make(map[string]Builder)
+	m = make(map[string]IBuilder)
 )
 
 // Register 注册balancer
-func Register(b Builder) {
+func Register(b IBuilder) {
 	m[strings.ToLower(b.Name())] = b
 }
 
 // GetBuilder 获取构建器
-func GetBuilder(name string) Builder {
+func GetBuilder(name string) IBuilder {
 	if b, ok := m[strings.ToLower(name)]; ok {
 		return b
 	}

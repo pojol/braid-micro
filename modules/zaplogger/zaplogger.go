@@ -4,6 +4,7 @@ package zaplogger
 import (
 	"os"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -19,7 +20,7 @@ type zaplogBuilder struct {
 	opts []interface{}
 }
 
-func newZapLogger() logger.Builder {
+func newZapLogger() module.IBuilder {
 	return &zaplogBuilder{}
 }
 
@@ -27,11 +28,15 @@ func (zb *zaplogBuilder) Name() string {
 	return Name
 }
 
-func (zb *zaplogBuilder) AddOption(opt interface{}) {
+func (zb *zaplogBuilder) Type() module.ModuleType {
+	return module.Logger
+}
+
+func (zb *zaplogBuilder) AddModuleOption(opt interface{}) {
 	zb.opts = append(zb.opts, opt)
 }
 
-func (zb *zaplogBuilder) Build() (logger.ILogger, error) {
+func (zb *zaplogBuilder) Build(name string, buildOpts ...interface{}) interface{} {
 
 	p := Parm{
 		filename:    "log.braid",
@@ -87,9 +92,9 @@ func (zb *zaplogBuilder) Build() (logger.ILogger, error) {
 		atom,                                  // 日志级别
 	)
 
-	return zap.New(core).Sugar(), nil
+	return zap.New(core).Sugar()
 }
 
 func init() {
-	logger.Register(newZapLogger())
+	module.Register(newZapLogger())
 }

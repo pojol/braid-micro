@@ -1,4 +1,4 @@
-package mailboxnsq
+package pubsubnsq
 
 import (
 	"fmt"
@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,15 +28,15 @@ func TestMain(m *testing.M) {
 
 func TestClusterBroadcast(t *testing.T) {
 
-	b := mailbox.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	b.AddOption(WithLookupAddr([]string{}))
-	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := b.Build("TestClusterBroadcast", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestProcNotify").(logger.ILogger)
+	mbb := module.GetBuilder(Name)
+	mbb.AddModuleOption(WithLookupAddr([]string{}))
+	mbb.AddModuleOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestProcNotify", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	topic := "test.clusterBroadcast"
 
-	mb.RegistTopic(topic, mailbox.ScopeCluster)
+	mb.RegistTopic(topic, pubsub.ScopeCluster)
 
 	channel1 := mb.GetTopic(topic).Sub("Normal_1")
 	channel2 := mb.GetTopic(topic).Sub("Normal_2")
@@ -43,10 +45,10 @@ func TestClusterBroadcast(t *testing.T) {
 	done := make(chan struct{})
 	wg.Add(2)
 
-	channel1.Arrived(func(msg *mailbox.Message) {
+	channel1.Arrived(func(msg *pubsub.Message) {
 		wg.Done()
 	})
-	channel2.Arrived(func(msg *mailbox.Message) {
+	channel2.Arrived(func(msg *pubsub.Message) {
 		wg.Done()
 	})
 
@@ -55,7 +57,7 @@ func TestClusterBroadcast(t *testing.T) {
 		close(done)
 	}()
 
-	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("test msg")})
+	mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("test msg")})
 
 	select {
 	case <-done:
@@ -76,29 +78,29 @@ func TestClusterBroadcast(t *testing.T) {
 
 func TestClusterNotify(t *testing.T) {
 
-	b := mailbox.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	b.AddOption(WithLookupAddr([]string{}))
-	b.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := b.Build("TestClusterNotify", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestClusterNotify").(logger.ILogger)
+	mbb := module.GetBuilder(Name)
+	mbb.AddModuleOption(WithLookupAddr([]string{}))
+	mbb.AddModuleOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestClusterNotify", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	var tick uint64
 
 	topic := "test.clusterNotify"
 
-	mb.RegistTopic(topic, mailbox.ScopeCluster)
+	mb.RegistTopic(topic, pubsub.ScopeCluster)
 
 	channel1 := mb.GetTopic(topic).Sub("Normal")
 	channel2 := mb.GetTopic(topic).Sub("Normal")
 
-	channel1.Arrived(func(msg *mailbox.Message) {
+	channel1.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
 	})
-	channel2.Arrived(func(msg *mailbox.Message) {
+	channel2.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
 	})
 
-	mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte("msg")})
+	mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("msg")})
 
 	for {
 		<-time.After(time.Second * 3)
@@ -122,15 +124,15 @@ func TestClusterMutiNSQD(t *testing.T) {
 		mb, _ := b.Build("TestClusterMutiNSQD", log)
 		mb.RegistTopic(topic, mailbox.ScopeCluster)
 
-		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *mailbox.Message) {
+		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *pubsub.Message) {
 			fmt.Println("consumer a receive", string(msg.Body))
 		})
-		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *mailbox.Message) {
+		mb.GetTopic(topic).Sub("consumer_1").Arrived(func(msg *pubsub.Message) {
 			fmt.Println("consumer b receive", string(msg.Body))
 		})
 
 		for i := 0; i < 10; i++ {
-			mb.GetTopic(topic).Pub(&mailbox.Message{Body: []byte(strconv.Itoa(i))})
+			mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte(strconv.Itoa(i))})
 		}
 
 		for {
@@ -141,31 +143,30 @@ func TestClusterMutiNSQD(t *testing.T) {
 }
 
 func BenchmarkClusterBroadcast(b *testing.B) {
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("BenchmarkClusterBroadcast").(logger.ILogger)
+	mbb := module.GetBuilder(Name)
+	mbb.AddModuleOption(WithLookupAddr([]string{}))
+	mbb.AddModuleOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("BenchmarkClusterBroadcast", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
-	mbb := mailbox.GetBuilder(Name)
-	mbb.AddOption(WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-
-	mb, _ := mbb.Build("BenchmarkClusterBroadcast", log)
 	topic := "benchmark.ClusterBroadcast"
 	body := []byte("msg")
 
-	mb.RegistTopic(topic, mailbox.ScopeCluster)
+	mb.RegistTopic(topic, pubsub.ScopeCluster)
 
 	c1 := mb.GetTopic(topic).Sub("Normal_1")
 	c2 := mb.GetTopic(topic).Sub("Normal_2")
 
-	c1.Arrived(func(msg *mailbox.Message) {
+	c1.Arrived(func(msg *pubsub.Message) {
 	})
-	c2.Arrived(func(msg *mailbox.Message) {
+	c2.Arrived(func(msg *pubsub.Message) {
 	})
 
 	b.SetParallelism(8)
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.GetTopic(topic).Pub(&mailbox.Message{Body: body})
+			mb.GetTopic(topic).Pub(&pubsub.Message{Body: body})
 		}
 	})
 
@@ -184,17 +185,17 @@ func BenchmarkProcCompetition(b *testing.B) {
 	c1, _ := sub.Competition()
 	c2, _ := sub.Competition()
 
-	c1.OnArrived(func(msg mailbox.Message) error {
+	c1.OnArrived(func(msg pubsub.Message) error {
 		return nil
 	})
 
-	c2.OnArrived(func(msg mailbox.Message) error {
+	c2.OnArrived(func(msg pubsub.Message) error {
 		return nil
 	})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		mb.Pub(mailbox.Proc, topic, &mailbox.Message{Body: body})
+		mb.Pub(mailbox.Proc, topic, &pubsub.Message{Body: body})
 	}
 }
 
@@ -209,11 +210,11 @@ func BenchmarkProcCompetitionAsync(b *testing.B) {
 	c1, _ := sub.Competition()
 	c2, _ := sub.Competition()
 
-	c1.OnArrived(func(msg mailbox.Message) error {
+	c1.OnArrived(func(msg pubsub.Message) error {
 		return nil
 	})
 
-	c2.OnArrived(func(msg mailbox.Message) error {
+	c2.OnArrived(func(msg pubsub.Message) error {
 		return nil
 	})
 
@@ -221,7 +222,7 @@ func BenchmarkProcCompetitionAsync(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.PubAsync(mailbox.Proc, topic, &mailbox.Message{Body: body})
+			mb.PubAsync(mailbox.Proc, topic, &pubsub.Message{Body: body})
 		}
 	})
 }

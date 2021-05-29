@@ -1,4 +1,4 @@
-package mailboxnsq
+package pubsubnsq
 
 import (
 	"errors"
@@ -9,48 +9,48 @@ import (
 	"sync/atomic"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
-type mailboxChannel struct {
+type pubsubChannel struct {
 	sync.RWMutex
 
 	msgCh *UnboundedMsg
 
-	mailbox  *nsqMailbox
+	ps       *nsqPubsub
 	exitFlag int32
 
 	consumer *nsq.Consumer
 
 	Name      string
 	TopicName string
-	scope     mailbox.ScopeTy
+	scope     pubsub.ScopeTy
 }
 
 type consumerHandler struct {
 	channel string
-	c       *mailboxChannel
+	c       *pubsubChannel
 }
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 
-	ch.c.Put(&mailbox.Message{
+	ch.c.Put(&pubsub.Message{
 		Body: msg.Body,
 	})
 	return nil
 }
 
-func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMailbox) *mailboxChannel {
+func newChannel(topicName, channelName string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubChannel {
 
-	c := &mailboxChannel{
+	c := &pubsubChannel{
 		Name:      channelName,
 		TopicName: topicName,
 		scope:     scope,
-		mailbox:   n,
+		ps:        n,
 		msgCh:     NewUnbounded(),
 	}
 
-	if scope == mailbox.ScopeCluster {
+	if scope == pubsub.ScopeCluster {
 
 		for _, addr := range n.parm.NsqdHttpAddress {
 			url := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
@@ -110,17 +110,17 @@ func newChannel(topicName, channelName string, scope mailbox.ScopeTy, n *nsqMail
 	return c
 }
 
-func (c *mailboxChannel) Put(msg *mailbox.Message) {
+func (c *pubsubChannel) Put(msg *pubsub.Message) {
 
 	if atomic.LoadInt32(&c.exitFlag) == 1 {
-		c.mailbox.log.Warnf("cannot write to the exiting channel %v", c.Name)
+		c.ps.log.Warnf("cannot write to the exiting channel %v", c.Name)
 		return
 	}
 
 	c.msgCh.Put(msg)
 }
 
-func (c *mailboxChannel) addHandlers(handler mailbox.Handler) {
+func (c *pubsubChannel) addHandlers(handler pubsub.Handler) {
 	go func() {
 		for {
 			m, ok := <-c.msgCh.Get()
@@ -132,22 +132,22 @@ func (c *mailboxChannel) addHandlers(handler mailbox.Handler) {
 			handler(m)
 		}
 	EXT:
-		c.mailbox.log.Infof("channel %v stopping handler", c.Name)
+		c.ps.log.Infof("channel %v stopping handler", c.Name)
 	}()
 }
 
-func (c *mailboxChannel) Arrived(handler mailbox.Handler) {
+func (c *pubsubChannel) Arrived(handler pubsub.Handler) {
 	c.addHandlers(handler)
 }
 
-func (c *mailboxChannel) Exit() error {
+func (c *pubsubChannel) Exit() error {
 	if !atomic.CompareAndSwapInt32(&c.exitFlag, 0, 1) {
 		return errors.New("exiting")
 	}
 
-	c.mailbox.log.Infof("channel %v exiting", c.Name)
+	c.ps.log.Infof("channel %v exiting", c.Name)
 
-	if c.scope == mailbox.ScopeCluster {
+	if c.scope == pubsub.ScopeCluster {
 		c.consumer.Stop()
 	}
 

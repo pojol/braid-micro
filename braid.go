@@ -1,27 +1,36 @@
 package braid
 
 import (
+	"errors"
 	"fmt"
-	"math/rand"
-	"time"
+	"sync"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/balancer"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/pojol/braid-go/module/tracer"
+	"github.com/pojol/braid-go/modules/balancernormal"
+	"github.com/pojol/braid-go/modules/discoverconsul"
+	"github.com/pojol/braid-go/modules/electorconsul"
+	"github.com/pojol/braid-go/modules/electork8s"
 	"github.com/pojol/braid-go/modules/grpcclient"
 	"github.com/pojol/braid-go/modules/grpcserver"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/jaegertracing"
+	"github.com/pojol/braid-go/modules/linkerredis"
+	"github.com/pojol/braid-go/modules/moduleparm"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
 	"github.com/pojol/braid-go/modules/zaplogger"
 )
 
 const (
 	// Version of braid-go
-	Version = "v1.2.22"
+	Version = "v1.2.25"
 
 	banner = `
  _               _     _ 
@@ -34,115 +43,208 @@ const (
 `
 )
 
+var (
+	ErrTypeConvFailed = errors.New("type conversion failed")
+
+	// 默认提供的模块
+	LoggerZap      = zaplogger.Name
+	PubsubNsq      = pubsubnsq.Name
+	DiscoverConsul = discoverconsul.Name
+	ElectorConsul  = electorconsul.Name
+	ElectorK8s     = electork8s.Name
+	ClientGRPC     = grpcclient.Name
+	ServerGRPC     = grpcserver.Name
+	TracerJaeger   = jaegertracing.Name
+	BalancerSWRR   = balancernormal.Name
+	LinkcacheRedis = linkerredis.Name
+)
+
 // Braid framework instance
 type Braid struct {
-	cfg config
+	name string // service name
 
 	logger logger.ILogger
 
-	builders []module.Builder
+	builderMap map[module.ModuleType]module.IBuilder
 
-	moduleMap map[string]module.IModule
+	modules []module.IModule
 
-	clientBuilder client.Builder
-	client        client.IClient
+	client    client.IClient
+	server    server.IServer
+	tracer    tracer.ITracer
+	linkcache linkcache.ILinkCache
+	balancer  balancer.IBalancer
+	pubsub    pubsub.IPubsub
 
-	serverBuilder server.Builder
-	server        server.IServer
-
-	tracerBuilder tracer.Builder
-	tracer        tracer.ITracer
-
-	mailbox mailbox.IMailbox
+	sync.RWMutex
 }
 
 var (
 	braidGlobal *Braid
 )
 
-// New 构建braid
-func New(name string, mailboxOpts ...interface{}) (*Braid, error) {
-
-	zlb := logger.GetBuilder(zaplogger.Name)
-	log, err := zlb.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	for _, opt := range mailboxOpts {
-		mbb.AddOption(opt)
-	}
-	mb, err := mbb.Build(name, log)
-	if err != nil {
-		return nil, err
-	}
-
-	rand.Seed(time.Now().UnixNano())
+func NewService(name string) (*Braid, error) {
 
 	braidGlobal = &Braid{
-		cfg: config{
-			Name: name,
-		},
-		mailbox:   mb,
-		logger:    log,
-		moduleMap: make(map[string]module.IModule),
+		name:       name,
+		builderMap: make(map[module.ModuleType]module.IBuilder),
 	}
 
 	return braidGlobal, nil
 }
 
-// RegistModule 注册模块
-func (b *Braid) RegistModule(modules ...Module) error {
-	//
-	for _, plugin := range modules {
-		plugin(braidGlobal)
-	}
-
-	// build
-	for _, builder := range b.builders {
-
-		m, err := builder.Build(b.cfg.Name, b.mailbox, b.logger)
-		if err != nil {
-			b.logger.Fatalf("build err %s ,%s", err.Error(), builder.Name())
-			continue
+func Module(name string, opts ...interface{}) module.IBuilder {
+	builder := module.GetBuilder(name)
+	if builder != nil {
+		for _, opt := range opts {
+			builder.AddModuleOption(opt)
 		}
 
-		b.moduleMap[builder.Type()] = m
+		return builder
 	}
 
-	if b.tracerBuilder != nil {
-		b.tracer, _ = b.tracerBuilder.Build(b.cfg.Name, b.logger)
-		b.moduleMap[module.TyTracer] = b.tracer
+	panic(fmt.Errorf("unknow module %v", name))
+}
+
+func (b *Braid) Register(builders ...module.IBuilder) error {
+	for _, build := range builders {
+		b.builderMap[build.Type()] = build
 	}
 
-	if b.clientBuilder != nil {
+	// init base module
+	if loggerBuilder, ok := b.builderMap[module.Logger]; ok {
+		li := loggerBuilder.Build(b.name)
+		ilog, t := li.(logger.ILogger)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.logger = ilog
+	} else {
+		panic(fmt.Errorf("missing required dependencies => %v", "logger"))
+	}
+
+	if pubsubBuilder, ok := b.builderMap[module.Pubsub]; ok {
+		pbi := pubsubBuilder.Build(b.name, moduleparm.WithLogger(b.logger))
+		ipb, t := pbi.(pubsub.IPubsub)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.pubsub = ipb
+	} else {
+		panic(fmt.Errorf("missing required dependencies => %v", "pub-sub"))
+	}
+
+	if balancerBuilder, ok := b.builderMap[module.Balancer]; ok {
+		bi := balancerBuilder.Build(b.name,
+			moduleparm.WithLogger(b.logger),
+			moduleparm.WithPubsub(b.pubsub),
+		)
+		ib, t := bi.(balancer.IBalancer)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.balancer = ib
+		b.modules = append(b.modules, ib)
+	}
+
+	if tracerBuilder, ok := b.builderMap[module.Tracer]; ok {
+		ti := tracerBuilder.Build(b.name, moduleparm.WithLogger(b.logger))
+		it, t := ti.(tracer.ITracer)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.tracer = it
+		b.modules = append(b.modules, it)
+	}
+
+	if linkBuilder, ok := b.builderMap[module.Linkcache]; ok {
+		li := linkBuilder.Build(b.name,
+			moduleparm.WithLogger(b.logger),
+			moduleparm.WithPubsub(b.pubsub),
+		)
+		il, t := li.(linkcache.ILinkCache)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.linkcache = il
+		b.modules = append(b.modules, il)
+	}
+
+	if discoverBuilder, ok := b.builderMap[module.Discover]; ok {
+		di := discoverBuilder.Build(b.name,
+			moduleparm.WithLogger(b.logger),
+			moduleparm.WithPubsub(b.pubsub),
+		)
+		id, t := di.(discover.IDiscover)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+
+		b.modules = append(b.modules, id)
+	}
+
+	if electorBuilder, ok := b.builderMap[module.Elector]; ok {
+		ei := electorBuilder.Build(b.name,
+			moduleparm.WithLogger(b.logger),
+			moduleparm.WithPubsub(b.pubsub),
+		)
+		ie, t := ei.(elector.IElector)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.modules = append(b.modules, ie)
+	}
+
+	// init function module
+	if clientBuilder, ok := b.builderMap[module.Client]; ok {
+
+		baseOpts := []moduleparm.Option{}
+		baseOpts = append(baseOpts, moduleparm.WithLogger(b.logger))
+		baseOpts = append(baseOpts, moduleparm.WithPubsub(b.pubsub))
 		if b.tracer != nil {
-			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
-			if ok {
-				b.logger.Debugf("auto open tracing in grpc-client")
-				b.clientBuilder.AddOption(grpcclient.AutoOpenTracing(opent))
-			}
+			baseOpts = append(baseOpts, moduleparm.WithTracer(b.tracer))
+		}
+		if b.linkcache != nil {
+			baseOpts = append(baseOpts, moduleparm.WithLinkcache(b.linkcache))
+		}
+		if b.balancer != nil {
+			baseOpts = append(baseOpts, moduleparm.WithBalancer(b.balancer))
+		} else {
+			panic(fmt.Errorf("missing required dependencies => %v", "balancer"))
 		}
 
-		if lc, ok := b.moduleMap[module.TyLinkCache]; ok {
-			b.clientBuilder.AddOption(grpcclient.AutoLinkCache(lc.(linkcache.ILinkCache)))
+		islice := make([]interface{}, len(baseOpts))
+		for k, v := range baseOpts {
+			islice[k] = v
 		}
-		b.client, _ = b.clientBuilder.Build(b.cfg.Name, b.mailbox, b.logger)
-		b.moduleMap[module.TyClient] = b.client
+		ci := clientBuilder.Build(b.name, islice...)
+		ic, t := ci.(client.IClient)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.client = ic
+		b.modules = append(b.modules, ic)
 	}
 
-	if b.serverBuilder != nil {
+	if serverBuilder, ok := b.builderMap[module.Server]; ok {
+
+		baseOpts := []moduleparm.Option{}
+		baseOpts = append(baseOpts, moduleparm.WithLogger(b.logger))
 		if b.tracer != nil {
-			opent, ok := b.tracer.GetTracing().(opentracing.Tracer)
-			if ok {
-				b.logger.Debugf("auto open tracing in grpc-server")
-				b.serverBuilder.AddOption(grpcserver.AutoOpenTracing(opent))
-			}
+			baseOpts = append(baseOpts, moduleparm.WithTracer(b.tracer))
 		}
 
-		b.server, _ = b.serverBuilder.Build(b.cfg.Name, b.logger)
-		b.moduleMap[module.TyServer] = b.server
+		islice := make([]interface{}, len(baseOpts))
+		for k, v := range baseOpts {
+			islice[k] = v
+		}
+		si := serverBuilder.Build(b.name, islice...)
+		is, t := si.(server.IServer)
+		if !t {
+			panic(ErrTypeConvFailed)
+		}
+		b.server = is
+		b.modules = append(b.modules, is)
 	}
 
 	return nil
@@ -152,8 +254,8 @@ func (b *Braid) RegistModule(modules ...Module) error {
 func (b *Braid) Init() {
 	var err error
 
-	for k := range b.moduleMap {
-		err = b.moduleMap[k].Init()
+	for _, mod := range b.modules {
+		err = mod.Init()
 		if err != nil {
 			b.logger.Errorf("braid init err %v", err.Error())
 			break
@@ -164,47 +266,28 @@ func (b *Braid) Init() {
 
 // Run 运行braid
 func (b *Braid) Run() {
-	/*
-		defer func() {
-			if r := recover(); r != nil {
-				err, ok := r.(error)
-				if !ok {
-					err = fmt.Errorf("%v", r)
-				}
-				stack := make([]byte, 4<<10) // 4kb
-				length := runtime.Stack(stack, true)
-				b.logger.Errorf("[PANIC RECOVER] %v %s", err, stack[:length])
-			}
-		}()
-	*/
-
 	fmt.Printf(banner, Version)
 
-	for k := range b.moduleMap {
-		b.moduleMap[k].Run()
+	for _, mod := range b.modules {
+		mod.Run()
 	}
 }
 
 // GetClient get client interface
-func GetClient() client.IClient {
+func Client() client.IClient {
 	if braidGlobal != nil && braidGlobal.client != nil {
 		return braidGlobal.client
 	}
 	return nil
 }
 
-// GetServer iserver.server
-func GetServer() interface{} {
-	if braidGlobal != nil && braidGlobal.server != nil {
-		return braidGlobal.server.Server()
-	}
-
-	return nil
+func Server() server.IServer {
+	return braidGlobal.server
 }
 
 // Mailbox pub-sub
-func Mailbox() mailbox.IMailbox {
-	return braidGlobal.mailbox
+func Pubsub() pubsub.IPubsub {
+	return braidGlobal.pubsub
 }
 
 // Tracer tracing
@@ -215,9 +298,8 @@ func Tracer() tracer.ITracer {
 // Close 关闭braid
 func (b *Braid) Close() {
 
-	for k := range b.moduleMap {
-		b.logger.Debugf("%v module closed", k)
-		b.moduleMap[k].Close()
+	for _, mod := range b.modules {
+		mod.Close()
 	}
 
 }

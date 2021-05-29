@@ -10,7 +10,7 @@ import (
 
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/discover"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
@@ -26,19 +26,19 @@ type LinkNumMsg struct {
 }
 
 // EncodeLinkNumMsg encode linknum msg
-func EncodeLinkNumMsg(id string, num int) *mailbox.Message {
+func EncodeLinkNumMsg(id string, num int) *pubsub.Message {
 	byt, _ := json.Marshal(&LinkNumMsg{
 		ID:  id,
 		Num: num,
 	})
 
-	return &mailbox.Message{
+	return &pubsub.Message{
 		Body: byt,
 	}
 }
 
 // DecodeLinkNumMsg decode linknum msg
-func DecodeLinkNumMsg(msg *mailbox.Message) LinkNumMsg {
+func DecodeLinkNumMsg(msg *pubsub.Message) LinkNumMsg {
 	lnmsg := LinkNumMsg{}
 	json.Unmarshal(msg.Body, &lnmsg)
 	return lnmsg

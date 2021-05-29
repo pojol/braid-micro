@@ -1,40 +1,13 @@
 // 实现文件 balancerswrr 平滑加权负载均衡算法实现
-package balancerswrr
+package balancernormal
 
 import (
 	"errors"
 	"sync"
 
-	"github.com/pojol/braid-go/module/balancer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
 )
-
-const (
-	// Name 平滑加权负载均衡
-	Name = "SmoothWeightedRoundrobin"
-)
-
-type smoothWeightRoundrobinBuilder struct {
-}
-
-func newSmoothWightRoundrobinBalancer() balancer.Builder {
-	return &smoothWeightRoundrobinBuilder{}
-}
-
-func (b *smoothWeightRoundrobinBuilder) Build(logger logger.ILogger) (balancer.IBalancer, error) {
-
-	swrr := &swrrBalancer{
-		logger: logger,
-	}
-
-	return swrr, nil
-}
-
-func (*smoothWeightRoundrobinBuilder) Name() string {
-	return Name
-}
 
 type weightedNod struct {
 	orgNod    discover.Node
@@ -43,9 +16,7 @@ type weightedNod struct {
 
 // swrrBalancer 平滑加权轮询
 type swrrBalancer struct {
-	serviceName string
-	mb          mailbox.IMailbox
-	logger      logger.ILogger
+	logger logger.ILogger
 
 	totalWeight int
 	nods        []weightedNod
@@ -71,7 +42,7 @@ func (wr *swrrBalancer) isExist(id string) (int, bool) {
 }
 
 // Pick 执行算法，选取节点
-func (wr *swrrBalancer) Pick() (discover.Node, error) {
+func (wr *swrrBalancer) Get() (discover.Node, error) {
 	var tmpWeight int
 	var idx int
 	wr.Lock()
@@ -144,8 +115,4 @@ func (wr *swrrBalancer) Update(nod discover.Node) {
 	}
 
 	wr.logger.Debugf("update weighted nod id : %s name : %s weight : %d", nod.ID, nod.Name, nod.Weight)
-}
-
-func init() {
-	balancer.Register(newSmoothWightRoundrobinBalancer())
 }

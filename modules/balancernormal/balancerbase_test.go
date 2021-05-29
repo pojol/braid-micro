@@ -1,15 +1,16 @@
-package balancergroupbase
+package balancernormal
 
 import (
 	"testing"
 	"time"
 
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/balancer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
-	"github.com/pojol/braid-go/modules/balancerrandom"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,19 +18,18 @@ import (
 func TestParm(t *testing.T) {
 	serviceName := "TestParm"
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mb, _ := mailbox.GetBuilder(mailboxnsq.Name).Build(serviceName, log)
+	log := module.GetBuilder(zaplogger.Name).Build(serviceName).(logger.ILogger)
+	mb := module.GetBuilder(pubsubnsq.Name).Build(serviceName, moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
 	bgb := module.GetBuilder(Name)
-	bgb.AddOption(WithStrategy([]string{balancerrandom.Name}))
-	b, _ := bgb.Build(serviceName, mb, log)
-	bg := b.(*baseBalancerGroup)
+	b := bgb.Build(serviceName,
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb))
+	bg := b.(balancer.IBalancer)
 
-	assert.Equal(t, bg.parm.strategies, []string{balancerrandom.Name})
-
-	b.Init()
-	b.Run()
-	defer b.Close()
+	bg.Init()
+	bg.Run()
+	defer bg.Close()
 
 	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
 		discover.EventAddService,
@@ -72,7 +72,7 @@ func TestParm(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 	for i := 0; i < 10; i++ {
-		nod, err := bg.Pick(balancerrandom.Name, serviceName)
+		nod, err := bg.Pick(StrategyRandom, serviceName)
 		if err != nil {
 			t.FailNow()
 		}

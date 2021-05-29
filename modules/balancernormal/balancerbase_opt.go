@@ -1,4 +1,4 @@
-package balancergroupbase
+package balancernormal
 
 // Parm balancer group parm
 type Parm struct {

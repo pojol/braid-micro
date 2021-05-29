@@ -14,7 +14,8 @@ import (
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
 )
 
 var (
@@ -84,7 +85,7 @@ type redisLinkerBuilder struct {
 	opts []interface{}
 }
 
-func newRedisLinker() module.Builder {
+func newRedisLinker() module.IBuilder {
 	return &redisLinkerBuilder{}
 }
 
@@ -92,16 +93,21 @@ func (*redisLinkerBuilder) Name() string {
 	return Name
 }
 
-func (*redisLinkerBuilder) Type() string {
-	return module.TyLinkCache
+func (*redisLinkerBuilder) Type() module.ModuleType {
+	return module.Linkcache
 }
 
-func (rb *redisLinkerBuilder) AddOption(opt interface{}) {
+func (rb *redisLinkerBuilder) AddModuleOption(opt interface{}) {
 	rb.opts = append(rb.opts, opt)
 }
 
 // Build build link-cache
-func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+func (rb *redisLinkerBuilder) Build(name string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
 		Mode:             LinkerRedisModeRedis,
@@ -133,24 +139,24 @@ func (rb *redisLinkerBuilder) Build(serviceName string, mb mailbox.IMailbox, log
 	}
 
 	lc := &redisLinker{
-		serviceName:   serviceName,
-		mb:            mb,
+		serviceName:   name,
+		ps:            bp.PS,
 		electorState:  elector.EWait,
-		logger:        logger,
+		logger:        bp.Logger,
 		client:        client,
 		parm:          p,
 		activeNodeMap: make(map[string]discover.Node),
 		local: &localLinker{
-			serviceName: serviceName,
+			serviceName: name,
 			tokenMap:    make(map[string]linkInfo),
 			relationSet: make(map[string]int),
 		},
 	}
 
-	lc.mb.RegistTopic(linkcache.TokenUnlink, mailbox.ScopeCluster)
-	lc.mb.RegistTopic(linkcache.ServiceLinkNum, mailbox.ScopeCluster)
+	lc.ps.RegistTopic(linkcache.TokenUnlink, pubsub.ScopeCluster)
+	lc.ps.RegistTopic(linkcache.ServiceLinkNum, pubsub.ScopeCluster)
 
-	return lc, nil
+	return lc
 }
 
 type linkInfo struct {
@@ -165,7 +171,7 @@ type redisLinker struct {
 	parm        Parm
 
 	electorState string
-	mb           mailbox.IMailbox
+	ps           pubsub.IPubsub
 
 	logger logger.ILogger
 
@@ -188,18 +194,18 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.mb.GetTopic(linkcache.TokenUnlink).Sub(Name + "-" + ip)
-	serviceUpdate := rl.mb.GetTopic(discover.ServiceUpdate).Sub(Name)
-	changeState := rl.mb.GetTopic(elector.ChangeState).Sub(Name)
+	tokenUnlink := rl.ps.GetTopic(linkcache.TokenUnlink).Sub(Name + "-" + ip)
+	serviceUpdate := rl.ps.GetTopic(discover.ServiceUpdate).Sub(Name)
+	changeState := rl.ps.GetTopic(elector.ChangeState).Sub(Name)
 
-	tokenUnlink.Arrived(func(msg *mailbox.Message) {
+	tokenUnlink.Arrived(func(msg *pubsub.Message) {
 		token := string(msg.Body)
 		if token != "" && token != "nil" {
 			rl.Unlink(token)
 		}
 	})
 
-	serviceUpdate.Arrived(func(msg *mailbox.Message) {
+	serviceUpdate.Arrived(func(msg *pubsub.Message) {
 		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventRemoveService {
 			rl.rmvOfflineService(dmsg.Nod)
@@ -209,7 +215,7 @@ func (rl *redisLinker) Init() error {
 		}
 	})
 
-	changeState.Arrived(func(msg *mailbox.Message) {
+	changeState.Arrived(func(msg *pubsub.Message) {
 		statemsg := elector.DecodeStateChangeMsg(msg)
 		if statemsg.State != "" && rl.electorState != statemsg.State {
 			rl.electorState = statemsg.State
@@ -253,7 +259,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		rl.mb.GetTopic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
+		rl.ps.GetTopic(linkcache.ServiceLinkNum).Pub(linkcache.EncodeLinkNumMsg(id, int(cnt)))
 	}
 }
 

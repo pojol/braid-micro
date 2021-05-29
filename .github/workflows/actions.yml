@@ -52,7 +52,7 @@ jobs:
         with:
             path: ${{env.SRCDIR}}
 
-      - name: Set up Go 1.x
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: ^1.13
@@ -62,7 +62,6 @@ jobs:
         run: |
           cd $SRCDIR
           go test -race -covermode atomic -coverprofile=covprofile ./...
-          ls
         env:
           MOCK_NSQD_ADDR: 172.17.0.1:4150
           MOCK_NSQD_HTTP_ADDR: 172.17.0.1:4151
@@ -75,7 +74,7 @@ jobs:
 
       - name: Send coverage
         env:
-          COVERALLS_TOKEN: ${{secrets.CODECOV_TOKEN}}
+          COVERALLS_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
           cd $SRCDIR
           goveralls -coverprofile=covprofile -service=github

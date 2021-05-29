@@ -8,17 +8,20 @@ import (
 
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/balancer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/modules/balancernormal"
 	"github.com/pojol/braid-go/modules/discoverconsul"
 	"github.com/pojol/braid-go/modules/grpcclient/bproto"
 	"github.com/pojol/braid-go/modules/grpcserver"
 	"github.com/pojol/braid-go/modules/linkerredis"
-	"github.com/pojol/braid-go/modules/mailboxnsq"
+	"github.com/pojol/braid-go/modules/moduleparm"
+	"github.com/pojol/braid-go/modules/pubsubnsq"
 	"github.com/pojol/braid-go/modules/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -44,19 +47,19 @@ func (rs *rpcServer) Routing(ctx context.Context, req *bproto.RouteReq) (*bproto
 func TestMain(m *testing.M) {
 	mock.Init()
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
+	log := module.GetBuilder(zaplogger.Name).Build("TestProcNotify").(logger.ILogger)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestMain", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("TestMain", log)
+	discoverB := module.GetBuilder(discoverconsul.Name)
+	discoverB.AddModuleOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
 
-	db := module.GetBuilder(discoverconsul.Name)
-	db.AddOption(discoverconsul.WithConsulAddr(mock.ConsulAddr))
+	sb := module.GetBuilder(grpcserver.Name)
+	sb.AddModuleOption(grpcserver.WithListen(":1216"))
+	s := sb.Build("testgrpcclient", moduleparm.WithLogger(log)).(server.IServer)
 
-	sb := server.GetBuilder(grpcserver.Name)
-	sb.AddOption(grpcserver.WithListen(":1216"))
-	s, _ := sb.Build("testgrpcclient", log)
 	s.Init()
 	bproto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
@@ -77,14 +80,23 @@ func TestMain(m *testing.M) {
 
 func TestInvoke(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("TestInvoke", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestInvoke").(logger.ILogger)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestInvoke", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
-	b := client.GetBuilder(Name)
-	cb, _ := b.Build("TestInvoke", mb, log)
+	bgb := module.GetBuilder(balancernormal.Name)
+	b := bgb.Build("TestInvoke",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(balancer.IBalancer)
+
+	clientB := module.GetBuilder(Name)
+	cb := clientB.Build("TestInvoke",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb),
+		moduleparm.WithBalancer(b),
+	).(client.IClient)
 
 	cb.Init()
 	cb.Run()
@@ -105,21 +117,28 @@ func TestInvoke(t *testing.T) {
 }
 
 func TestInvokeByLink(t *testing.T) {
-	b := client.GetBuilder(Name)
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
 
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("TestInvokeByLink", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestInvokeByLink").(logger.ILogger)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestInvokeByLink", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
-	lb := module.GetBuilder(linkerredis.Name)
-	lb.AddOption(linkerredis.WithRedisAddr(mock.RedisAddr))
-	lc, _ := lb.Build("TestInvokeByLink", mb, log)
+	lcb := module.GetBuilder(linkerredis.Name)
+	lc := lcb.Build("TestInvokeByLink", moduleparm.WithPubsub(mb), moduleparm.WithLogger(log)).(linkcache.ILinkCache)
 
-	b.AddOption(AutoLinkCache(lc.(linkcache.ILinkCache)))
-	//b.AddOption(Tracing())
-	cb, _ := b.Build("TestInvokeByLink", mb, log)
+	bgb := module.GetBuilder(balancernormal.Name)
+	b := bgb.Build("TestInvokeByLink",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(balancer.IBalancer)
+
+	clientB := module.GetBuilder(Name)
+	cb := clientB.Build("TestInvokeByLink",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb),
+		moduleparm.WithBalancer(b),
+		moduleparm.WithLinkcache(lc),
+	).(client.IClient)
 
 	cb.Init()
 	cb.Run()
@@ -146,26 +165,30 @@ func TestInvokeByLink(t *testing.T) {
 
 func TestParm(t *testing.T) {
 
-	log, _ := logger.GetBuilder(zaplogger.Name).Build()
-	mbb := mailbox.GetBuilder(mailboxnsq.Name)
-	mbb.AddOption(mailboxnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}))
-	mbb.AddOption(mailboxnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb, _ := mbb.Build("TestParm", log)
+	log := module.GetBuilder(zaplogger.Name).Build("TestInvokeByLink").(logger.ILogger)
+	mbb := module.GetBuilder(pubsubnsq.Name)
+	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
+	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	mb := mbb.Build("TestInvokeByLink", moduleparm.WithLogger(log)).(pubsub.IPubsub)
 
-	b := client.GetBuilder(Name)
-	b.AddOption(WithPoolInitNum(100))
-	b.AddOption(WithPoolCapacity(101))
-	b.AddOption(WithPoolIdle(120))
-	//b.AddOption(Tracing())
-	b.AddOption(AutoLinkCache(nil))
+	bgb := module.GetBuilder(balancernormal.Name)
+	b := bgb.Build("TestInvokeByLink",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb)).(balancer.IBalancer)
 
-	cb, _ := b.Build("TestCaller", mb, log)
-	gc := cb.(*grpcClient)
+	clientB := module.GetBuilder(Name)
+	clientB.AddModuleOption(WithPoolInitNum(100))
+	clientB.AddModuleOption(WithPoolIdle(120))
+	clientB.AddModuleOption(WithPoolCapacity(101))
 
-	assert.Equal(t, gc.parm.PoolInitNum, 100)
-	assert.Equal(t, gc.parm.PoolCapacity, 101)
-	assert.Equal(t, gc.parm.PoolIdle, time.Second*120)
-	//assert.Equal(t, gc.parm.isTracing, true)
-	assert.Equal(t, gc.parm.byLink, true)
+	cb := clientB.Build("TestInvokeByLink",
+		moduleparm.WithLogger(log),
+		moduleparm.WithPubsub(mb),
+		moduleparm.WithBalancer(b),
+	).(*grpcClient)
+
+	assert.Equal(t, cb.parm.PoolInitNum, 100)
+	assert.Equal(t, cb.parm.PoolCapacity, 101)
+	assert.Equal(t, cb.parm.PoolIdle, time.Second*120)
 
 }

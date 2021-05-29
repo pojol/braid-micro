@@ -1,26 +1,26 @@
-package mailboxnsq
+package pubsubnsq
 
 import (
 	"sync"
 
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 // Unbounded 一个支持任意长度的channel实现
 type UnboundedMsg struct {
-	c       chan *mailbox.Message
-	backlog []*mailbox.Message
+	c       chan *pubsub.Message
+	backlog []*pubsub.Message
 
 	sync.Mutex
 }
 
 // NewUnbounded 构建Unbounded
 func NewUnbounded() *UnboundedMsg {
-	return &UnboundedMsg{c: make(chan *mailbox.Message, 1)}
+	return &UnboundedMsg{c: make(chan *pubsub.Message, 1)}
 }
 
 // Put 输入一个新的信息
-func (b *UnboundedMsg) Put(msg *mailbox.Message) {
+func (b *UnboundedMsg) Put(msg *pubsub.Message) {
 	b.Lock()
 	if len(b.backlog) == 0 {
 		select {
@@ -49,6 +49,6 @@ func (b *UnboundedMsg) Load() {
 }
 
 // Get 获取unbounded的读channel
-func (b *UnboundedMsg) Get() <-chan *mailbox.Message {
+func (b *UnboundedMsg) Get() <-chan *pubsub.Message {
 	return b.c
 }

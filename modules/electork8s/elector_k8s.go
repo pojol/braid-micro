@@ -10,7 +10,8 @@ import (
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/logger"
-	"github.com/pojol/braid-go/module/mailbox"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/modules/moduleparm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -21,7 +22,7 @@ import (
 
 const (
 	// ElectionName 基于kubernetes接口实现的选举器
-	ElectionName = "K8sElector"
+	Name = "K8sElector"
 )
 
 var (
@@ -33,16 +34,8 @@ type k8sElectorBuilder struct {
 	opts []interface{}
 }
 
-func newK8sElector() module.Builder {
+func newK8sElector() module.IBuilder {
 	return &k8sElectorBuilder{}
-}
-
-func onStartedLeading(ctx context.Context) {
-
-}
-
-func onStoppedLeading() {
-
 }
 
 func getConfig(cfg string) (*rest.Config, error) {
@@ -61,18 +54,23 @@ func newClientset(filename string) (*kubernetes.Clientset, error) {
 }
 
 func (*k8sElectorBuilder) Name() string {
-	return ElectionName
+	return Name
 }
 
-func (*k8sElectorBuilder) Type() string {
-	return module.TyElector
+func (*k8sElectorBuilder) Type() module.ModuleType {
+	return module.Elector
 }
 
-func (eb *k8sElectorBuilder) AddOption(opt interface{}) {
+func (eb *k8sElectorBuilder) AddModuleOption(opt interface{}) {
 	eb.opts = append(eb.opts, opt)
 }
 
-func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logger logger.ILogger) (module.IModule, error) {
+func (eb *k8sElectorBuilder) Build(serviceName string, buildOpts ...interface{}) interface{} {
+
+	bp := moduleparm.BuildParm{}
+	for _, opt := range buildOpts {
+		opt.(moduleparm.Option)(&bp)
+	}
 
 	p := Parm{
 		ServiceName: serviceName,
@@ -85,13 +83,13 @@ func (eb *k8sElectorBuilder) Build(serviceName string, mb mailbox.IMailbox, logg
 
 	el := &k8sElector{
 		parm:   p,
-		mb:     mb,
-		logger: logger,
+		ps:     bp.PS,
+		logger: bp.Logger,
 	}
 
-	el.mb.RegistTopic(elector.ChangeState, mailbox.ScopeProc)
+	el.ps.RegistTopic(elector.ChangeState, pubsub.ScopeProc)
 
-	return el, nil
+	return el
 }
 
 func (e *k8sElector) Init() error {
@@ -122,11 +120,11 @@ func (e *k8sElector) Init() error {
 			OnStoppedLeading: func() {},
 			OnNewLeader: func(identity string) {
 				if identity == e.parm.NodID {
-					e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+					e.ps.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 					e.logger.Debugf("new leader %s %s", e.parm.NodID, identity)
 
 				} else {
-					e.mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
+					e.ps.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 				}
 			},
 		},
@@ -142,7 +140,7 @@ func (e *k8sElector) Init() error {
 type k8sElector struct {
 	parm    Parm
 	logger  logger.ILogger
-	mb      mailbox.IMailbox
+	ps      pubsub.IPubsub
 	lock    *resourcelock.LeaseLock
 	elector *leaderelection.LeaderElector
 }
