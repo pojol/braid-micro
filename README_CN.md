@@ -79,3 +79,31 @@ $ docker run -d -p 8888:8888/tcp braidgo/sankey:latest \
 ```
 <img src="https://i.postimg.cc/sX0xHZmF/image.png" width="600">
 
+
+
+#### **Pub-sub** Benchmark
+*  ScopeProc
+
+```shell
+$ go test -benchmem -run=^$ -bench ^BenchmarkTestProc -cpu 2,4,8
+cpu: 2.2 GHz 4 Cores Intel Core i7
+goos: darwin
+goarch: amd64
+pkg: github.com/pojol/braid-go/modules/mailboxnsq
+BenchmarkTestProc-2   4340389   302 ns/op   109 B/op   3 allocs/op
+BenchmarkTestProc-4   8527536   151 ns/op   122 B/op   3 allocs/op
+BenchmarkTestProc-8   7564869   161 ns/op   118 B/op   3 allocs/op
+PASS
+```
+
+* ScopeCluster
+
+```shell
+$ go test -benchmem -run=^$ -bench ^BenchmarkClusterBroadcast -cpu 2,4,8
+腾讯云 4 Cores
+goos: linux
+goarch: amd64
+BenchmarkClusterBroadcast-2   70556   17234 ns/op   540 B/op   16 allocs/op
+BenchmarkClusterBroadcast-4   71202   18975 ns/op   676 B/op   20 allocs/op
+BenchmarkClusterBroadcast-8   62098   19037 ns/op   662 B/op   20 allocs/op
+```
