@@ -1,3 +1,8 @@
+# v1.2.26
+1. 将主要的注释翻译成英文
+2. 为 discoverconsul 模块添加自动的不健康节点排除功能
+3. 为 grpc client & server 添加 AppendInterceptors Option方法
+
 # v1.2.25
 1. 统一所有module的builder接口
 2. 将 Mailbox 更名为 Pubsub （更贴近逻辑的名字

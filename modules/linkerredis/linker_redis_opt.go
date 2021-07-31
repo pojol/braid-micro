@@ -53,6 +53,7 @@ func WithSyncTick(mstime int) Option {
 }
 
 // WithMode 设置redis link-cache的执行模式
+// 这边需要更多的注释
 func WithMode(mode string) Option {
 	return func(c *Parm) {
 		c.Mode = mode

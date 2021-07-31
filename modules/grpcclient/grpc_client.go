@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/balancer"
@@ -117,22 +118,19 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	var err error
 
 	if c.tracer != nil {
-		interceptor := jaegertracing.ClientInterceptor(c.tracer)
-		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor))
+		c.parm.interceptors = append(c.parm.interceptors, jaegertracing.ClientInterceptor(c.tracer))
+	}
+
+	if len(c.parm.interceptors) > 0 {
+		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(c.parm.interceptors...)))
 		if err != nil {
 			goto EXT
 		}
-		c.logger.Debugf("new connect %v tracer open", addr)
 	} else {
 		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure())
 		if err != nil {
 			goto EXT
 		}
-		c.logger.Debugf("new connect %v tracer close", addr)
-	}
-	if err != nil {
-		err = fmt.Errorf("%w %v", err, "failed to dial to gRPC server")
-		goto EXT
 	}
 
 EXT:

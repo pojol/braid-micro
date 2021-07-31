@@ -15,7 +15,7 @@
 
 > 这个图用于描述下面讲述到的几个关键字 `服务` `节点` `模块` `RPC` `Pub-sub`
 
-[![image.png](https://i.postimg.cc/13qmxQqk/image.png)](https://postimg.cc/CRwTD9J7)
+[![image.png](https://i.postimg.cc/d3GX2X3S/image.png)](https://postimg.cc/CRwTD9J7)
 
 ---
 
