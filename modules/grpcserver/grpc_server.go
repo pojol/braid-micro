@@ -7,7 +7,6 @@ import (
 	"net"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/logger"
@@ -53,8 +52,7 @@ func (b *grpcServerBuilder) Build(serviceName string, buildOpts ...interface{}) 
 	}
 
 	p := Parm{
-		ListenAddr:  ":14222",
-		openRecover: false,
+		ListenAddr: ":14222",
 	}
 	for _, opt := range b.opts {
 		opt.(Option)(&p)
@@ -66,19 +64,13 @@ func (b *grpcServerBuilder) Build(serviceName string, buildOpts ...interface{}) 
 		serviceName: serviceName,
 	}
 
-	interceptors := []grpc.UnaryServerInterceptor{}
 	if bp.Tracer != nil {
 		s.tracer = bp.Tracer.GetTracing().(opentracing.Tracer)
-		interceptors = append(interceptors, jaegertracing.ServerInterceptor(s.tracer))
+		p.interceptors = append(p.interceptors, jaegertracing.ServerInterceptor(s.tracer))
 	}
 
-	if p.openRecover {
-		interceptors = append(interceptors,
-			grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(p.recoverHandle)))
-	}
-
-	if len(interceptors) != 0 {
-		s.rpc = grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(interceptors...)))
+	if len(p.interceptors) != 0 {
+		s.rpc = grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(p.interceptors...)))
 	} else {
 		s.rpc = grpc.NewServer()
 	}

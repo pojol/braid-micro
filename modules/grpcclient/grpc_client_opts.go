@@ -2,6 +2,8 @@ package grpcclient
 
 import (
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 // Parm 调用器配置项
@@ -12,8 +14,7 @@ type Parm struct {
 	PoolCapacity int
 	PoolIdle     time.Duration
 
-	//callopts []grpc.CallOption
-	//dialopts []grpc.DialOption
+	interceptors []grpc.UnaryClientInterceptor
 }
 
 // Option config wraps
@@ -37,5 +38,11 @@ func WithPoolCapacity(num int) Option {
 func WithPoolIdle(second int) Option {
 	return func(c *Parm) {
 		c.PoolIdle = time.Duration(second) * time.Second
+	}
+}
+
+func AppendInterceptors(interceptor grpc.UnaryClientInterceptor) Option {
+	return func(c *Parm) {
+		c.interceptors = append(c.interceptors, interceptor)
 	}
 }
