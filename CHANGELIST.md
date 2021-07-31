@@ -1,5 +1,5 @@
 # v1.2.26
-1. 为 discoverconsul 模块添加自动的不健康节点排除功能
+1. ~~为 discoverconsul 模块添加自动的不健康节点排除功能~~
 2. 为 grpc client & server 添加 AppendInterceptors Option方法
 
 # v1.2.25
