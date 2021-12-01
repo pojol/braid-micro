@@ -198,7 +198,7 @@ func (c *grpcClient) Run() {
 func (c *grpcClient) getConn(address string) (*grpc.ClientConn, error) {
 	mc, ok := c.connmap.Load(address)
 	if !ok {
-		return nil, errors.New("gRPC client Can't find target")
+		return nil, fmt.Errorf("gRPC client Can't find targe %s", address)
 	}
 
 	conn, ok := mc.(*grpc.ClientConn)
