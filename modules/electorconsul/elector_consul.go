@@ -116,16 +116,12 @@ func (e *consulElection) watch() {
 		}
 	}
 
-	watchLock()
-
 	// time.Millisecond * 2000
 	e.lockTicker = time.NewTicker(e.parm.LockTick)
 
 	for {
-		select {
-		case <-e.lockTicker.C:
-			watchLock()
-		}
+		<-e.lockTicker.C
+		watchLock()
 	}
 }
 
@@ -145,10 +141,8 @@ func (e *consulElection) refush() {
 	e.refushTicker = time.NewTicker(e.parm.RefushSessionTick)
 
 	for {
-		select {
-		case <-e.refushTicker.C:
-			refushSession()
-		}
+		<-e.refushTicker.C
+		refushSession()
 	}
 }
 
