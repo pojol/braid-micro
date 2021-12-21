@@ -86,9 +86,7 @@ func (ll *localLinker) isRelationMember(relation string) bool {
 
 // 这里将来或许还要添加周期检查的逻辑
 func (ll *localLinker) rmvRelation(relation string) {
-	if _, ok := ll.relationSet[relation]; ok {
-		delete(ll.relationSet, relation)
-	}
+	delete(ll.relationSet, relation)
 }
 
 func (rl *redisLinker) localTarget(token string, serviceName string) (string, error) {

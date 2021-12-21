@@ -33,11 +33,6 @@ func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName stri
 
 func (rl *redisLinker) redisTarget(token string, serviceName string) (target string, err error) {
 
-	target, err = rl.local.target(token, serviceName)
-	if err == nil {
-		return target, err
-	}
-
 	conn := rl.getConn()
 	defer conn.Close()
 
@@ -45,12 +40,6 @@ func (rl *redisLinker) redisTarget(token string, serviceName string) (target str
 	if err != nil {
 		return "", err
 	}
-
-	rl.local.link(token, discover.Node{
-		Address: info.TargetAddr,
-		ID:      info.TargetID,
-		Name:    info.TargetName,
-	})
 
 	return info.TargetAddr, err
 }
@@ -79,15 +68,9 @@ func (rl *redisLinker) redisLink(token string, target discover.Node) error {
 	if err == nil && cnt != 0 {
 
 		relationKey := rl.getLinkNumKey(target.Name, target.ID)
-
-		rl.local.link(token, target)
-		if !rl.local.isRelationMember(relationKey) {
-			rl.local.addRelation(relationKey)
-
-			conn.Do("SADD", RelationPrefix, relationKey)
-		}
-
+		conn.Do("SADD", RelationPrefix, relationKey)
 		conn.Do("INCR", relationKey)
+
 	}
 
 	//l.logger.Debugf("linked parent %s, target %s, token %s", l.serviceName, cia, token)
@@ -112,8 +95,6 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 		token))
 
 	if err == nil && cnt == 1 {
-		rl.local.unlink(token, target)
-
 		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
@@ -155,11 +136,7 @@ func (rl *redisLinker) redisDown(target discover.Node) error {
 
 	rl.logger.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
 
-	rl.local.down(target)
-
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
-	rl.local.rmvRelation(relationKey)
-
 	conn.Do("SREM", RelationPrefix, relationKey)
 	conn.Do("DEL", relationKey)
 
