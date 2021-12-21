@@ -305,9 +305,7 @@ func (rl *redisLinker) addOfflineService(service discover.Node) {
 
 func (rl *redisLinker) rmvOfflineService(service discover.Node) {
 	rl.Lock()
-	if _, ok := rl.activeNodeMap[service.ID]; ok {
-		delete(rl.activeNodeMap, service.ID)
-	}
+	delete(rl.activeNodeMap, service.ID)
 	rl.Unlock()
 }
 
@@ -321,6 +319,7 @@ func (rl *redisLinker) syncOffline() {
 
 	members, err := redis.Strings(conn.Do("SMEMBERS", RelationPrefix))
 	if err != nil {
+		rl.logger.Warnf("smembers %v err %v", RelationPrefix, err.Error())
 		return
 	}
 
@@ -349,12 +348,14 @@ func (rl *redisLinker) syncOffline() {
 		}
 	}
 
+	rl.logger.Infof("offline number %v", len(offline))
 	for _, service := range offline {
 		if rl.parm.Mode == LinkerRedisModeLocal {
 			err = rl.localDown(service)
 		} else if rl.parm.Mode == LinkerRedisModeRedis {
 			err = rl.redisDown(service)
 		}
+
 		rl.logger.Debugf("offline service mode:%v, name:%v, id:%v", rl.parm.Mode, service.Name, service.ID)
 		if err != nil {
 			rl.logger.Warnf("offline err %v", err.Error())
@@ -390,20 +391,16 @@ func (rl *redisLinker) Run() {
 	go func() {
 		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncRelationTick))
 		for {
-			select {
-			case <-tick.C:
-				rl.syncRelation()
-			}
+			<-tick.C
+			rl.syncRelation()
 		}
 	}()
 
 	go func() {
 		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncOfflineTick))
 		for {
-			select {
-			case <-tick.C:
-				rl.syncOffline()
-			}
+			<-tick.C
+			rl.syncOffline()
 		}
 	}()
 }
@@ -483,7 +480,6 @@ func (rl *redisLinker) Down(target discover.Node) error {
 }
 
 func (rl *redisLinker) Close() {
-
 	rl.client.pool.Close()
 }
 
