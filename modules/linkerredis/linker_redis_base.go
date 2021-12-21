@@ -348,7 +348,6 @@ func (rl *redisLinker) syncOffline() {
 		}
 	}
 
-	rl.logger.Infof("offline number %v", len(offline))
 	for _, service := range offline {
 		if rl.parm.Mode == LinkerRedisModeLocal {
 			err = rl.localDown(service)
