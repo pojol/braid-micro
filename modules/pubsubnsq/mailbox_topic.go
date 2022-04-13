@@ -245,13 +245,17 @@ func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 		return errors.New("exiting")
 	}
 
+	var err error
+
 	if t.scope == pubsub.ScopeProc {
-		err := t.put(msg)
-		if err != nil {
-			return err
-		}
+		err = t.put(msg)
 	} else {
-		t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
+		err = t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
+	}
+
+	if err != nil {
+		t.ps.log.Warnf("topic %v publish err %v", t.Name, err.Error())
+		return err
 	}
 
 	return nil
