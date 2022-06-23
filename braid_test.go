@@ -6,13 +6,15 @@ import (
 	"testing"
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/pubsub"
+	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/mock"
-	"github.com/pojol/braid-go/module/pubsub"
-	"github.com/pojol/braid-go/modules/discoverconsul"
-	"github.com/pojol/braid-go/modules/electorconsul"
-	"github.com/pojol/braid-go/modules/linkerredis"
-	"github.com/pojol/braid-go/modules/pubsubnsq"
-	"github.com/pojol/braid-go/modules/zaplogger"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/rpc/client"
 )
 
 func TestMain(m *testing.M) {
@@ -21,24 +23,35 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestPlugin(t *testing.T) {
+func TestInit(t *testing.T) {
 
 	b, _ := NewService(
-		"test_plugin",
+		"test_init",
 	)
 
-	b.Register(
-		Module(LoggerZap),
-		Module(PubsubNsq,
-			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	b.RegisterDepend(
+		blog.BuildWithNormal(),
+		redis.BuildWithDefault(),
+		pubsub.BuildWithOption(
+			b.name,
+			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 		),
-		Module(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
-		Module(discoverconsul.Name, discoverconsul.WithConsulAddr(mock.ConsulAddr)),
-		Module(electorconsul.Name,
-			electorconsul.WithConsulAddr(mock.ConsulAddr),
-			electorconsul.WithLockTick(time.Second*2),
+		tracer.BuildWithOption(
+			b.name,
+			tracer.WithHTTP(mock.JaegerAddr),
+			tracer.WithProbabilistic(0.1),
 		),
+	)
+
+	b.RegisterClient(
+		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+	)
+
+	b.RegisterModule(
+		b.Discover(),
+		b.Elector(elector.WithLockTick(3*time.Second)),
+		b.LinkCache(linkcache.WithMode(linkcache.LinkerRedisModeLocal)),
 	)
 
 	b.Init()
@@ -65,18 +78,14 @@ func TestMutiPubsub(t *testing.T) {
 	b, _ := NewService(
 		"test_plugin",
 	)
-	b.Register(
-		Module(zaplogger.Name),
-		Module(pubsubnsq.Name,
-			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-		),
-	)
+
+	b.Init()
+	b.Run()
 
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	Pubsub().RegistTopic("TestMutiPubsub", pubsub.ScopeProc)
+	Pubsub().GetTopic("TestMutiPubsub")
 
 	topic := Pubsub().GetTopic("TestMutiPubsub")
 	c1 := topic.Sub("Normal")

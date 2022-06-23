@@ -6,43 +6,9 @@
 package linkcache
 
 import (
-	"encoding/json"
-
 	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/discover"
-	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/service"
 )
-
-const (
-	ServiceLinkNum = "linkcache.serviceLinkNum"
-
-	TokenUnlink = "linkcache.tokenUnlink"
-)
-
-// LinkNumMsg msg struct
-type LinkNumMsg struct {
-	ID  string
-	Num int
-}
-
-// EncodeLinkNumMsg encode linknum msg
-func EncodeLinkNumMsg(id string, num int) *pubsub.Message {
-	byt, _ := json.Marshal(&LinkNumMsg{
-		ID:  id,
-		Num: num,
-	})
-
-	return &pubsub.Message{
-		Body: byt,
-	}
-}
-
-// DecodeLinkNumMsg decode linknum msg
-func DecodeLinkNumMsg(msg *pubsub.Message) LinkNumMsg {
-	lnmsg := LinkNumMsg{}
-	json.Unmarshal(msg.Body, &lnmsg)
-	return lnmsg
-}
 
 // ILinkCache 链路缓存，主要用于维护 token 和多个相关联的服务进程之间的关系
 //
@@ -61,11 +27,11 @@ type ILinkCache interface {
 	Target(token string, serviceName string) (targetAddr string, err error)
 
 	// Link 将 token 和目标服务器连接信息写入到缓存中
-	Link(token string, target discover.Node) error
+	Link(token string, target service.Node) error
 
 	// Unlink 将 token 和目标服务器连接信息，解除绑定关系
 	Unlink(token string) error
 
 	// Down 清理目标节点的连接信息（因为该服务已经退出
-	Down(target discover.Node) error
+	Down(target service.Node) error
 }
