@@ -7,6 +7,7 @@ require (
 	github.com/garyburd/redigo v1.6.2
 	github.com/gogo/protobuf v1.3.1
 	github.com/gomodule/redigo v2.0.0+incompatible
+	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/kr/pretty v0.2.1 // indirect

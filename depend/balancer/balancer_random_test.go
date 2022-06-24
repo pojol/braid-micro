@@ -4,14 +4,16 @@ package balancer
 func TestRandomBalancer(t *testing.T) {
 
 	serviceName := "TestRandomBalancer"
+	mock.Init()
 
-	blog.New(blog.NewWithDefault())
-	mb := module.GetBuilder(pubsub.Name).Build(serviceName).(pubsub.IPubsub)
+	blog.BuildWithNormal()
+	ps := pubsub.BuildWithOption(
+		serviceName,
+		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	)
 
-	bgb := module.GetBuilder(Name)
-	b := bgb.Build(serviceName,
-		moduleparm.WithPubsub(mb))
-	bg := b.(balancer.IBalancer)
+	bg := BuildWithOption(serviceName, ps)
 
 	bg.Init()
 	bg.Run()
@@ -21,27 +23,27 @@ func TestRandomBalancer(t *testing.T) {
 	_, err := bg.Pick(StrategyRandom, serviceName)
 	assert.NotEqual(t, err, nil)
 
-	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+	ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
 		discover.EventAddService,
-		discover.Node{
+		service.Node{
 			ID:      "A",
 			Address: "A",
 			Weight:  4,
 			Name:    serviceName,
 		},
 	))
-	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+	ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
 		discover.EventAddService,
-		discover.Node{
+		service.Node{
 			ID:      "B",
 			Address: "B",
 			Weight:  2,
 			Name:    serviceName,
 		},
 	))
-	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+	ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
 		discover.EventAddService,
-		discover.Node{
+		service.Node{
 			ID:      "C",
 			Address: "C",
 			Weight:  1,
@@ -69,9 +71,9 @@ func TestRandomBalancer(t *testing.T) {
 	assert.Equal(t, true, (atomic.LoadUint64(&btick) >= 9000 && atomic.LoadUint64(&btick) <= 11000))
 	assert.Equal(t, true, (atomic.LoadUint64(&ctick) >= 9000 && atomic.LoadUint64(&ctick) <= 11000))
 
-	mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(
+	ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
 		discover.EventRemoveService,
-		discover.Node{
+		service.Node{
 			ID:      "C",
 			Address: "C",
 			Name:    serviceName,

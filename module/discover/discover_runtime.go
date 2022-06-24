@@ -33,7 +33,7 @@ var (
 	defaultWeight = 1024
 )
 
-func Build(name string, opts ...Option) IDiscover {
+func Build(name string, ps pubsub.IPubsub, opts ...Option) IDiscover {
 
 	p := Parm{
 		Tag:                       "braid",
@@ -49,6 +49,7 @@ func Build(name string, opts ...Option) IDiscover {
 
 	e := &consulDiscover{
 		parm:       p,
+		ps:         ps,
 		passingMap: make(map[string]*syncNode),
 	}
 

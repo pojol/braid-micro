@@ -169,16 +169,6 @@ func (t *pubsubTopic) RemoveChannel(name string) error {
 	return nil
 }
 
-func (t *pubsubTopic) put(msg *Message) error {
-	select {
-	case t.msgch <- msg:
-	default:
-		return fmt.Errorf("the pubsub topic %v queue is full", t.Name)
-	}
-
-	return nil
-}
-
 func (t *pubsubTopic) loop() {
 	var msg *Message
 	var chans []*pubsubChannel

@@ -11,7 +11,11 @@ import (
 
 func (b *Braid) Discover(opts ...discover.Option) module.IModule {
 
-	d := discover.Build(b.name, opts...)
+	if b.pubsub == nil {
+		panic(errors.New("Discover module need depend Pubsub"))
+	}
+
+	d := discover.Build(b.name, b.pubsub, opts...)
 	b.discoverPtr = d
 
 	return d
