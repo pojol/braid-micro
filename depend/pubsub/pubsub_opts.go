@@ -6,7 +6,7 @@ import "github.com/nsqio/go-nsq"
 type Parm struct {
 	nsqCfg nsq.Config
 
-	LookupdAddress  []string
+	LookupdAddress  []string // lookupd 地址
 	NsqdAddress     []string
 	NsqdHttpAddress []string
 
@@ -14,6 +14,10 @@ type Parm struct {
 	ServiceName string
 
 	ConcurrentHandler int32 // consumer 接收句柄的并发数（默认1
+
+	HA bool // 是否开启高可用，向每个nsqd发送消息
+
+	ChannelLength int32 // 管道长度，如果设置为0则全部消息都落地到磁盘再进行消费
 
 	nsqLogLv nsq.LogLevel
 }
