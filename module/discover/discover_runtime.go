@@ -4,7 +4,6 @@ package discover
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
@@ -126,64 +125,65 @@ func (dc *consulDiscover) discoverImpl() {
 
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
-
-	services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
-	if err != nil {
-		return
-	}
-
-	for _, cs := range services {
-		if cs.ServiceName == dc.parm.Name {
-			continue
+	/*
+		services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
+		if err != nil {
+			return
 		}
 
-		if dc.InBlacklist(cs.ServiceName) {
-			continue
-		}
-
-		if cs.ServiceName == "" || cs.ServiceID == "" {
-			continue
-		}
-
-		if _, ok := dc.passingMap[cs.ServiceID]; !ok { // new nod
-			sn := syncNode{
-				service:    cs.ServiceName,
-				id:         cs.ServiceID,
-				address:    cs.ServiceAddress + ":" + strconv.Itoa(cs.ServicePort),
-				dyncWeight: 0,
-				physWeight: defaultWeight,
+		for _, cs := range services {
+			if cs.ServiceName == dc.parm.Name {
+				continue
 			}
-			blog.Infof("new service %s addr %s", cs.ServiceName, sn.address)
-			dc.passingMap[cs.ServiceID] = &sn
 
-			dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-				EventAddService,
-				service.Node{
-					ID:      sn.id,
-					Name:    sn.service,
-					Address: sn.address,
-					Weight:  sn.physWeight,
-				},
-			))
+			if dc.InBlacklist(cs.ServiceName) {
+				continue
+			}
+
+			if cs.ServiceName == "" || cs.ServiceID == "" {
+				continue
+			}
+
+			if _, ok := dc.passingMap[cs.ServiceID]; !ok { // new nod
+				sn := syncNode{
+					service:    cs.ServiceName,
+					id:         cs.ServiceID,
+					address:    cs.ServiceAddress + ":" + strconv.Itoa(cs.ServicePort),
+					dyncWeight: 0,
+					physWeight: defaultWeight,
+				}
+				blog.Infof("new service %s addr %s", cs.ServiceName, sn.address)
+				dc.passingMap[cs.ServiceID] = &sn
+
+				dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
+					EventAddService,
+					service.Node{
+						ID:      sn.id,
+						Name:    sn.service,
+						Address: sn.address,
+						Weight:  sn.physWeight,
+					},
+				))
+			}
 		}
-	}
 
-	for k := range dc.passingMap {
-		if _, ok := services[k]; !ok { // rmv nod
-			blog.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
+		for k := range dc.passingMap {
+			if _, ok := services[k]; !ok { // rmv nod
+				blog.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
 
-			dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-				EventRemoveService,
-				service.Node{
-					ID:      dc.passingMap[k].id,
-					Name:    dc.passingMap[k].service,
-					Address: dc.passingMap[k].address,
-				},
-			))
+				dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
+					EventRemoveService,
+					service.Node{
+						ID:      dc.passingMap[k].id,
+						Name:    dc.passingMap[k].service,
+						Address: dc.passingMap[k].address,
+					},
+				))
 
-			delete(dc.passingMap, k)
+				delete(dc.passingMap, k)
+			}
 		}
-	}
+	*/
 }
 
 func (dc *consulDiscover) syncWeight() {
