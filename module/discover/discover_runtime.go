@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// Name 发现器名称
+	// Name 服务发现
 	Name = "ConsulDiscover"
 
 	// DiscoverTag 用于docker发现的tag， 所有希望被discover服务发现的节点，
@@ -32,7 +32,7 @@ var (
 	defaultWeight = 1024
 )
 
-func Build(name string, ps pubsub.IPubsub, opts ...Option) IDiscover {
+func Build(name string, ps pubsub.IPubsub, cclient *consul.Client, opts ...Option) IDiscover {
 
 	p := Parm{
 		Tag:                       "braid",
@@ -47,12 +47,13 @@ func Build(name string, ps pubsub.IPubsub, opts ...Option) IDiscover {
 	}
 
 	e := &consulDiscover{
-		parm:       p,
-		ps:         ps,
-		passingMap: make(map[string]*syncNode),
+		parm:         p,
+		ps:           ps,
+		nodemap:      make(map[string]*syncNode),
+		consulClient: cclient,
 	}
 
-	e.ps.GetTopic(service.TopicServiceUpdate)
+	//e.ps.GetTopic(service.TopicServiceUpdate)
 
 	return e
 }
@@ -76,8 +77,8 @@ func (dc *consulDiscover) Init() error {
 		dc.lock.Lock()
 		defer dc.lock.Unlock()
 
-		if _, ok := dc.passingMap[lninfo.ID]; ok {
-			dc.passingMap[lninfo.ID].linknum = lninfo.Num
+		if _, ok := dc.nodemap[lninfo.ID]; ok {
+			dc.nodemap[lninfo.ID].linknum = lninfo.Num
 		}
 	})
 
@@ -93,8 +94,10 @@ type consulDiscover struct {
 	parm Parm
 	ps   pubsub.IPubsub
 
+	consulClient *consul.Client //
+
 	// service id : service nod
-	passingMap map[string]*syncNode
+	nodemap map[string]*syncNode
 
 	lock sync.Mutex
 }
@@ -125,72 +128,101 @@ func (dc *consulDiscover) discoverImpl() {
 
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
-	/*
-		services, err := consul.GetCatalogServices(dc.parm.Address, dc.parm.Tag)
+
+	servicesnodes := make(map[string]bool)
+
+	services, err := dc.consulClient.CatalogListServices()
+	if err != nil {
+		fmt.Println("discover impl err", err.Error())
+		return
+	}
+
+	for _, v := range services {
+
+		cs, err := dc.consulClient.CatalogGetService(v.Name)
 		if err != nil {
-			return
+			continue
 		}
 
-		for _, cs := range services {
-			if cs.ServiceName == dc.parm.Name {
-				continue
-			}
+		if v.Name == "" || len(cs.Nodes) == 0 {
+			fmt.Println("not nodes", v.Name, len(v.Nodes))
+			continue
+		}
 
-			if dc.InBlacklist(cs.ServiceName) {
-				continue
-			}
+		if !utils.ContainsInSlice(v.Tags, dc.parm.Name) {
+			continue
+		}
 
-			if cs.ServiceName == "" || cs.ServiceID == "" {
-				continue
-			}
+		if v.Name == dc.parm.Name {
+			// 这里可以获取IP
+			fmt.Println("self")
+			continue
+		}
 
-			if _, ok := dc.passingMap[cs.ServiceID]; !ok { // new nod
+		if utils.ContainsInSlice(dc.parm.Blacklist, v.Name) {
+			continue // 排除黑名单节点
+		}
+
+		// 添加节点
+		for _, nod := range cs.Nodes {
+
+			servicesnodes[nod.ID] = true
+
+			if _, ok := dc.nodemap[nod.ID]; !ok { // new
+
 				sn := syncNode{
-					service:    cs.ServiceName,
-					id:         cs.ServiceID,
-					address:    cs.ServiceAddress + ":" + strconv.Itoa(cs.ServicePort),
-					dyncWeight: 0,
+					service:    nod.ID,
+					address:    nod.Address,
 					physWeight: defaultWeight,
 				}
-				blog.Infof("new service %s addr %s", cs.ServiceName, sn.address)
-				dc.passingMap[cs.ServiceID] = &sn
+				fmt.Printf("new service %s addr %s\n", nod.ID, sn.address)
+				dc.nodemap[nod.ID] = &sn
 
-				dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-					EventAddService,
-					service.Node{
-						ID:      sn.id,
-						Name:    sn.service,
-						Address: sn.address,
-						Weight:  sn.physWeight,
-					},
-				))
+				/*
+					dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
+						EventAddService,
+						service.Node{
+							ID:      sn.id,
+							Name:    sn.service,
+							Address: sn.address,
+							Weight:  sn.physWeight,
+						},
+					))
+				*/
 			}
+
 		}
 
-		for k := range dc.passingMap {
-			if _, ok := services[k]; !ok { // rmv nod
-				blog.Infof("remove service %s id %s", dc.passingMap[k].service, dc.passingMap[k].id)
+	}
 
+	// 排除节点
+	for k := range dc.nodemap {
+
+		if _, ok := servicesnodes[k]; !ok {
+			fmt.Printf("remove service %s id %s\n", dc.nodemap[k].service, dc.nodemap[k].id)
+
+			/*
 				dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
 					EventRemoveService,
 					service.Node{
-						ID:      dc.passingMap[k].id,
-						Name:    dc.passingMap[k].service,
-						Address: dc.passingMap[k].address,
+						ID:      dc.nodemap[k].id,
+						Name:    dc.nodemap[k].service,
+						Address: dc.nodemap[k].address,
 					},
 				))
-
-				delete(dc.passingMap, k)
-			}
+			*/
+			delete(dc.nodemap, k)
 		}
-	*/
+
+	}
+
 }
 
 func (dc *consulDiscover) syncWeight() {
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
 
-	for k, v := range dc.passingMap {
+	for k, v := range dc.nodemap {
 		if v.linknum == 0 {
 			continue
 		}
@@ -199,10 +231,10 @@ func (dc *consulDiscover) syncWeight() {
 			continue
 		}
 
-		dc.passingMap[k].dyncWeight = v.linknum
+		dc.nodemap[k].dyncWeight = v.linknum
 		nweight := 0
-		if dc.passingMap[k].physWeight-v.linknum > 0 {
-			nweight = dc.passingMap[k].physWeight - v.linknum
+		if dc.nodemap[k].physWeight-v.linknum > 0 {
+			nweight = dc.nodemap[k].physWeight - v.linknum
 		} else {
 			nweight = 1
 		}
@@ -234,10 +266,8 @@ func (dc *consulDiscover) discover() {
 	dc.discoverImpl()
 
 	for {
-		select {
-		case <-dc.discoverTicker.C:
-			syncService()
-		}
+		<-dc.discoverTicker.C
+		syncService()
 	}
 }
 
@@ -255,10 +285,8 @@ func (dc *consulDiscover) weight() {
 	dc.syncWeightTicker = time.NewTicker(dc.parm.SyncServiceWeightInterval)
 
 	for {
-		select {
-		case <-dc.syncWeightTicker.C:
-			syncWeight()
-		}
+		<-dc.syncWeightTicker.C
+		syncWeight()
 	}
 }
 

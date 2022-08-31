@@ -64,7 +64,7 @@ func TestClusterBroadcast(t *testing.T) {
 
 	select {
 	case <-done:
-		mb.RemoveTopic(topic)
+		mb.RmvTopic(topic)
 		// pass
 	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")

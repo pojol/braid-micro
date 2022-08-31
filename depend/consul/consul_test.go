@@ -17,11 +17,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestServiceRegist(t *testing.T) {
-
-}
-
-func TestServiceDeregist(t *testing.T) {
+func TestBuild(t *testing.T) {
 
 }
 

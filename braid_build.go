@@ -15,7 +15,7 @@ func (b *Braid) Discover(opts ...discover.Option) module.IModule {
 		panic(errors.New("Discover module need depend Pubsub"))
 	}
 
-	d := discover.Build(b.name, b.pubsub, opts...)
+	d := discover.Build(b.name, b.pubsub, b.consulClient, opts...)
 	b.discoverPtr = d
 
 	return d

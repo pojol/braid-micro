@@ -7,6 +7,7 @@ import (
 
 	"github.com/pojol/braid-go/depend/balancer"
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/depend/tracer"
@@ -53,11 +54,12 @@ type Braid struct {
 	modules []module.IModule
 
 	// depend
-	logPtr  *blog.Logger
-	pubsub  pubsub.IPubsub
-	redis   *redis.Client
-	tracer  tracer.ITracer
-	balance balancer.IBalancer
+	logPtr       *blog.Logger
+	pubsub       pubsub.IPubsub
+	redis        *redis.Client
+	tracer       tracer.ITracer
+	balance      balancer.IBalancer
+	consulClient *consul.Client
 
 	//
 	c client.IClient

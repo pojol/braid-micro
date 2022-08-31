@@ -69,7 +69,7 @@ func (nmb *nsqPubsub) GetTopic(name string) ITopic {
 	return t
 }
 
-func (nmb *nsqPubsub) RemoveTopic(name string) error {
+func (nmb *nsqPubsub) RmvTopic(name string) error {
 	nmb.RLock()
 	topic, ok := nmb.topicMap[name]
 	nmb.RUnlock()

@@ -2,7 +2,9 @@ package discover
 
 import (
 	"testing"
+	"time"
 
+	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
 )
 
@@ -12,31 +14,22 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-/*
 func TestDiscover(t *testing.T) {
 
-	b := module.GetBuilder(Name)
+	d := Build("mist_dev", nil, consul.Build(consul.WithAddress([]string{"47.103.70.168:8900"})),
+		WithSyncServiceInterval(time.Millisecond*100),
+		WithSyncServiceWeightInterval(time.Millisecond*100),
+		WithBlacklist([]string{"gate"}),
+	)
 
-	blog.New(blog.NewWithDefault())
-	mb := module.GetBuilder(pubsub.Name).Build("TestDiscover").(pubsub.IPubsub)
-
-	b.AddModuleOption(WithConsulAddr(mock.ConsulAddr))
-	b.AddModuleOption(WithSyncServiceInterval(time.Millisecond * 100))
-	b.AddModuleOption(WithSyncServiceWeightInterval(time.Millisecond * 100))
-	b.AddModuleOption(WithBlacklist([]string{"gate"}))
-
-	dc := b.Build("test",
-		moduleparm.WithPubsub(mb)).(*consulDiscover)
-	assert.Equal(t, dc.InBlacklist("gate"), true)
-	assert.Equal(t, dc.InBlacklist("login"), false)
-
-	dc.Init()
-	dc.Run()
+	d.Init()
+	d.Run()
 
 	time.Sleep(time.Second)
-	dc.Close()
+	d.Close()
+
+	t.FailNow()
 }
-*/
 
 /*
 func TestParm(t *testing.T) {

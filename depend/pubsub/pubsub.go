@@ -1,4 +1,4 @@
-// 接口文件 mailbox 邮箱，主要用于包装 Pub-sub 消息模型
+// 接口文件 pubsub
 package pubsub
 
 // Message 消息体
@@ -28,18 +28,16 @@ type ITopic interface {
 	// 这个时候如果同时有多个 sub 指向同一个 channel 则代表有多个 consumer 对该 channel 进行消费（随机获得
 	Sub(channelName string) IChannel
 
-	// RemoveChannel 删除 topic 中存在的 channel
-	RemoveChannel(channelName string) error
+	// RmvChannel 删除 topic 中存在的 channel
+	RmvChannel(name string) error
 }
 
 // IPubsub 发布-订阅，管理集群中的所有 Topic
 type IPubsub interface {
 
-	// GetTopic 获取 mailbox 中的一个 topic
-	//
-	// 如果该 topic 不存在，则创建一个新的 topic
-	GetTopic(topicName string) ITopic
+	// GetTopic 获取一个 topic
+	GetTopic(name string) ITopic
 
-	// RemoveTopic 删除 mailbox 中存在的 topic
-	RemoveTopic(topicName string) error
+	// RmvTopic 删除一个 topic
+	RmvTopic(topicName string) error
 }

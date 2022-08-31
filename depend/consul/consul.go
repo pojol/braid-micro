@@ -21,16 +21,13 @@ type Service struct {
 
 // ServiceNode 服务信息
 type ServiceNode struct {
-	ID             string
-	Address        string
-	ServiceAddress string
-	ServiceID      string
-	ServiceName    string
-	ServicePort    int
-	Metadata       map[string]string `json:"metadata"`
+	ID       string
+	Address  string
+	Port     int
+	Metadata map[string]string `json:"metadata"`
 }
 
-type ConsulClient struct {
+type Client struct {
 	client *consul.Client
 	parm   Parm
 
@@ -44,7 +41,7 @@ type ConsulClient struct {
 	httpClient *http.Client
 }
 
-func Build(opts ...Option) *ConsulClient {
+func Build(opts ...Option) *Client {
 
 	p := Parm{
 		cfg: consul.DefaultNonPooledConfig(), //use default non pooled config
@@ -57,7 +54,7 @@ func Build(opts ...Option) *ConsulClient {
 		opt(&p)
 	}
 
-	cc := &ConsulClient{
+	cc := &Client{
 		register:    make(map[string]uint64),
 		lastChecked: make(map[string]time.Time),
 		parm:        p,
@@ -140,7 +137,7 @@ func newTransport(config *tls.Config) *http.Transport {
 	return t
 }
 
-func (c *ConsulClient) Client() *consul.Client {
+func (c *Client) Client() *consul.Client {
 	if c.client != nil {
 		return c.client
 	}

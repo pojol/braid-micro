@@ -8,7 +8,7 @@ import (
 	consul "github.com/hashicorp/consul/api"
 )
 
-func (c *ConsulClient) ListServices() ([]*Service, error) {
+func (c *Client) CatalogListServices() ([]*Service, error) {
 
 	rsp, _, err := c.Client().Catalog().Services(c.parm.queryOpt)
 	if err != nil {
@@ -24,7 +24,7 @@ func (c *ConsulClient) ListServices() ([]*Service, error) {
 	return services, nil
 }
 
-func (c *ConsulClient) GetService(name string) (*Service, error) {
+func (c *Client) CatalogGetService(name string) (*Service, error) {
 	var rsp []*consul.ServiceEntry
 	service := &Service{}
 	var err error
@@ -41,8 +41,6 @@ func (c *ConsulClient) GetService(name string) (*Service, error) {
 
 	for _, s := range rsp {
 
-		service.Name = s.Service.ID
-
 		var del bool
 
 		for _, check := range s.Checks {
@@ -55,12 +53,14 @@ func (c *ConsulClient) GetService(name string) (*Service, error) {
 
 		// if delete then skip the node
 		if del {
+			// 这里是否需要删掉节点？ 还是留给其他服务处理
 			continue
 		}
 
 		service.Nodes = append(service.Nodes, &ServiceNode{
 			ID:       s.Service.ID,
 			Address:  s.Service.Address,
+			Port:     s.Service.Port,
 			Metadata: decodeMetadata(s.Service.Tags),
 		})
 
@@ -70,7 +70,7 @@ func (c *ConsulClient) GetService(name string) (*Service, error) {
 }
 
 // ServicesList 获取服务列表
-func ServicesList(address string) (map[string][]string, error) {
+func CatalogServicesList(address string) (map[string][]string, error) {
 
 	var res *http.Response
 	client := &http.Client{}

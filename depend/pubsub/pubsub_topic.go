@@ -146,7 +146,7 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (IChannel, bool) {
 
 }
 
-func (t *pubsubTopic) RemoveChannel(name string) error {
+func (t *pubsubTopic) RmvChannel(name string) error {
 	t.RLock()
 	channel, ok := t.channelMap[name]
 	t.RUnlock()
