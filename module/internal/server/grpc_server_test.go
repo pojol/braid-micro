@@ -5,7 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pojol/braid-go/rpc/proto"
+	"github.com/pojol/braid-go/module/rpc/proto"
+	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,11 +66,11 @@ func TestNew(t *testing.T) {
 
 func TestOpts(t *testing.T) {
 
-	cfg := Parm{
+	cfg := server.Parm{
 		ListenAddr: ":14222",
 	}
 
-	op := WithListen(":1201")
+	op := server.WithListen(":1201")
 	op(&cfg)
 	assert.Equal(t, cfg.ListenAddr, ":1201")
 

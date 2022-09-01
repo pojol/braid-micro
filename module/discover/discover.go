@@ -1,7 +1,5 @@
 package discover
 
-import "github.com/pojol/braid-go/module"
-
 const (
 	// EventAddService 有一个新的服务加入到集群
 	EventAddService = "event.service.nodeAdd"
@@ -15,5 +13,7 @@ const (
 
 // IDiscover discover interface
 type IDiscover interface {
-	module.IModule
+	Init() error
+	Run()
+	Close()
 }

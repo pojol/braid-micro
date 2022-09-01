@@ -9,7 +9,7 @@ import (
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/depend/pubsub"
-	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -18,26 +18,14 @@ const (
 	Name = "ConsulElection"
 )
 
-// state
-const (
-	// Wait 表示此进程当前处于初始化阶段，还没有具体的选举信息
-	EWait = "elector_wait"
-
-	// Slave 表示此进程当前处于 从节点 状态，此状态下，elector 会不断进行重试，试图变成新的 主节点（当主节点宕机或退出时
-	ESlave = "elector_slave"
-
-	// Master 表示当前进程正处于 主节点 状态；
-	EMaster = "elector_master"
-)
-
 var (
 	// ErrConfigConvert 配置转换失败
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-func Build(name string, ps pubsub.IPubsub, opts ...Option) module.IModule {
+func Build(name string, ps pubsub.IPubsub, opts ...elector.Option) elector.IElector {
 
-	p := Parm{
+	p := elector.Parm{
 		ConsulAddr:        "http://127.0.0.1:8500",
 		ServiceName:       name,
 		LockTick:          time.Second * 2,
@@ -76,7 +64,7 @@ type consulElection struct {
 	locked    bool
 
 	ps   pubsub.IPubsub
-	parm Parm
+	parm elector.Parm
 }
 
 func (e *consulElection) watch() {
@@ -91,10 +79,10 @@ func (e *consulElection) watch() {
 			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(EMaster))
+				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(elector.EMaster))
 				blog.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(ESlave))
+				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

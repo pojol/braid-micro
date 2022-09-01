@@ -6,6 +6,7 @@ import (
 
 	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/discover"
 )
 
 func TestMain(m *testing.M) {
@@ -16,10 +17,11 @@ func TestMain(m *testing.M) {
 
 func TestDiscover(t *testing.T) {
 
-	d := Build("mist_dev", nil, consul.Build(consul.WithAddress([]string{"47.103.70.168:8900"})),
-		WithSyncServiceInterval(time.Millisecond*100),
-		WithSyncServiceWeightInterval(time.Millisecond*100),
-		WithBlacklist([]string{"gate"}),
+	d := Build("base_dev", nil, discover.WithConsulClient(consul.Build(consul.WithAddress([]string{"47.103.70.168:8900"}))),
+		discover.WithSyncServiceInterval(time.Millisecond*100),
+		discover.WithSyncServiceWeightInterval(time.Millisecond*100),
+		discover.WithBlacklist([]string{"gate"}),
+		discover.WithTag("mist_dev"),
 	)
 
 	d.Init()

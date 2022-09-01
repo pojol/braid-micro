@@ -1,17 +1,114 @@
 package module
 
-// IModule module
-type IModule interface {
+import (
+	"github.com/pojol/braid-go/depend/balancer"
+	"github.com/pojol/braid-go/depend/consul"
+	"github.com/pojol/braid-go/depend/pubsub"
+	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/elector"
+	iclient "github.com/pojol/braid-go/module/internal/client"
+	idiscover "github.com/pojol/braid-go/module/internal/discover"
+	iserver "github.com/pojol/braid-go/module/internal/server"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
+)
 
-	// Init 模块的初始化阶段
-	// 这个阶段主要职责是：部署和检测支撑本模块的运行依赖等...
-	Init() error
+type BraidDepend struct {
+	Ibalancer balancer.IBalancer
+	Itracer   tracer.ITracer
+	CClient   *consul.Client
+}
 
-	// Run 模块的运行期
-	// 这个阶段主要职责是：主要用于提供周期性服务，一般会运行在goroutine中。
-	Run()
+type Depend func(*BraidDepend)
 
-	// Close 关闭模块
-	// 这个阶段主要职责是：关闭本模块，并释放模块中依赖的各种资源。
-	Close()
+func LoggerDepend() Depend {
+	return func(d *BraidDepend) {
+
+	}
+}
+
+func RedisDepend(opts ...redis.Option) Depend {
+	return func(d *BraidDepend) {
+
+	}
+}
+
+func TracerDepend(opts ...tracer.Option) Depend {
+	return func(d *BraidDepend) {
+
+	}
+}
+
+func ConsulDepend() Depend {
+	return func(d *BraidDepend) {
+
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type BraidModule struct {
+	Iclient client.IClient
+	Iserver server.IServer
+
+	Idiscover  discover.IDiscover
+	Ielector   elector.IElector
+	Ilinkcache linkcache.ILinkCache
+
+	Ipubsub pubsub.IPubsub
+}
+
+type Module func(*BraidModule)
+
+func Client(opts ...client.Option) Module {
+	return func(c *BraidModule) {
+
+		c.Iclient = iclient.BuildWithOption(
+			"",
+			c.Ipubsub,
+			c.Ilinkcache,
+			opts...,
+		)
+
+	}
+}
+
+func Server(opts ...server.Option) Module {
+	return func(c *BraidModule) {
+		c.Iserver = iserver.BuildWithOption(
+			"",
+			opts...,
+		)
+	}
+}
+
+func Discover(opts ...discover.Option) Module {
+	return func(c *BraidModule) {
+		c.Idiscover = idiscover.Build(
+			"",
+			c.Ipubsub,
+			opts...,
+		)
+	}
+}
+
+func LinkCache(opts ...linkcache.Option) Module {
+	return func(c *BraidModule) {
+
+	}
+}
+
+func Elector(opts ...elector.Option) Module {
+	return func(c *BraidModule) {
+
+	}
+}
+
+func Pubsub(opts ...pubsub.Option) Module {
+	return func(c *BraidModule) {
+
+	}
 }

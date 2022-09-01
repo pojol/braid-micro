@@ -6,7 +6,6 @@
 package linkcache
 
 import (
-	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -21,7 +20,9 @@ import (
 //  |    +-----------+  |
 //  +-------------------+
 type ILinkCache interface {
-	module.IModule
+	Init() error
+	Run()
+	Close()
 
 	// Target 通过服务名，获取 token 指向的目标服务器地址信息
 	Target(token string, serviceName string) (targetAddr string, err error)

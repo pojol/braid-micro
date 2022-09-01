@@ -11,6 +11,7 @@ import (
 	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/internal/utils"
+	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -32,9 +33,9 @@ var (
 	defaultWeight = 1024
 )
 
-func Build(name string, ps pubsub.IPubsub, cclient *consul.Client, opts ...Option) IDiscover {
+func Build(name string, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
 
-	p := Parm{
+	p := discover.Parm{
 		Tag:                       "braid",
 		Name:                      name,
 		SyncServicesInterval:      time.Second * 2,
@@ -50,7 +51,7 @@ func Build(name string, ps pubsub.IPubsub, cclient *consul.Client, opts ...Optio
 		parm:         p,
 		ps:           ps,
 		nodemap:      make(map[string]*syncNode),
-		consulClient: cclient,
+		consulClient: p.Client,
 	}
 
 	//e.ps.GetTopic(service.TopicServiceUpdate)
@@ -91,7 +92,7 @@ type consulDiscover struct {
 	syncWeightTicker *time.Ticker
 
 	// parm
-	parm Parm
+	parm discover.Parm
 	ps   pubsub.IPubsub
 
 	consulClient *consul.Client //
@@ -138,7 +139,6 @@ func (dc *consulDiscover) discoverImpl() {
 	}
 
 	for _, v := range services {
-
 		cs, err := dc.consulClient.CatalogGetService(v.Name)
 		if err != nil {
 			continue
@@ -149,13 +149,11 @@ func (dc *consulDiscover) discoverImpl() {
 			continue
 		}
 
-		if !utils.ContainsInSlice(v.Tags, dc.parm.Name) {
+		if !utils.ContainsInSlice(v.Tags, dc.parm.Tag) {
 			continue
 		}
 
 		if v.Name == dc.parm.Name {
-			// 这里可以获取IP
-			fmt.Println("self")
 			continue
 		}
 
@@ -240,7 +238,7 @@ func (dc *consulDiscover) syncWeight() {
 		}
 
 		dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-			EventUpdateService,
+			discover.EventUpdateService,
 			service.Node{
 				ID:     v.id,
 				Name:   v.service,

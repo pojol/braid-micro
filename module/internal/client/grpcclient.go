@@ -17,6 +17,7 @@ import (
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/service"
 
 	"google.golang.org/grpc"
@@ -38,9 +39,9 @@ var (
 	ErrCantFindNode = errors.New("can't find service node in center")
 )
 
-func BuildWithOption(name string, ps pubsub.IPubsub, b balancer.IBalancer, lc linkcache.ILinkCache, t tracer.ITracer, opts ...Option) IClient {
+func BuildWithOption(name string, ps pubsub.IPubsub, lc linkcache.ILinkCache, opts ...client.Option) client.IClient {
 
-	p := Parm{
+	p := client.Parm{
 		PoolInitNum:  8,
 		PoolCapacity: 64,
 		PoolIdle:     time.Second * 100,
@@ -54,12 +55,12 @@ func BuildWithOption(name string, ps pubsub.IPubsub, b balancer.IBalancer, lc li
 		serviceName: name,
 		parm:        p,
 		ps:          ps,
-		b:           b,
+		b:           balancer.BuildWithOption(name, ps),
 		linkcache:   lc,
 	}
 
-	if t != nil {
-		c.tracer = t.GetTracing().(opentracing.Tracer)
+	if p.Tracer != nil {
+		c.tracer = p.Tracer.GetTracing().(opentracing.Tracer)
 	}
 
 	return c
@@ -68,7 +69,7 @@ func BuildWithOption(name string, ps pubsub.IPubsub, b balancer.IBalancer, lc li
 // Client 调用器
 type grpcClient struct {
 	serviceName string
-	parm        Parm
+	parm        client.Parm
 
 	b balancer.IBalancer
 
@@ -88,11 +89,11 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	var err error
 
 	if c.tracer != nil {
-		c.parm.interceptors = append(c.parm.interceptors, tracer.ClientInterceptor(c.tracer))
+		c.parm.Interceptors = append(c.parm.Interceptors, tracer.ClientInterceptor(c.tracer))
 	}
 
-	if len(c.parm.interceptors) > 0 {
-		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(c.parm.interceptors...)))
+	if len(c.parm.Interceptors) > 0 {
+		conn, err = grpc.DialContext(ctx, addr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(c.parm.Interceptors...)))
 		if err != nil {
 			goto EXT
 		}

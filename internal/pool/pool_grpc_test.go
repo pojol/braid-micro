@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/pojol/braid-go/rpc/proto"
+	"github.com/pojol/braid-go/module/rpc/proto"
 )
 
 type rpcServer struct {

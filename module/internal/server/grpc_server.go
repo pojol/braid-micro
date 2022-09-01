@@ -10,6 +10,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/module/rpc/server"
 	"google.golang.org/grpc"
 )
 
@@ -23,9 +24,9 @@ var (
 	ErrConfigConvert = errors.New("convert linker config")
 )
 
-func BuildWithOption(serviceName string, t tracer.ITracer, opts ...Option) IServer {
+func BuildWithOption(serviceName string, opts ...server.Option) server.IServer {
 
-	p := Parm{
+	p := server.Parm{
 		ListenAddr: ":14222",
 	}
 	for _, opt := range opts {
@@ -37,13 +38,13 @@ func BuildWithOption(serviceName string, t tracer.ITracer, opts ...Option) IServ
 		serviceName: serviceName,
 	}
 
-	if t != nil {
-		s.tracer = t.GetTracing().(opentracing.Tracer)
-		p.interceptors = append(p.interceptors, tracer.ServerInterceptor(s.tracer))
+	if p.Tracer != nil {
+		s.tracer = p.Tracer.GetTracing().(opentracing.Tracer)
+		p.Interceptors = append(p.Interceptors, tracer.ServerInterceptor(s.tracer))
 	}
 
-	if len(p.interceptors) != 0 {
-		s.rpc = grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(p.interceptors...)))
+	if len(p.Interceptors) != 0 {
+		s.rpc = grpc.NewServer(grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(p.Interceptors...)))
 	} else {
 		s.rpc = grpc.NewServer()
 	}
@@ -57,7 +58,7 @@ type grpcServer struct {
 	serviceName string
 
 	listen net.Listener
-	parm   Parm
+	parm   server.Parm
 
 	tracer opentracing.Tracer
 }

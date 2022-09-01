@@ -15,10 +15,10 @@ type Parm struct {
 	RedisMaxActive int
 
 	//
-	syncRelationTick int // second
+	SyncRelationTick int // second
 
 	//
-	syncOfflineTick int // second
+	SyncOfflineTick int // second
 }
 
 // Option config wraps

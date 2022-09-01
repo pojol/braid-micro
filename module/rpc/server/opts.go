@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/pojol/braid-go/depend/tracer"
 	"google.golang.org/grpc"
 )
 
@@ -8,7 +9,9 @@ import (
 type Parm struct {
 	ListenAddr string
 
-	interceptors []grpc.UnaryServerInterceptor
+	Tracer tracer.ITracer
+
+	Interceptors []grpc.UnaryServerInterceptor
 }
 
 // Option config wraps
@@ -23,6 +26,12 @@ func WithListen(address string) Option {
 
 func AppendInterceptors(interceptor grpc.UnaryServerInterceptor) Option {
 	return func(c *Parm) {
-		c.interceptors = append(c.interceptors, interceptor)
+		c.Interceptors = append(c.Interceptors, interceptor)
+	}
+}
+
+func WithTracer(t tracer.ITracer) Option {
+	return func(c *Parm) {
+		c.Tracer = t
 	}
 }

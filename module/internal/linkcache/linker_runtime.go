@@ -14,6 +14,7 @@ import (
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -52,13 +53,13 @@ var (
 )
 
 // Build build link-cache
-func Build(name string, ps pubsub.IPubsub, client *redis.Client, opts ...Option) ILinkCache {
+func Build(name string, ps pubsub.IPubsub, client *redis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
 
-	p := Parm{
-		Mode:             LinkerRedisModeRedis,
+	p := linkcache.Parm{
+		Mode:             linkcache.LinkerRedisModeRedis,
 		SyncTick:         1000 * 10, // 10 second
-		syncOfflineTick:  60,
-		syncRelationTick: 5,
+		SyncOfflineTick:  60,
+		SyncRelationTick: 5,
 	}
 	for _, opt := range opts {
 		opt(&p)
@@ -93,7 +94,7 @@ type linkInfo struct {
 // redisLinker 基于redis实现的链接器
 type redisLinker struct {
 	serviceName string
-	parm        Parm
+	parm        linkcache.Parm
 
 	electorState string
 	ps           pubsub.IPubsub
@@ -241,7 +242,7 @@ func (rl *redisLinker) syncOffline() {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	if rl.parm.Mode != LinkerRedisModeLocal && rl.electorState != elector.EMaster {
+	if rl.parm.Mode != linkcache.LinkerRedisModeLocal && rl.electorState != elector.EMaster {
 		return
 	}
 
@@ -277,9 +278,9 @@ func (rl *redisLinker) syncOffline() {
 	}
 
 	for _, service := range offline {
-		if rl.parm.Mode == LinkerRedisModeLocal {
+		if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 			err = rl.localDown(service)
-		} else if rl.parm.Mode == LinkerRedisModeRedis {
+		} else if rl.parm.Mode == linkcache.LinkerRedisModeRedis {
 			err = rl.redisDown(service)
 		}
 
@@ -316,7 +317,7 @@ func (rl *redisLinker) Run() {
 
 	rl.syncRelation()
 	go func() {
-		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncRelationTick))
+		tick := time.NewTicker(time.Second * time.Duration(rl.parm.SyncRelationTick))
 		for {
 			<-tick.C
 			rl.syncRelation()
@@ -324,7 +325,7 @@ func (rl *redisLinker) Run() {
 	}()
 
 	go func() {
-		tick := time.NewTicker(time.Second * time.Duration(rl.parm.syncOfflineTick))
+		tick := time.NewTicker(time.Second * time.Duration(rl.parm.SyncOfflineTick))
 		for {
 			<-tick.C
 			rl.syncOffline()
@@ -345,9 +346,9 @@ func (rl *redisLinker) Target(token string, serviceName string) (string, error) 
 	var target string
 	var err error
 
-	if rl.parm.Mode == LinkerRedisModeRedis {
+	if rl.parm.Mode == linkcache.LinkerRedisModeRedis {
 		target, err = rl.redisTarget(token, serviceName)
-	} else if rl.parm.Mode == LinkerRedisModeLocal {
+	} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 		target, err = rl.localTarget(token, serviceName)
 	}
 
@@ -360,9 +361,9 @@ func (rl *redisLinker) Link(token string, target service.Node) error {
 
 	var err error
 
-	if rl.parm.Mode == LinkerRedisModeRedis {
+	if rl.parm.Mode == linkcache.LinkerRedisModeRedis {
 		err = rl.redisLink(token, target)
-	} else if rl.parm.Mode == LinkerRedisModeLocal {
+	} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 		err = rl.localLink(token, target)
 	}
 
@@ -379,9 +380,9 @@ func (rl *redisLinker) Unlink(token string) error {
 
 	// 尝试将自身名下的节点中的token释放掉
 	for _, child := range rl.child {
-		if rl.parm.Mode == LinkerRedisModeRedis && rl.electorState == elector.EMaster {
+		if rl.parm.Mode == linkcache.LinkerRedisModeRedis && rl.electorState == elector.EMaster {
 			err = rl.redisUnlink(token, child)
-		} else if rl.parm.Mode == LinkerRedisModeLocal {
+		} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 			err = rl.localUnlink(token, child)
 		}
 	}
@@ -397,9 +398,9 @@ func (rl *redisLinker) Down(target service.Node) error {
 
 	var err error
 
-	if rl.parm.Mode == LinkerRedisModeRedis && rl.electorState == elector.EMaster {
+	if rl.parm.Mode == linkcache.LinkerRedisModeRedis && rl.electorState == elector.EMaster {
 		err = rl.redisDown(target)
-	} else if rl.parm.Mode == LinkerRedisModeLocal {
+	} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 		err = rl.localDown(target)
 	}
 

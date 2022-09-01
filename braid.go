@@ -5,18 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pojol/braid-go/depend/balancer"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/depend/pubsub"
-	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/discover"
-	"github.com/pojol/braid-go/module/elector"
-	"github.com/pojol/braid-go/module/linkcache"
-	"github.com/pojol/braid-go/rpc/client"
-	"github.com/pojol/braid-go/rpc/server"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
 )
 
 const (
@@ -43,27 +37,11 @@ type Braid struct {
 	// service name
 	name string
 
-	client client.IClient
-	server server.IServer
-
 	// modules
-	discoverPtr  discover.IDiscover
-	linkcachePtr linkcache.ILinkCache
-	electorPtr   elector.IElector
-
-	modules []module.IModule
+	modules *module.BraidModule
 
 	// depend
-	logPtr       *blog.Logger
-	pubsub       pubsub.IPubsub
-	redis        *redis.Client
-	tracer       tracer.ITracer
-	balance      balancer.IBalancer
-	consulClient *consul.Client
-
-	//
-	c client.IClient
-	s server.IServer
+	depends *module.BraidDepend
 
 	sync.RWMutex
 }
@@ -81,42 +59,28 @@ func NewService(name string) (*Braid, error) {
 	return braidGlobal, nil
 }
 
-func (b *Braid) RegisterDepend(log *blog.Logger, r *redis.Client, ps pubsub.IPubsub, t tracer.ITracer) error {
+func (b *Braid) RegisterDepend(depends ...module.Depend) error {
 
-	b.logPtr = log
-	b.redis = r
-	b.pubsub = ps
-	b.tracer = t
+	d := &module.BraidDepend{}
+
+	for _, opt := range depends {
+		opt(d)
+	}
+
+	b.depends = d
 
 	return nil
 }
 
-func (b *Braid) RegisterClient(opts ...client.Option) {
+func (b *Braid) RegisterModule(modules ...module.Module) error {
 
-	if b.pubsub == nil {
-		panic(errors.New("Client module need depend Pubsub"))
+	p := &module.BraidModule{}
+
+	for _, opt := range modules {
+		opt(p)
 	}
 
-	balance := balancer.BuildWithOption(b.name, b.pubsub)
-	b.balance = balance
-
-	c := client.BuildWithOption(b.name, b.pubsub, balance, b.linkcachePtr, b.tracer, opts...)
-
-	b.c = c
-}
-
-func (b *Braid) RegisterServer(opts ...server.Option) {
-
-	s := server.BuildWithOption(b.name, b.tracer, opts...)
-	b.s = s
-
-}
-
-func (b *Braid) RegisterModule(mods ...module.IModule) error {
-
-	b.Lock()
-	b.modules = append(b.modules, mods...)
-	b.Unlock()
+	b.modules = p
 
 	return nil
 }
@@ -125,15 +89,31 @@ func (b *Braid) RegisterModule(mods ...module.IModule) error {
 func (b *Braid) Init() error {
 	var err error
 
-	if b.balance != nil {
-		b.balance.Init()
+	if b.depends.Ibalancer != nil {
+		b.depends.Ibalancer.Init()
 	}
 
-	for _, mod := range b.modules {
-		err = mod.Init()
+	if b.modules.Idiscover != nil {
+		err = b.modules.Idiscover.Init()
 		if err != nil {
-			blog.Errf("braid init err %v", err.Error())
-			break
+			blog.Errf("braid init discover err %v", err.Error())
+			return err
+		}
+	}
+
+	if b.modules.Ielector != nil {
+		err = b.modules.Ielector.Init()
+		if err != nil {
+			blog.Errf("braid init elector err %v", err.Error())
+			return err
+		}
+	}
+
+	if b.modules.Ilinkcache != nil {
+		err = b.modules.Ilinkcache.Init()
+		if err != nil {
+			blog.Errf("braid init linkcache err %v", err.Error())
+			return err
 		}
 	}
 
@@ -144,47 +124,66 @@ func (b *Braid) Init() error {
 func (b *Braid) Run() {
 	fmt.Printf(banner, Version)
 
-	if b.balance != nil {
-		b.balance.Run()
+	if b.depends.Ibalancer != nil {
+		b.depends.Ibalancer.Run()
 	}
 
-	for _, mod := range b.modules {
-		mod.Run()
+	if b.modules.Idiscover != nil {
+		b.modules.Idiscover.Run()
+	}
+
+	if b.modules.Ielector != nil {
+		b.modules.Ielector.Run()
+	}
+
+	if b.modules.Ilinkcache != nil {
+		b.modules.Ilinkcache.Run()
 	}
 
 }
 
 // GetClient get client interface
 func Client() client.IClient {
-	if braidGlobal != nil && braidGlobal.client != nil {
-		return braidGlobal.client
+	if braidGlobal != nil && braidGlobal.modules.Iclient != nil {
+		return braidGlobal.modules.Iclient
 	}
 	return nil
 }
 
 func Server() server.IServer {
-	return braidGlobal.server
+	if braidGlobal != nil && braidGlobal.modules.Iserver != nil {
+		return braidGlobal.modules.Iserver
+	}
+	return nil
 }
 
 // Mailbox pub-sub
 func Pubsub() pubsub.IPubsub {
-	return braidGlobal.pubsub
+	return braidGlobal.modules.Ipubsub
 }
 
 // Tracer tracing
 func Tracer() tracer.ITracer {
-	return braidGlobal.tracer
+	return braidGlobal.depends.Itracer
 }
 
 // Close 关闭braid
 func (b *Braid) Close() {
 
-	if b.balance != nil {
-		b.balance.Close()
+	if b.depends.Ibalancer != nil {
+		b.depends.Ibalancer.Close()
 	}
 
-	for _, mod := range b.modules {
-		mod.Close()
+	if b.modules.Idiscover != nil {
+		b.modules.Idiscover.Close()
+	}
+
+	if b.modules.Ielector != nil {
+		b.modules.Ielector.Close()
+	}
+
+	if b.modules.Ilinkcache != nil {
+		b.modules.Ilinkcache.Close()
 	}
 
 }

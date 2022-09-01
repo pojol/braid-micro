@@ -2,6 +2,8 @@ package discover
 
 import (
 	"time"
+
+	"github.com/pojol/braid-go/depend/consul"
 )
 
 // Parm discover config
@@ -20,6 +22,8 @@ type Parm struct {
 	Tag string
 
 	Blacklist []string
+
+	Client *consul.Client
 }
 
 // Option consul discover config wrapper
@@ -50,5 +54,11 @@ func WithSyncServiceInterval(interval time.Duration) Option {
 func WithSyncServiceWeightInterval(interval time.Duration) Option {
 	return func(c *Parm) {
 		c.SyncServiceWeightInterval = interval
+	}
+}
+
+func WithConsulClient(c *consul.Client) Option {
+	return func(p *Parm) {
+		p.Client = c
 	}
 }
