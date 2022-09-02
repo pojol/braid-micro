@@ -89,10 +89,6 @@ func (b *Braid) RegisterModule(modules ...module.Module) error {
 func (b *Braid) Init() error {
 	var err error
 
-	if b.depends.Ibalancer != nil {
-		b.depends.Ibalancer.Init()
-	}
-
 	if b.modules.Idiscover != nil {
 		err = b.modules.Idiscover.Init()
 		if err != nil {
@@ -123,10 +119,6 @@ func (b *Braid) Init() error {
 // Run 运行braid
 func (b *Braid) Run() {
 	fmt.Printf(banner, Version)
-
-	if b.depends.Ibalancer != nil {
-		b.depends.Ibalancer.Run()
-	}
 
 	if b.modules.Idiscover != nil {
 		b.modules.Idiscover.Run()
@@ -169,10 +161,6 @@ func Tracer() tracer.ITracer {
 
 // Close 关闭braid
 func (b *Braid) Close() {
-
-	if b.depends.Ibalancer != nil {
-		b.depends.Ibalancer.Close()
-	}
 
 	if b.modules.Idiscover != nil {
 		b.modules.Idiscover.Close()

@@ -1,7 +1,6 @@
 package module
 
 import (
-	"github.com/pojol/braid-go/depend/balancer"
 	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/redis"
@@ -17,9 +16,8 @@ import (
 )
 
 type BraidDepend struct {
-	Ibalancer balancer.IBalancer
-	Itracer   tracer.ITracer
-	CClient   *consul.Client
+	Itracer tracer.ITracer
+	CClient *consul.Client
 }
 
 type Depend func(*BraidDepend)

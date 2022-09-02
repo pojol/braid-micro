@@ -11,11 +11,11 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/pojol/braid-go/depend/balancer"
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/internal/balancer"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/service"
@@ -131,6 +131,9 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 
 func (c *grpcClient) Init() error {
 	var err error
+
+	c.b.Init() // 初始化自身的负载均衡器
+	defer c.b.Run()
 
 	serviceUpdate := c.ps.GetTopic(service.TopicServiceUpdate).Sub(Name)
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
@@ -270,4 +273,5 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 }
 
 func (c *grpcClient) Close() {
+	c.b.Close()
 }
