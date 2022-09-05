@@ -46,7 +46,7 @@ func WithMaxAge(age int) Option {
 // WithStdout 开启控制台输出
 func WithStdout(stdout bool) Option {
 	return func(c *Parm) {
-
+		c.stdout = stdout
 	}
 }
 

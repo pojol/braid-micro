@@ -1,5 +1,38 @@
 package discover
 
+import (
+	"encoding/json"
+
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/service"
+)
+
+const (
+	TopicServiceUpdate = "discover.serviceUpdate"
+)
+
+type DiscoverUpdateMsg struct {
+	Nod   service.Node
+	Event string
+}
+
+func DiscoverEncodeUpdateMsg(event string, nod service.Node) *pubsub.Message {
+	byt, _ := json.Marshal(&DiscoverUpdateMsg{
+		Event: event,
+		Nod:   nod,
+	})
+
+	return &pubsub.Message{
+		Body: byt,
+	}
+}
+
+func DiscoverDecodeUpdateMsg(msg *pubsub.Message) DiscoverUpdateMsg {
+	dmsg := DiscoverUpdateMsg{}
+	json.Unmarshal(msg.Body, &dmsg)
+	return dmsg
+}
+
 const (
 	// EventAddService 有一个新的服务加入到集群
 	EventAddService = "event.service.nodeAdd"

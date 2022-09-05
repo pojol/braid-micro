@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
 )

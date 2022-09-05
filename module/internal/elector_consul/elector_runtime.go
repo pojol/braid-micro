@@ -1,5 +1,5 @@
 // 实现文件 electorconsul 基于 consul 实现的选举
-package elector
+package electorconsul
 
 import (
 	"errors"
@@ -7,10 +7,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/module/elector"
-	"github.com/pojol/braid-go/service"
 )
 
 const (
@@ -23,10 +20,9 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-func Build(name string, ps pubsub.IPubsub, opts ...elector.Option) elector.IElector {
+func BuildWithOption(name string, opts ...elector.Option) elector.IElector {
 
 	p := elector.Parm{
-		ConsulAddr:        "http://127.0.0.1:8500",
 		ServiceName:       name,
 		LockTick:          time.Second * 2,
 		RefushSessionTick: time.Second * 5,
@@ -37,18 +33,18 @@ func Build(name string, ps pubsub.IPubsub, opts ...elector.Option) elector.IElec
 
 	e := &consulElection{
 		parm: p,
-		ps:   ps,
 	}
 
-	e.ps.GetTopic(service.TopicElectorChangeState)
+	e.parm.Ps.GetTopic(elector.TopicElectorChangeState)
 
 	return e
 }
 
 func (e *consulElection) Init() error {
-	sid, err := consul.CreateSession(e.parm.ConsulAddr, e.parm.ServiceName+"_lead")
+
+	sid, err := e.parm.ConsulClient.CreateSession(e.parm.ServiceName + "_lead")
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", e.parm.ServiceName, "consul", e.parm.ConsulAddr)
+		return fmt.Errorf("%v Dependency check error %v", e.parm.ServiceName, "consul")
 	}
 
 	e.sessionID = sid
@@ -63,7 +59,6 @@ type consulElection struct {
 	sessionID string
 	locked    bool
 
-	ps   pubsub.IPubsub
 	parm elector.Parm
 }
 
@@ -76,13 +71,13 @@ func (e *consulElection) watch() {
 		}()
 
 		if !e.locked {
-			succ, _ := consul.AcquireLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
+			succ, _ := e.parm.ConsulClient.AcquireLock(e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(elector.EMaster))
+				e.parm.Ps.GetTopic(elector.TopicElectorChangeState).Pub(elector.ElectorEncodeStateChangeMsg(elector.EMaster))
 				blog.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.ps.GetTopic(service.TopicElectorChangeState).Pub(service.ElectorEncodeStateChangeMsg(elector.ESlave))
+				e.parm.Ps.GetTopic(elector.TopicElectorChangeState).Pub(elector.ElectorEncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}
@@ -105,7 +100,10 @@ func (e *consulElection) refush() {
 			}
 		}()
 
-		consul.RefushSession(e.parm.ConsulAddr, e.sessionID)
+		err := e.parm.ConsulClient.RefreshSession(e.sessionID)
+		if err != nil {
+			// log
+		}
 	}
 
 	// time.Millisecond * 1000 * 5
@@ -130,6 +128,6 @@ func (e *consulElection) Run() {
 
 // Close 释放锁，删除session
 func (e *consulElection) Close() {
-	consul.ReleaseLock(e.parm.ConsulAddr, e.parm.ServiceName, e.sessionID)
-	consul.DeleteSession(e.parm.ConsulAddr, e.sessionID)
+	e.parm.ConsulClient.ReleaseLock(e.parm.ServiceName, e.sessionID)
+	e.parm.ConsulClient.DeleteSession(e.sessionID)
 }

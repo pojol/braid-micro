@@ -1,4 +1,4 @@
-package pubsub
+package pubsubnsq
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,12 +24,10 @@ func TestMain(m *testing.M) {
 
 func TestClusterBroadcast(t *testing.T) {
 
-	blog.BuildWithNormal()
-
 	mb := BuildWithOption(
 		"TestClusterBroadcast",
-		WithLookupAddr([]string{}),
-		WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		pubsub.WithLookupAddr([]string{}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	topic := "test.clusterBroadcast"
@@ -45,10 +43,10 @@ func TestClusterBroadcast(t *testing.T) {
 	wg1.Add(msgcnt)
 	wg2.Add(msgcnt)
 
-	channel1.Arrived(func(msg *Message) {
+	channel1.Arrived(func(msg *pubsub.Message) {
 		wg1.Done()
 	})
-	channel2.Arrived(func(msg *Message) {
+	channel2.Arrived(func(msg *pubsub.Message) {
 		wg2.Done()
 	})
 
@@ -59,7 +57,7 @@ func TestClusterBroadcast(t *testing.T) {
 	}()
 
 	for i := 0; i < msgcnt; i++ {
-		mb.GetTopic(topic).Pub(&Message{Body: []byte("test msg")})
+		mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("test msg")})
 	}
 
 	select {
@@ -81,12 +79,10 @@ func TestClusterBroadcast(t *testing.T) {
 
 func TestClusterNotify(t *testing.T) {
 
-	blog.BuildWithNormal()
-
 	mb := BuildWithOption(
 		"TestClusterNotify",
-		WithLookupAddr([]string{}),
-		WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		pubsub.WithLookupAddr([]string{}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	var tick uint64
@@ -96,14 +92,14 @@ func TestClusterNotify(t *testing.T) {
 	channel1 := mb.GetTopic(topic).Sub("Normal")
 	channel2 := mb.GetTopic(topic).Sub("Normal")
 
-	channel1.Arrived(func(msg *Message) {
+	channel1.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
 	})
-	channel2.Arrived(func(msg *Message) {
+	channel2.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
 	})
 
-	mb.GetTopic(topic).Pub(&Message{Body: []byte("msg")})
+	mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("msg")})
 
 	for {
 		<-time.After(time.Second * 3)
@@ -147,12 +143,10 @@ func TestClusterMutiNSQD(t *testing.T) {
 
 func BenchmarkClusterBroadcast(b *testing.B) {
 
-	blog.BuildWithNormal()
-
 	mb := BuildWithOption(
 		"BenchmarkClusterBroadcast",
-		WithLookupAddr([]string{}),
-		WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		pubsub.WithLookupAddr([]string{}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
 	topic := "benchmark.ClusterBroadcast"
@@ -161,9 +155,9 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 	c1 := mb.GetTopic(topic).Sub("Normal_1")
 	c2 := mb.GetTopic(topic).Sub("Normal_2")
 
-	c1.Arrived(func(msg *Message) {
+	c1.Arrived(func(msg *pubsub.Message) {
 	})
-	c2.Arrived(func(msg *Message) {
+	c2.Arrived(func(msg *pubsub.Message) {
 	})
 
 	b.SetParallelism(8)
@@ -171,7 +165,7 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.GetTopic(topic).Pub(&Message{Body: body})
+			mb.GetTopic(topic).Pub(&pubsub.Message{Body: body})
 		}
 	})
 

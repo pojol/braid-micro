@@ -41,7 +41,7 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func Build(opts ...Option) *Client {
+func BuildWithOption(opts ...Option) *Client {
 
 	p := Parm{
 		cfg: consul.DefaultNonPooledConfig(), //use default non pooled config

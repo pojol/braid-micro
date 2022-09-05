@@ -20,27 +20,3 @@ func TestMain(m *testing.M) {
 func TestBuild(t *testing.T) {
 
 }
-
-func TestHealth(t *testing.T) {
-
-}
-
-func TestSessionCreate(t *testing.T) {
-
-}
-
-func TestSessionDelete(t *testing.T) {
-
-}
-
-func TestSessionRefush(t *testing.T) {
-
-}
-
-func TestSessionLockAcquire(t *testing.T) {
-
-}
-
-func TestSessionLockRelease(t *testing.T) {
-
-}

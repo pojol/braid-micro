@@ -19,12 +19,12 @@ type Parm struct {
 
 	ChannelLength int32 // 管道长度，如果设置为0则全部消息都落地到磁盘再进行消费
 
-	nsqLogLv nsq.LogLevel
+	NsqLogLv nsq.LogLevel
 }
 
 var (
 	DefaultConfig = Parm{
-		nsqLogLv:          nsq.LogLevelInfo,
+		NsqLogLv:          nsq.LogLevelInfo,
 		ConcurrentHandler: 1,
 	}
 )
@@ -82,7 +82,7 @@ func WithNsqdAddr(tcpAddr []string, httpAddr []string) Option {
 // WithNsqLogLv 修改nsq的日志等级
 func WithNsqLogLv(lv nsq.LogLevel) Option {
 	return func(c *Parm) {
-		c.nsqLogLv = lv
+		c.NsqLogLv = lv
 	}
 }
 

@@ -1,5 +1,5 @@
 // 实现文件 基于 consul 实现的服务发现
-package discover
+package discover_consul
 
 import (
 	"errors"
@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -33,25 +32,27 @@ var (
 	defaultWeight = 1024
 )
 
-func Build(name string, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
+func BuildWithOption(name string, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
 
 	p := discover.Parm{
 		Tag:                       "braid",
 		Name:                      name,
 		SyncServicesInterval:      time.Second * 2,
 		SyncServiceWeightInterval: time.Second * 10,
-		Address:                   "http://127.0.0.1:8500",
 	}
 
 	for _, opt := range opts {
 		opt(&p)
 	}
 
+	if p.Client == nil {
+		panic(errors.New("discover depend consul client"))
+	}
+
 	e := &consulDiscover{
-		parm:         p,
-		ps:           ps,
-		nodemap:      make(map[string]*syncNode),
-		consulClient: p.Client,
+		parm:    p,
+		ps:      ps,
+		nodemap: make(map[string]*syncNode),
 	}
 
 	//e.ps.GetTopic(service.TopicServiceUpdate)
@@ -60,29 +61,23 @@ func Build(name string, ps pubsub.IPubsub, opts ...discover.Option) discover.IDi
 }
 
 func (dc *consulDiscover) Init() error {
-
-	// check address
-	_, err := consul.GetConsulLeader(dc.parm.Address)
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", dc.parm.Name, "consul", dc.parm.Address)
-	}
-
-	ip, err := utils.GetLocalIP()
-	if err != nil {
-		return fmt.Errorf("%v GetLocalIP err %v", dc.parm.Name, err.Error())
-	}
-
-	linkC := dc.ps.GetTopic(service.TopicLinkerLinkNum).Sub(Name + "-" + ip)
-	linkC.Arrived(func(msg *pubsub.Message) {
-		lninfo := service.LinkerDecodeNumMsg(msg)
-		dc.lock.Lock()
-		defer dc.lock.Unlock()
-
-		if _, ok := dc.nodemap[lninfo.ID]; ok {
-			dc.nodemap[lninfo.ID].linknum = lninfo.Num
+	/*
+		ip, err := utils.GetLocalIP()
+		if err != nil {
+			return fmt.Errorf("%v GetLocalIP err %v", dc.parm.Name, err.Error())
 		}
-	})
 
+			linkC := dc.ps.GetTopic(service.TopicLinkerLinkNum).Sub(Name + "-" + ip)
+			linkC.Arrived(func(msg *pubsub.Message) {
+				lninfo := service.LinkerDecodeNumMsg(msg)
+				dc.lock.Lock()
+				defer dc.lock.Unlock()
+
+				if _, ok := dc.nodemap[lninfo.ID]; ok {
+					dc.nodemap[lninfo.ID].linknum = lninfo.Num
+				}
+			})
+	*/
 	return nil
 }
 
@@ -94,8 +89,6 @@ type consulDiscover struct {
 	// parm
 	parm discover.Parm
 	ps   pubsub.IPubsub
-
-	consulClient *consul.Client //
 
 	// service id : service nod
 	nodemap map[string]*syncNode
@@ -132,14 +125,14 @@ func (dc *consulDiscover) discoverImpl() {
 
 	servicesnodes := make(map[string]bool)
 
-	services, err := dc.consulClient.CatalogListServices()
+	services, err := dc.parm.Client.CatalogListServices()
 	if err != nil {
 		fmt.Println("discover impl err", err.Error())
 		return
 	}
 
 	for _, v := range services {
-		cs, err := dc.consulClient.CatalogGetService(v.Name)
+		cs, err := dc.parm.Client.CatalogGetService(v.Name)
 		if err != nil {
 			continue
 		}
@@ -237,7 +230,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
+		dc.ps.GetTopic(discover.TopicServiceUpdate).Pub(discover.DiscoverEncodeUpdateMsg(
 			discover.EventUpdateService,
 			service.Node{
 				ID:     v.id,

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -79,14 +79,14 @@ func BuildWithOption(name string, ps pubsub.IPubsub, opts ...Option) IBalancer {
 
 func (bbg *baseBalancerGroup) Init() {
 
-	bbg.serviceUpdate = bbg.ps.GetTopic(service.TopicServiceUpdate).Sub(Name)
+	bbg.serviceUpdate = bbg.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
 
 }
 
 func (bbg *baseBalancerGroup) Run() {
 
 	bbg.serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := service.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {
 			bbg.Lock()
 

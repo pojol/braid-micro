@@ -1,16 +1,17 @@
 package module
 
 import (
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
 	iclient "github.com/pojol/braid-go/module/internal/client"
-	idiscover "github.com/pojol/braid-go/module/internal/discover"
+	idiscover "github.com/pojol/braid-go/module/internal/discover_consul"
 	iserver "github.com/pojol/braid-go/module/internal/server"
 	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
 )
@@ -18,13 +19,14 @@ import (
 type BraidDepend struct {
 	Itracer tracer.ITracer
 	CClient *consul.Client
+	Logger  *blog.Logger
 }
 
 type Depend func(*BraidDepend)
 
-func LoggerDepend() Depend {
+func LoggerDepend(opts ...blog.Option) Depend {
 	return func(d *BraidDepend) {
-
+		d.Logger = blog.BuildWithOption(opts...)
 	}
 }
 
@@ -40,9 +42,9 @@ func TracerDepend(opts ...tracer.Option) Depend {
 	}
 }
 
-func ConsulDepend() Depend {
+func ConsulDepend(opts ...consul.Option) Depend {
 	return func(d *BraidDepend) {
-
+		d.CClient = consul.BuildWithOption(opts...)
 	}
 }
 
@@ -85,7 +87,7 @@ func Server(opts ...server.Option) Module {
 
 func Discover(opts ...discover.Option) Module {
 	return func(c *BraidModule) {
-		c.Idiscover = idiscover.Build(
+		c.Idiscover = idiscover.BuildWithOption(
 			"",
 			c.Ipubsub,
 			opts...,

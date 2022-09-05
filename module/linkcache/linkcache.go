@@ -6,8 +6,44 @@
 package linkcache
 
 import (
+	"encoding/json"
+
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
+
+const (
+	// 当前节点连接数事件
+	TopicLinkerLinkNum = "linkcache.serviceLinkNum"
+
+	// token 离线事件
+	TopicLinkerUnlink = "linkcache.tokenUnlink"
+)
+
+// LinkNumMsg msg struct
+type LinkerLinkNumMsg struct {
+	ID  string
+	Num int
+}
+
+// EncodeLinkNumMsg encode linknum msg
+func LinkerEncodeNumMsg(id string, num int) *pubsub.Message {
+	byt, _ := json.Marshal(&LinkerLinkNumMsg{
+		ID:  id,
+		Num: num,
+	})
+
+	return &pubsub.Message{
+		Body: byt,
+	}
+}
+
+// DecodeLinkNumMsg decode linknum msg
+func LinkerDecodeNumMsg(msg *pubsub.Message) LinkerLinkNumMsg {
+	lnmsg := LinkerLinkNumMsg{}
+	json.Unmarshal(msg.Body, &lnmsg)
+	return lnmsg
+}
 
 // ILinkCache 链路缓存，主要用于维护 token 和多个相关联的服务进程之间的关系
 //

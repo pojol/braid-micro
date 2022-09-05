@@ -1,4 +1,4 @@
-package pubsub
+package pubsubnsq
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 type pubsubChannel struct {
@@ -33,7 +34,7 @@ type consumerHandler struct {
 
 func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 
-	ch.c.Put(&Message{
+	ch.c.Put(&pubsub.Message{
 		Body: msg.Body,
 	})
 	return nil
@@ -78,7 +79,7 @@ func newChannel(topicName, channelName string, n *nsqPubsub) *pubsubChannel {
 		blog.Errf("channel %v nsq.NewConsumer err %v", channelName, err)
 		return nil
 	}
-	nsqConsumer.SetLoggerLevel(n.parm.nsqLogLv)
+	nsqConsumer.SetLoggerLevel(n.parm.NsqLogLv)
 
 	nsqConsumer.AddConcurrentHandlers(&consumerHandler{
 		c:       c,
@@ -100,12 +101,12 @@ func newChannel(topicName, channelName string, n *nsqPubsub) *pubsubChannel {
 	}
 
 	c.consumer = nsqConsumer
-	blog.Infof("Cluster consumer %v created", channelName)
+	//blog.Infof("Cluster consumer %v created", channelName)
 
 	return c
 }
 
-func (c *pubsubChannel) Put(msg *Message) {
+func (c *pubsubChannel) Put(msg *pubsub.Message) {
 
 	if atomic.LoadInt32(&c.exitFlag) == 1 {
 		blog.Warnf("cannot write to the exiting channel %v", c.Name)
@@ -115,7 +116,7 @@ func (c *pubsubChannel) Put(msg *Message) {
 	c.msgCh.Put(msg)
 }
 
-func (c *pubsubChannel) addHandlers(handler Handler) {
+func (c *pubsubChannel) addHandlers(handler pubsub.Handler) {
 	go func() {
 		for {
 			m, ok := <-c.msgCh.Get()
@@ -131,7 +132,7 @@ func (c *pubsubChannel) addHandlers(handler Handler) {
 	}()
 }
 
-func (c *pubsubChannel) Arrived(handler Handler) {
+func (c *pubsubChannel) Arrived(handler pubsub.Handler) {
 	c.addHandlers(handler)
 }
 
@@ -140,7 +141,7 @@ func (c *pubsubChannel) Exit() error {
 		return errors.New("exiting")
 	}
 
-	blog.Infof("channel %v exiting", c.Name)
+	//blog.Infof("channel %v exiting", c.Name)
 
 	c.consumer.Stop()
 

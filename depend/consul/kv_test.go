@@ -10,7 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSession(t *testing.T) {
+func TestKv(t *testing.T) {
+
 	rand.Seed(time.Now().UnixNano())
 	r := rand.Intn(1000)
 
@@ -24,15 +25,15 @@ func TestSession(t *testing.T) {
 	}
 	assert.Equal(t, err, nil)
 
-	err = client.RefreshSession(id)
+	client.AcquireLock(sessionName, id)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 	assert.Equal(t, err, nil)
 
-	err = client.DeleteSession(id)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	assert.Equal(t, err, nil)
+	ok, err := client.AcquireLock("xxx", id)
+	print(ok, err)
+	assert.NotEqual(t, err, nil)
+
+	client.DeleteSession(id)
 }

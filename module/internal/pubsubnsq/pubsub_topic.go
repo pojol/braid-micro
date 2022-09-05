@@ -1,4 +1,4 @@
-package pubsub
+package pubsubnsq
 
 import (
 	"errors"
@@ -12,13 +12,14 @@ import (
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/internal/braidsync"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 type pubsubTopic struct {
 	Name string
 	ps   *nsqPubsub
 
-	msgch    chan *Message
+	msgch    chan *pubsub.Message
 	exitFlag int32
 	producer []*nsq.Producer
 
@@ -41,7 +42,7 @@ func newTopic(name string, n *nsqPubsub) *pubsubTopic {
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
-		msgch:             make(chan *Message, 4096),
+		msgch:             make(chan *pubsub.Message, 4096),
 		channelMap:        make(map[string]*pubsubChannel),
 	}
 
@@ -114,7 +115,7 @@ func (t *pubsubTopic) start() {
 	}
 }
 
-func (t *pubsubTopic) Sub(name string) IChannel {
+func (t *pubsubTopic) Sub(name string) pubsub.IChannel {
 
 	t.Lock()
 	c, isNew := t.getOrCreateChannel(name)
@@ -131,14 +132,14 @@ func (t *pubsubTopic) Sub(name string) IChannel {
 	return c
 }
 
-func (t *pubsubTopic) getOrCreateChannel(name string) (IChannel, bool) {
+func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
 		channel = newChannel(t.Name, name, t.ps)
 		t.channelMap[name] = channel
 
-		blog.Infof("Topic %v new channel %v", t.Name, name)
+		//blog.Infof("Topic %v new channel %v", t.Name, name)
 		return channel, true
 	}
 
@@ -154,7 +155,7 @@ func (t *pubsubTopic) RmvChannel(name string) error {
 		return fmt.Errorf("channel %v does not exist", name)
 	}
 
-	blog.Infof("topic %v deleting channel %v", t.Name, name)
+	//blog.Infof("topic %v deleting channel %v", t.Name, name)
 	channel.Exit()
 
 	t.Lock()
@@ -170,9 +171,9 @@ func (t *pubsubTopic) RmvChannel(name string) error {
 }
 
 func (t *pubsubTopic) loop() {
-	var msg *Message
+	var msg *pubsub.Message
 	var chans []*pubsubChannel
-	var msgChan chan *Message
+	var msgChan chan *pubsub.Message
 
 	for {
 		select {
@@ -220,10 +221,10 @@ func (t *pubsubTopic) loop() {
 	}
 
 EXT:
-	blog.Infof("topic %v out of the loop", t.Name)
+	//blog.Infof("topic %v out of the loop", t.Name)
 }
 
-func (t *pubsubTopic) Pub(msg *Message) error {
+func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 	t.RLock()
 	defer t.RUnlock()
 
@@ -247,7 +248,7 @@ func (t *pubsubTopic) Exit() error {
 		return errors.New("exiting")
 	}
 
-	blog.Infof("topic %v exiting", t.Name)
+	//blog.Infof("topic %v exiting", t.Name)
 
 	close(t.exitChan)
 	// 等待 loop 中止后处理余下逻辑

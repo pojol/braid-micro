@@ -1,9 +1,10 @@
-package discover
+package discover_consul
 
 import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/discover"
@@ -17,7 +18,11 @@ func TestMain(m *testing.M) {
 
 func TestDiscover(t *testing.T) {
 
-	d := Build("base_dev", nil, discover.WithConsulClient(consul.Build(consul.WithAddress([]string{"47.103.70.168:8900"}))),
+	d := BuildWithOption(
+		"base_dev",
+		nil,
+		discover.WithLogger(blog.BuildWithOption()),
+		discover.WithConsulClient(consul.BuildWithOption(consul.WithAddress([]string{"47.103.70.168:8900"}))),
 		discover.WithSyncServiceInterval(time.Millisecond*100),
 		discover.WithSyncServiceWeightInterval(time.Millisecond*100),
 		discover.WithBlacklist([]string{"gate"}),

@@ -1,4 +1,4 @@
-package pubsub
+package pubsubnsq
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
@@ -15,11 +15,11 @@ const (
 	Name = "PubsubNsq"
 )
 
-func BuildWithOption(name string, opts ...Option) IPubsub {
+func BuildWithOption(name string, opts ...pubsub.Option) pubsub.IPubsub {
 
-	p := Parm{
+	p := pubsub.Parm{
 		ServiceName:       name,
-		nsqLogLv:          nsq.LogLevelWarning,
+		NsqLogLv:          nsq.LogLevelWarning,
 		ConcurrentHandler: 1,
 	}
 	for _, opt := range opts {
@@ -40,14 +40,14 @@ func BuildWithOption(name string, opts ...Option) IPubsub {
 }
 
 type nsqPubsub struct {
-	parm Parm
+	parm pubsub.Parm
 
 	sync.RWMutex
 
 	topicMap map[string]*pubsubTopic
 }
 
-func (nmb *nsqPubsub) GetTopic(name string) ITopic {
+func (nmb *nsqPubsub) GetTopic(name string) pubsub.ITopic {
 
 	nmb.RLock()
 	t, ok := nmb.topicMap[name]
@@ -61,7 +61,7 @@ func (nmb *nsqPubsub) GetTopic(name string) ITopic {
 	nmb.topicMap[name] = t
 	nmb.Unlock()
 
-	blog.Infof("Topic %v created", name)
+	//blog.Infof("Topic %v created", name)
 
 	// start loop
 	t.start()
@@ -78,7 +78,7 @@ func (nmb *nsqPubsub) RmvTopic(name string) error {
 		return fmt.Errorf("topic %v dose not exist", name)
 	}
 
-	blog.Infof("deleting topic %v", name)
+	//blog.Infof("deleting topic %v", name)
 	topic.Exit()
 
 	nmb.Lock()

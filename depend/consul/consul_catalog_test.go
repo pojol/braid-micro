@@ -13,7 +13,7 @@ const mock_consul_addr = "47.103.70.168:8900"
 
 func TestServicesList(t *testing.T) {
 
-	client := Build(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
 
 	_, err := client.CatalogListServices()
 	assert.Equal(t, err, nil)
@@ -21,7 +21,7 @@ func TestServicesList(t *testing.T) {
 }
 
 func TestGetService(t *testing.T) {
-	client := Build(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
 
 	services, err := client.CatalogListServices()
 	assert.Equal(t, err, nil)

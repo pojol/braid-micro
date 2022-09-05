@@ -55,10 +55,6 @@ func BuildWithOption(opts ...Option) *Logger {
 	return new(logParm)
 }
 
-func BuildWithNormal() *Logger {
-	return new(&defaultConfig)
-}
-
 func new(parm *Parm) *Logger {
 	logPtr = &Logger{}
 

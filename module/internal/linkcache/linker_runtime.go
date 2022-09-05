@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -53,7 +53,7 @@ var (
 )
 
 // Build build link-cache
-func Build(name string, ps pubsub.IPubsub, client *redis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
+func BuildWithOption(name string, opts ...linkcache.Option) linkcache.ILinkCache {
 
 	p := linkcache.Parm{
 		Mode:             linkcache.LinkerRedisModeRedis,
@@ -67,9 +67,7 @@ func Build(name string, ps pubsub.IPubsub, client *redis.Client, opts ...linkcac
 
 	lc := &redisLinker{
 		serviceName:   name,
-		ps:            ps,
 		electorState:  elector.EWait,
-		client:        client,
 		parm:          p,
 		activeNodeMap: make(map[string]service.Node),
 		local: &localLinker{
@@ -79,8 +77,8 @@ func Build(name string, ps pubsub.IPubsub, client *redis.Client, opts ...linkcac
 		},
 	}
 
-	lc.ps.GetTopic(service.TopicLinkerUnlink)
-	lc.ps.GetTopic(service.TopicLinkerLinkNum)
+	lc.ps.GetTopic(linkcache.TopicLinkerUnlink)
+	lc.ps.GetTopic(linkcache.TopicLinkerLinkNum)
 
 	return lc
 }
@@ -99,8 +97,7 @@ type redisLinker struct {
 	electorState string
 	ps           pubsub.IPubsub
 
-	client *redis.Client
-	local  *localLinker
+	local *localLinker
 
 	// 从属节点
 	child []string
@@ -118,9 +115,9 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.ps.GetTopic(service.TopicLinkerUnlink).Sub(Name + "-" + ip)
-	serviceUpdate := rl.ps.GetTopic(service.TopicServiceUpdate).Sub(Name)
-	changeState := rl.ps.GetTopic(service.TopicElectorChangeState).Sub(Name)
+	tokenUnlink := rl.ps.GetTopic(linkcache.TopicLinkerUnlink).Sub(Name + "-" + ip)
+	serviceUpdate := rl.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
+	changeState := rl.ps.GetTopic(elector.TopicElectorChangeState).Sub(Name)
 
 	tokenUnlink.Arrived(func(msg *pubsub.Message) {
 		token := string(msg.Body)
@@ -130,7 +127,7 @@ func (rl *redisLinker) Init() error {
 	})
 
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := service.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventRemoveService {
 			rl.rmvOfflineService(dmsg.Nod)
 			rl.Down(dmsg.Nod)
@@ -140,17 +137,12 @@ func (rl *redisLinker) Init() error {
 	})
 
 	changeState.Arrived(func(msg *pubsub.Message) {
-		statemsg := service.ElectorDecodeStateChangeMsg(msg)
+		statemsg := elector.ElectorDecodeStateChangeMsg(msg)
 		if statemsg.State != "" && rl.electorState != statemsg.State {
 			rl.electorState = statemsg.State
 			blog.Debugf("service state change => %v", statemsg.State)
 		}
 	})
-
-	_, err = rl.client.Ping()
-	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", rl.serviceName, "redis", rl.parm.RedisAddr)
-	}
 
 	return nil
 }
@@ -188,7 +180,7 @@ func (rl *redisLinker) syncLinkNum() {
 			blog.Warnf("%v atoi err %v", member, cnt)
 		}
 
-		rl.ps.GetTopic(service.TopicLinkerLinkNum).Pub(service.LinkerEncodeNumMsg(id, icnt))
+		rl.ps.GetTopic(linkcache.TopicLinkerLinkNum).Pub(linkcache.LinkerEncodeNumMsg(id, icnt))
 	}
 }
 
@@ -408,5 +400,5 @@ func (rl *redisLinker) Down(target service.Node) error {
 }
 
 func (rl *redisLinker) Close() {
-	rl.client.Close()
+
 }

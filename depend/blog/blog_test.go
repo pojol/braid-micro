@@ -6,7 +6,7 @@ import (
 
 func TestLog(t *testing.T) {
 
-	BuildWithNormal()
+	BuildWithOption()
 	defer Close()
 
 	Infof("msg %v", 1)

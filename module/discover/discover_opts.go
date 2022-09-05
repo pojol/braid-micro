@@ -3,6 +3,7 @@ package discover
 import (
 	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/consul"
 )
 
@@ -16,14 +17,14 @@ type Parm struct {
 	// 同步节点权重间隔
 	SyncServiceWeightInterval time.Duration
 
-	// 注册中心
-	Address string
-
+	// 过滤标签
 	Tag string
 
+	// 黑名单列表，在黑名单的服务将不会被加入到 services 中
 	Blacklist []string
 
 	Client *consul.Client
+	Log    *blog.Logger
 }
 
 // Option consul discover config wrapper
@@ -60,5 +61,11 @@ func WithSyncServiceWeightInterval(interval time.Duration) Option {
 func WithConsulClient(c *consul.Client) Option {
 	return func(p *Parm) {
 		p.Client = c
+	}
+}
+
+func WithLogger(l *blog.Logger) Option {
+	return func(c *Parm) {
+		c.Log = l
 	}
 }

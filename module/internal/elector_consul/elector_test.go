@@ -1,4 +1,4 @@
-package elector
+package electorconsul
 
 import (
 	"testing"

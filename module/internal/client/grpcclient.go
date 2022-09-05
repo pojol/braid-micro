@@ -12,11 +12,11 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/pubsub"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/internal/balancer"
 	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/service"
 
@@ -135,9 +135,9 @@ func (c *grpcClient) Init() error {
 	c.b.Init() // 初始化自身的负载均衡器
 	defer c.b.Run()
 
-	serviceUpdate := c.ps.GetTopic(service.TopicServiceUpdate).Sub(Name)
+	serviceUpdate := c.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := service.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {
 			_, ok := c.connmap.Load(dmsg.Nod.Address)
 			if !ok {
