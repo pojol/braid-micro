@@ -11,13 +11,13 @@ const (
 	TopicServiceUpdate = "discover.serviceUpdate"
 )
 
-type DiscoverUpdateMsg struct {
+type UpdateMsg struct {
 	Nod   service.Node
 	Event string
 }
 
-func DiscoverEncodeUpdateMsg(event string, nod service.Node) *pubsub.Message {
-	byt, _ := json.Marshal(&DiscoverUpdateMsg{
+func EncodeUpdateMsg(event string, nod service.Node) *pubsub.Message {
+	byt, _ := json.Marshal(&UpdateMsg{
 		Event: event,
 		Nod:   nod,
 	})
@@ -27,8 +27,8 @@ func DiscoverEncodeUpdateMsg(event string, nod service.Node) *pubsub.Message {
 	}
 }
 
-func DiscoverDecodeUpdateMsg(msg *pubsub.Message) DiscoverUpdateMsg {
-	dmsg := DiscoverUpdateMsg{}
+func DecodeUpdateMsg(msg *pubsub.Message) UpdateMsg {
+	dmsg := UpdateMsg{}
 	json.Unmarshal(msg.Body, &dmsg)
 	return dmsg
 }

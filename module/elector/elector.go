@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	TopicElectorChangeState = "elector.changeState"
+	TopicChangeState = "elector.changeState"
 )
 
 // StateChangeMsg become master msg
-type ElectorStateChangeMsg struct {
+type StateChangeMsg struct {
 	State string
 }
 
 // EncodeStateChangeMsg encode
-func ElectorEncodeStateChangeMsg(state string) *pubsub.Message {
-	byt, _ := json.Marshal(&ElectorStateChangeMsg{
+func EncodeStateChangeMsg(state string) *pubsub.Message {
+	byt, _ := json.Marshal(&StateChangeMsg{
 		State: state,
 	})
 
@@ -27,8 +27,8 @@ func ElectorEncodeStateChangeMsg(state string) *pubsub.Message {
 }
 
 // DecodeStateChangeMsg decode
-func ElectorDecodeStateChangeMsg(msg *pubsub.Message) ElectorStateChangeMsg {
-	bmmsg := ElectorStateChangeMsg{}
+func ElectorDecodeStateChangeMsg(msg *pubsub.Message) StateChangeMsg {
+	bmmsg := StateChangeMsg{}
 	json.Unmarshal(msg.Body, &bmmsg)
 	return bmmsg
 }

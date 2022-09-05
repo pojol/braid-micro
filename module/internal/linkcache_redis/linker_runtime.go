@@ -1,4 +1,4 @@
-package linkcache
+package linkcacheredis
 
 import (
 	"errors"
@@ -77,8 +77,8 @@ func BuildWithOption(name string, opts ...linkcache.Option) linkcache.ILinkCache
 		},
 	}
 
-	lc.ps.GetTopic(linkcache.TopicLinkerUnlink)
-	lc.ps.GetTopic(linkcache.TopicLinkerLinkNum)
+	lc.ps.GetTopic(linkcache.TopicUnlink)
+	lc.ps.GetTopic(linkcache.TopicLinkNum)
 
 	return lc
 }
@@ -115,9 +115,9 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.ps.GetTopic(linkcache.TopicLinkerUnlink).Sub(Name + "-" + ip)
+	tokenUnlink := rl.ps.GetTopic(linkcache.TopicUnlink).Sub(Name + "-" + ip)
 	serviceUpdate := rl.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
-	changeState := rl.ps.GetTopic(elector.TopicElectorChangeState).Sub(Name)
+	changeState := rl.ps.GetTopic(elector.TopicChangeState).Sub(Name)
 
 	tokenUnlink.Arrived(func(msg *pubsub.Message) {
 		token := string(msg.Body)
@@ -127,7 +127,7 @@ func (rl *redisLinker) Init() error {
 	})
 
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventRemoveService {
 			rl.rmvOfflineService(dmsg.Nod)
 			rl.Down(dmsg.Nod)
@@ -180,7 +180,7 @@ func (rl *redisLinker) syncLinkNum() {
 			blog.Warnf("%v atoi err %v", member, cnt)
 		}
 
-		rl.ps.GetTopic(linkcache.TopicLinkerLinkNum).Pub(linkcache.LinkerEncodeNumMsg(id, icnt))
+		rl.ps.GetTopic(linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
 	}
 }
 

@@ -1,4 +1,4 @@
-package linkcache
+package linkcacheredis
 
 import (
 	"fmt"

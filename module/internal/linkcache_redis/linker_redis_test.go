@@ -1,9 +1,19 @@
-package linkcache
+package linkcacheredis
 
 import (
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/internal/pubsubnsq"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/service"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -13,97 +23,74 @@ func TestMain(m *testing.M) {
 }
 
 func TestLinkerTarget(t *testing.T) {
-	/*
-		var tmu sync.Mutex
-		tmu.Lock()
-		// 用于生成测试用例使用的key前缀
-		LinkerRedisPrefix = "TestLinkerTarget-"
-		tmu.Unlock()
 
-		ps := pubsubnsq.BuildWithOption("", pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	var tmu sync.Mutex
+	tmu.Lock()
+	// 用于生成测试用例使用的key前缀
+	LinkerRedisPrefix = "TestLinkerTarget-"
+	tmu.Unlock()
 
-		BuildWithOption(
-			LinkerRedisPrefix,
-			linkcache.WithPubsub(
-				ps,
-			),
-			linkcache.WithRedisClient(
-				redis.BuildWithOption(redis.WithAddr(mock.RedisAddr)),
-			),
-		)
+	ps := pubsubnsq.BuildWithOption("", pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
+	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
 
-		eb := module.GetBuilder(electorconsul.Name)
-		eb.AddModuleOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-		e := eb.Build("TestLinkerTarget", moduleparm.WithPubsub(mb)).(elector.IElector)
-		defer e.Close()
+	lc := BuildWithOption(
+		LinkerRedisPrefix,
+		linkcache.WithPubsub(
+			ps,
+		),
+		linkcache.WithRedisClient(
+			redisclient,
+		),
+	)
 
-		b := module.GetBuilder(Name)
-		b.AddModuleOption(WithRedisAddr(mock.RedisAddr))
-		b.AddModuleOption(WithRedisMaxIdle(8))
-		b.AddModuleOption(WithRedisMaxActive(16))
-		b.AddModuleOption(WithSyncTick(100))
+	redisclient.Del(LinkerRedisPrefix + "*")
 
-		lc := b.Build("gate", moduleparm.WithPubsub(mb)).(linkcache.ILinkCache)
+	lc.Init()
+	lc.Run()
+	defer lc.Close()
 
-		// clean
-		rclient := redis.New()
-		rclient.Init(redis.Config{
-			Address:        mock.RedisAddr,
-			ReadTimeOut:    5 * time.Second,
-			WriteTimeOut:   5 * time.Second,
-			ConnectTimeOut: 2 * time.Second,
-			MaxIdle:        16,
-			MaxActive:      128,
-			IdleTimeout:    0,
-		})
-		rclient.Del(LinkerRedisPrefix + "*")
+	ps.GetTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
-		lc.Init()
-		lc.Run()
-		defer lc.Close()
+	nods := []service.Node{
+		{
+			ID:      "a001",
+			Name:    "base",
+			Address: "127.0.0.1:12001",
+		},
+		{
+			ID:      "a002",
+			Name:    "login",
+			Address: "127.0.0.1:13001",
+		},
+	}
 
-		mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	err := lc.Link("token01", nods[0])
+	assert.Equal(t, err, nil)
 
-		nods := []discover.Node{
-			{
-				ID:      "a001",
-				Name:    "base",
-				Address: "127.0.0.1:12001",
-			},
-			{
-				ID:      "a002",
-				Name:    "login",
-				Address: "127.0.0.1:13001",
-			},
-		}
+	err = lc.Link("token01", nods[1])
+	assert.Equal(t, err, nil)
 
-		err := lc.Link("token01", nods[0])
-		assert.Equal(t, err, nil)
+	err = lc.Link("token02", nods[0])
+	assert.Equal(t, err, nil)
 
-		err = lc.Link("token01", nods[1])
-		assert.Equal(t, err, nil)
+	addr, err := lc.Target("token01", "base")
+	assert.Equal(t, err, nil)
+	assert.Equal(t, addr, "127.0.0.1:12001")
 
-		err = lc.Link("token02", nods[0])
-		assert.Equal(t, err, nil)
+	_, err = lc.Target("unknowtoken", "base")
+	assert.NotEqual(t, err, nil)
 
-		addr, err := lc.Target("token01", "base")
-		assert.Equal(t, err, nil)
-		assert.Equal(t, addr, "127.0.0.1:12001")
+	ps.GetTopic(linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
+	ps.GetTopic(linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
 
-		_, err = lc.Target("unknowtoken", "base")
-		assert.NotEqual(t, err, nil)
+	time.Sleep(time.Millisecond * 500)
 
-		mb.GetTopic(linkcache.TokenUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
-		mb.GetTopic(linkcache.TokenUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
+	for _, v := range nods {
+		ps.GetTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(discover.EventRemoveService, v))
+	}
 
-		time.Sleep(time.Millisecond * 500)
+	time.Sleep(time.Millisecond * 100)
 
-		for _, v := range nods {
-			mb.GetTopic(discover.ServiceUpdate).Pub(discover.EncodeUpdateMsg(discover.EventRemoveService, v))
-		}
-
-		time.Sleep(time.Millisecond * 100)
-	*/
 }
 
 /*

@@ -14,21 +14,21 @@ import (
 
 const (
 	// 当前节点连接数事件
-	TopicLinkerLinkNum = "linkcache.serviceLinkNum"
+	TopicLinkNum = "linkcache.serviceLinkNum"
 
 	// token 离线事件
-	TopicLinkerUnlink = "linkcache.tokenUnlink"
+	TopicUnlink = "linkcache.tokenUnlink"
 )
 
 // LinkNumMsg msg struct
-type LinkerLinkNumMsg struct {
+type LinkNumMsg struct {
 	ID  string
 	Num int
 }
 
 // EncodeLinkNumMsg encode linknum msg
-func LinkerEncodeNumMsg(id string, num int) *pubsub.Message {
-	byt, _ := json.Marshal(&LinkerLinkNumMsg{
+func EncodeNumMsg(id string, num int) *pubsub.Message {
+	byt, _ := json.Marshal(&LinkNumMsg{
 		ID:  id,
 		Num: num,
 	})
@@ -39,8 +39,8 @@ func LinkerEncodeNumMsg(id string, num int) *pubsub.Message {
 }
 
 // DecodeLinkNumMsg decode linknum msg
-func LinkerDecodeNumMsg(msg *pubsub.Message) LinkerLinkNumMsg {
-	lnmsg := LinkerLinkNumMsg{}
+func DecodeNumMsg(msg *pubsub.Message) LinkNumMsg {
+	lnmsg := LinkNumMsg{}
 	json.Unmarshal(msg.Body, &lnmsg)
 	return lnmsg
 }
