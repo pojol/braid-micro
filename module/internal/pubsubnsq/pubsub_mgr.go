@@ -47,7 +47,11 @@ type nsqPubsub struct {
 	topicMap map[string]*pubsubTopic
 }
 
-func (nmb *nsqPubsub) GetTopic(name string) pubsub.ITopic {
+func (nmb *nsqPubsub) LocalTopic(name string) pubsub.ITopic {
+	return nil
+}
+
+func (nmb *nsqPubsub) ClusterTopic(name string) pubsub.ITopic {
 
 	nmb.RLock()
 	t, ok := nmb.topicMap[name]

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	TopicServiceUpdate = "discover.serviceUpdate"
+	TopicServiceUpdate = "discover.local.serviceUpdate"
 )
 
 type UpdateMsg struct {

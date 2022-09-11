@@ -79,7 +79,7 @@ func BuildWithOption(name string, ps pubsub.IPubsub, opts ...Option) IBalancer {
 
 func (bbg *baseBalancerGroup) Init() {
 
-	bbg.serviceUpdate = bbg.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
+	bbg.serviceUpdate = bbg.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
 
 }
 

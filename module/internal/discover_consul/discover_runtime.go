@@ -230,7 +230,7 @@ func (dc *consulDiscover) syncWeight() {
 			nweight = 1
 		}
 
-		dc.ps.GetTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+		dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
 			discover.EventUpdateService,
 			service.Node{
 				ID:     v.id,

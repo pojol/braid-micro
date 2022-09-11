@@ -32,8 +32,8 @@ func TestClusterBroadcast(t *testing.T) {
 
 	topic := "test.clusterBroadcast"
 
-	channel1 := mb.GetTopic(topic).Sub("Normal_1")
-	channel2 := mb.GetTopic(topic).Sub("Normal_2")
+	channel1 := mb.ClusterTopic(topic).Sub("Normal_1")
+	channel2 := mb.ClusterTopic(topic).Sub("Normal_2")
 
 	msgcnt := 10000
 
@@ -57,7 +57,7 @@ func TestClusterBroadcast(t *testing.T) {
 	}()
 
 	for i := 0; i < msgcnt; i++ {
-		mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("test msg")})
+		mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: []byte("test msg")})
 	}
 
 	select {
@@ -89,8 +89,8 @@ func TestClusterNotify(t *testing.T) {
 
 	topic := "test.clusterNotify"
 
-	channel1 := mb.GetTopic(topic).Sub("Normal")
-	channel2 := mb.GetTopic(topic).Sub("Normal")
+	channel1 := mb.ClusterTopic(topic).Sub("Normal")
+	channel2 := mb.ClusterTopic(topic).Sub("Normal")
 
 	channel1.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
@@ -99,7 +99,7 @@ func TestClusterNotify(t *testing.T) {
 		atomic.AddUint64(&tick, 1)
 	})
 
-	mb.GetTopic(topic).Pub(&pubsub.Message{Body: []byte("msg")})
+	mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: []byte("msg")})
 
 	for {
 		<-time.After(time.Second * 3)
@@ -152,8 +152,8 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 	topic := "benchmark.ClusterBroadcast"
 	body := []byte("msg")
 
-	c1 := mb.GetTopic(topic).Sub("Normal_1")
-	c2 := mb.GetTopic(topic).Sub("Normal_2")
+	c1 := mb.ClusterTopic(topic).Sub("Normal_1")
+	c2 := mb.ClusterTopic(topic).Sub("Normal_2")
 
 	c1.Arrived(func(msg *pubsub.Message) {
 	})
@@ -165,7 +165,7 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.GetTopic(topic).Pub(&pubsub.Message{Body: body})
+			mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: body})
 		}
 	})
 

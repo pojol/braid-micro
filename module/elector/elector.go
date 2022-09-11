@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	TopicChangeState = "elector.changeState"
+	TopicChangeState = "elector.local.changeState"
 )
 
 // StateChangeMsg become master msg

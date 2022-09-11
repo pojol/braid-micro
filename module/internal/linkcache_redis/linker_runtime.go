@@ -77,8 +77,8 @@ func BuildWithOption(name string, opts ...linkcache.Option) linkcache.ILinkCache
 		},
 	}
 
-	lc.ps.GetTopic(linkcache.TopicUnlink)
-	lc.ps.GetTopic(linkcache.TopicLinkNum)
+	lc.ps.ClusterTopic(linkcache.TopicUnlink)
+	lc.ps.ClusterTopic(linkcache.TopicLinkNum)
 
 	return lc
 }
@@ -115,9 +115,9 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.ps.GetTopic(linkcache.TopicUnlink).Sub(Name + "-" + ip)
-	serviceUpdate := rl.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
-	changeState := rl.ps.GetTopic(elector.TopicChangeState).Sub(Name)
+	tokenUnlink := rl.ps.ClusterTopic(linkcache.TopicUnlink).Sub(Name + "-" + ip)
+	serviceUpdate := rl.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
+	changeState := rl.ps.LocalTopic(elector.TopicChangeState).Sub(Name)
 
 	tokenUnlink.Arrived(func(msg *pubsub.Message) {
 		token := string(msg.Body)
@@ -180,7 +180,7 @@ func (rl *redisLinker) syncLinkNum() {
 			blog.Warnf("%v atoi err %v", member, cnt)
 		}
 
-		rl.ps.GetTopic(linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
+		rl.ps.ClusterTopic(linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
 	}
 }
 

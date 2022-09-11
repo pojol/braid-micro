@@ -6,6 +6,23 @@ type Message struct {
 	Body []byte
 }
 
+// ScopeTy 作用域类型
+type ScopeTy int32
+
+const (
+	// 作用域: 进程内
+	//
+	// 在这个作用域的 topic 发布-消费 消息都只在当前进程内进行
+	Local ScopeTy = 0 + iota
+	// 作用域: 集群中
+	//
+	// 在这个作用域的 topic 发布-消费 消息都会被整个集群所感知
+	//
+	// 因此在使用这个作用域的 topic 时，要特别注意重名的问题。当我们需要同时获取某个 topic 消息时
+	// 最好在 channel 中按具体的业务逻辑加入类似 IP UUID 等参数，以区分不同的 channel 和 consumer
+	Cluster
+)
+
 // Handler 消息到达的函数句柄
 type Handler func(*Message)
 
@@ -35,8 +52,11 @@ type ITopic interface {
 // IPubsub 发布-订阅，管理集群中的所有 Topic
 type IPubsub interface {
 
-	// GetTopic 获取一个 topic
-	GetTopic(name string) ITopic
+	// LocalTopic 获取一个本地的 topic
+	LocalTopic(name string) ITopic
+
+	// ClusterTopic 获取一个作用于集群的 topic
+	ClusterTopic(name string) ITopic
 
 	// RmvTopic 删除一个 topic
 	RmvTopic(topicName string) error
