@@ -86,7 +86,7 @@ func (bbg *baseBalancerGroup) Init() {
 func (bbg *baseBalancerGroup) Run() {
 
 	bbg.serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {
 			bbg.Lock()
 

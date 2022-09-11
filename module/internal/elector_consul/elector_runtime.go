@@ -35,7 +35,7 @@ func BuildWithOption(name string, opts ...elector.Option) elector.IElector {
 		parm: p,
 	}
 
-	e.parm.Ps.GetTopic(elector.TopicElectorChangeState)
+	e.parm.Ps.GetTopic(elector.TopicChangeState)
 
 	return e
 }
@@ -74,10 +74,10 @@ func (e *consulElection) watch() {
 			succ, _ := e.parm.ConsulClient.AcquireLock(e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.parm.Ps.GetTopic(elector.TopicElectorChangeState).Pub(elector.ElectorEncodeStateChangeMsg(elector.EMaster))
+				e.parm.Ps.GetTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 				blog.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.parm.Ps.GetTopic(elector.TopicElectorChangeState).Pub(elector.ElectorEncodeStateChangeMsg(elector.ESlave))
+				e.parm.Ps.GetTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

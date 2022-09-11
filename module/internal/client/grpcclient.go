@@ -137,7 +137,7 @@ func (c *grpcClient) Init() error {
 
 	serviceUpdate := c.ps.GetTopic(discover.TopicServiceUpdate).Sub(Name)
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
-		dmsg := discover.DiscoverDecodeUpdateMsg(msg)
+		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {
 			_, ok := c.connmap.Load(dmsg.Nod.Address)
 			if !ok {
