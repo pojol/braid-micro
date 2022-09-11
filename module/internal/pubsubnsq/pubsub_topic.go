@@ -23,6 +23,8 @@ type pubsubTopic struct {
 	exitFlag int32
 	producer []*nsq.Producer
 
+	scope pubsub.ScopeTy
+
 	waitGroup braidsync.WaitGroupWrapper
 
 	startChan         chan int
@@ -34,11 +36,12 @@ type pubsubTopic struct {
 	channelMap map[string]*pubsubChannel
 }
 
-func newTopic(name string, n *nsqPubsub) *pubsubTopic {
+func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 
 	topic := &pubsubTopic{
 		Name:              name,
 		ps:                n,
+		scope:             scope,
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
