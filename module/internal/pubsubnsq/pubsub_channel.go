@@ -25,6 +25,7 @@ type pubsubChannel struct {
 
 	Name      string
 	TopicName string
+	scope     pubsub.ScopeTy
 }
 
 type consumerHandler struct {
@@ -40,68 +41,72 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 	return nil
 }
 
-func newChannel(topicName, channelName string, n *nsqPubsub) *pubsubChannel {
+func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) *pubsubChannel {
 
 	c := &pubsubChannel{
 		Name:      channelName,
 		TopicName: topicName,
+		scope:     ty,
 		ps:        n,
 		msgCh:     NewUnbounded(),
 	}
 
-	for _, addr := range n.parm.NsqdHttpAddress {
-		url := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
-			addr,
-			topicName,
-			channelName,
-		)
+	if ty == pubsub.Cluster {
 
-		req, _ := http.NewRequest("POST", url, nil)
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			blog.Warnf("%v request err %v", url, err.Error())
-		}
+		for _, addr := range n.parm.NsqdHttpAddress {
+			url := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
+				addr,
+				topicName,
+				channelName,
+			)
 
-		if resp != nil {
-			if resp.StatusCode != http.StatusOK {
-				blog.Warnf("nsqd create channel request status err %v", resp.StatusCode)
+			req, _ := http.NewRequest("POST", url, nil)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				fmt.Printf("%v request err %v", url, err.Error())
 			}
 
-			ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
+			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					fmt.Printf("nsqd create channel request status err %v", resp.StatusCode)
+				}
+
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+			}
 		}
-	}
 
-	cfg := nsq.NewConfig()
-	cfg.MaxInFlight = len(n.parm.NsqdHttpAddress)
-	nsqConsumer, err := nsq.NewConsumer(topicName, channelName, cfg)
-	if err != nil {
-		blog.Errf("channel %v nsq.NewConsumer err %v", channelName, err)
-		return nil
-	}
-	nsqConsumer.SetLoggerLevel(n.parm.NsqLogLv)
-
-	nsqConsumer.AddConcurrentHandlers(&consumerHandler{
-		c:       c,
-		channel: channelName,
-	}, int(n.parm.ConcurrentHandler))
-
-	if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
-		err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
+		cfg := nsq.NewConfig()
+		cfg.MaxInFlight = len(n.parm.NsqdHttpAddress)
+		nsqConsumer, err := nsq.NewConsumer(topicName, channelName, cfg)
 		if err != nil {
-			blog.Errf("channel %v nsq.ConnectToNSQDs err %v", channelName, err)
+			fmt.Printf("channel %v nsq.NewConsumer err %v", channelName, err)
 			return nil
 		}
-	} else {
-		err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupdAddress)
-		if err != nil {
-			blog.Errf("channel %v nsq.ConnectToNSQLookupds err %v", channelName, err)
-			return nil
-		}
-	}
+		nsqConsumer.SetLoggerLevel(n.parm.NsqLogLv)
 
-	c.consumer = nsqConsumer
-	//blog.Infof("Cluster consumer %v created", channelName)
+		nsqConsumer.AddConcurrentHandlers(&consumerHandler{
+			c:       c,
+			channel: channelName,
+		}, int(n.parm.ConcurrentHandler))
+
+		if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
+			err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
+			if err != nil {
+				fmt.Printf("channel %v nsq.ConnectToNSQDs err %v", channelName, err)
+				return nil
+			}
+		} else {
+			err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupdAddress)
+			if err != nil {
+				fmt.Printf("channel %v nsq.ConnectToNSQLookupds err %v", channelName, err)
+				return nil
+			}
+		}
+
+		c.consumer = nsqConsumer
+		fmt.Printf("Cluster consumer %v created", channelName)
+	}
 
 	return c
 }
@@ -141,9 +146,11 @@ func (c *pubsubChannel) Exit() error {
 		return errors.New("exiting")
 	}
 
-	//blog.Infof("channel %v exiting", c.Name)
+	fmt.Printf("channel %v exiting", c.Name)
 
-	c.consumer.Stop()
+	if c.scope == pubsub.Cluster {
+		c.consumer.Stop()
+	}
 
 	return nil
 }

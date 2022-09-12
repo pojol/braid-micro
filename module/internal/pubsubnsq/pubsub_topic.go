@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/internal/braidsync"
 	"github.com/pojol/braid-go/module/pubsub"
 )
@@ -45,65 +44,67 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
-		msgch:             make(chan *pubsub.Message, 4096),
+		msgch:             make(chan *pubsub.Message, n.parm.ChannelLength),
 		channelMap:        make(map[string]*pubsubChannel),
 	}
 
-	cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
-	var err error
-	var cp *nsq.Producer
+	if scope == pubsub.Cluster {
+		cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
+		var err error
+		var cp *nsq.Producer
 
-	for _, addr := range n.parm.LookupdAddress {
+		for _, addr := range n.parm.LookupdAddress {
 
-		url := fmt.Sprintf("http://%s/topic/create?topic=%s",
-			addr,
-			name,
-		)
-		req, err := http.NewRequest("POST", url, nil)
-		if err != nil {
-			blog.Warnf(err.Error())
-		}
-		resp, _ := http.DefaultClient.Do(req)
-		if resp != nil {
-			if resp.StatusCode != http.StatusOK {
-				blog.Warnf("lookupd create topic request status err %v", resp.StatusCode)
+			url := fmt.Sprintf("http://%s/topic/create?topic=%s",
+				addr,
+				name,
+			)
+			req, err := http.NewRequest("POST", url, nil)
+			if err != nil {
+				fmt.Printf(err.Error())
 			}
-			ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
-		}
-
-	}
-
-	for k, addr := range n.parm.NsqdHttpAddress {
-		cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
-		if err != nil {
-			blog.Errf("Channel new nsq producer err %v", err.Error())
-			continue
-		}
-
-		if err = cp.Ping(); err != nil {
-			blog.Errf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
-			continue
-		}
-
-		cps = append(cps, cp)
-
-		url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
-		resp, err := http.Post(url, "application/json", nil)
-		if err != nil {
-			blog.Warnf("post url %v", err.Error())
-		}
-		if resp != nil {
-			if resp.StatusCode != http.StatusOK {
-				blog.Warnf("nsqd create topic request status err %v", resp.StatusCode)
+			resp, _ := http.DefaultClient.Do(req)
+			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					fmt.Printf("lookupd create topic request status err %v", resp.StatusCode)
+				}
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
 			}
 
-			ioutil.ReadAll(resp.Body)
-			resp.Body.Close()
 		}
-	}
 
-	topic.producer = cps
+		for k, addr := range n.parm.NsqdHttpAddress {
+			cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
+			if err != nil {
+				fmt.Printf("Channel new nsq producer err %v", err.Error())
+				continue
+			}
+
+			if err = cp.Ping(); err != nil {
+				fmt.Printf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
+				continue
+			}
+
+			cps = append(cps, cp)
+
+			url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
+			resp, err := http.Post(url, "application/json", nil)
+			if err != nil {
+				fmt.Printf(err.Error())
+			}
+			if resp != nil {
+				if resp.StatusCode != http.StatusOK {
+					fmt.Printf("nsqd create topic request status err %v", resp.StatusCode)
+				}
+
+				ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+			}
+		}
+
+		topic.producer = cps
+	}
 
 	topic.waitGroup.Wrap(topic.loop)
 
@@ -139,7 +140,7 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
-		channel = newChannel(t.Name, name, t.ps)
+		channel = newChannel(t.Name, name, t.scope, t.ps)
 		t.channelMap[name] = channel
 
 		//blog.Infof("Topic %v new channel %v", t.Name, name)
@@ -168,6 +169,16 @@ func (t *pubsubTopic) RmvChannel(name string) error {
 	select {
 	case t.channelUpdateChan <- 1:
 	case <-t.exitChan:
+	}
+
+	return nil
+}
+
+func (t *pubsubTopic) put(msg *pubsub.Message) error {
+	select {
+	case t.msgch <- msg:
+	default:
+		return fmt.Errorf("the pubsub topic %v queue is full", t.Name)
 	}
 
 	return nil
@@ -234,11 +245,16 @@ func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 	if atomic.LoadInt32(&t.exitFlag) == 1 {
 		return errors.New("exiting")
 	}
+	var err error
 
-	err := t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
+	if t.scope == pubsub.Local {
+		err = t.put(msg)
+	} else {
+		err = t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
+	}
 
 	if err != nil {
-		blog.Warnf("topic %v publish err %v", t.Name, err.Error())
+		fmt.Printf("topic %v publish err %v\n", t.Name, err.Error())
 		return err
 	}
 

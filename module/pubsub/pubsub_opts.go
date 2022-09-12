@@ -10,7 +10,6 @@ type Parm struct {
 	NsqdAddress     []string
 	NsqdHttpAddress []string
 
-	Channel     string
 	ServiceName string
 
 	ConcurrentHandler int32 // consumer 接收句柄的并发数（默认1
@@ -47,9 +46,9 @@ func NewWithDefault() *Parm {
 type Option func(*Parm)
 
 // WithChannel 通过 channel 构建
-func WithChannel(channel string) Option {
+func WithChannelSize(channelsize int32) Option {
 	return func(c *Parm) {
-		c.Channel = channel
+		c.ChannelLength = channelsize
 	}
 }
 

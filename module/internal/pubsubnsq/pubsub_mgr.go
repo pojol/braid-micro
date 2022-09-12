@@ -21,6 +21,7 @@ func BuildWithOption(name string, opts ...pubsub.Option) pubsub.IPubsub {
 		ServiceName:       name,
 		NsqLogLv:          nsq.LogLevelWarning,
 		ConcurrentHandler: 1,
+		ChannelLength:     2048,
 	}
 	for _, opt := range opts {
 		opt(&p)
@@ -60,16 +61,13 @@ func (nmb *nsqPubsub) getTopic(name string, ty pubsub.ScopeTy) pubsub.ITopic {
 	}
 
 	nmb.Lock()
-	t = newTopic(name, pubsub.Cluster, nmb)
+	t = newTopic(name, ty, nmb)
 	nmb.topicMap[name] = t
 	nmb.Unlock()
 
 	//blog.Infof("Topic %v created", name)
-	if ty == pubsub.Local {
-		return t
-	}
-
 	t.start()
+
 	return t
 }
 
