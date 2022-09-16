@@ -1,5 +1,5 @@
 // 实现文件 基于 consul 实现的服务发现
-package discover_consul
+package discoverconsul
 
 import (
 	"errors"

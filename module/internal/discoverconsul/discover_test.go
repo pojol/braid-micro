@@ -1,4 +1,4 @@
-package discover_consul
+package discoverconsul
 
 import (
 	"testing"

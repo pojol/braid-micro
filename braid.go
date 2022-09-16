@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/pojol/braid-go/depend"
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module"
@@ -41,7 +42,7 @@ type Braid struct {
 	modules *module.BraidModule
 
 	// depend
-	depends *module.BraidDepend
+	depends *depend.BraidDepend
 
 	sync.RWMutex
 }
@@ -59,9 +60,9 @@ func NewService(name string) (*Braid, error) {
 	return braidGlobal, nil
 }
 
-func (b *Braid) RegisterDepend(depends ...module.Depend) error {
+func (b *Braid) RegisterDepend(depends ...depend.Depend) error {
 
-	d := &module.BraidDepend{}
+	d := &depend.BraidDepend{}
 
 	for _, opt := range depends {
 		opt(d)
@@ -156,7 +157,7 @@ func Pubsub() pubsub.IPubsub {
 
 // Tracer tracing
 func Tracer() tracer.ITracer {
-	return braidGlobal.depends.Itracer
+	return braidGlobal.depends.Tracer
 }
 
 // Close 关闭braid

@@ -11,6 +11,7 @@ type TracerFactory struct {
 
 // Parm https://github.com/jaegertracing/jaeger-client-go/blob/master/config/config.go
 type Parm struct {
+	Name               string
 	CollectorEndpoint  string        // jaeger http地址
 	LocalAgentHostPort string        // jaeger udp地址
 	Probabilistic      float64       // 采样率
@@ -21,6 +22,12 @@ type Parm struct {
 
 // Option config wraps
 type Option func(*Parm)
+
+func WithServiceName(name string) Option {
+	return func(c *Parm) {
+		c.Name = name
+	}
+}
 
 // WithProbabilistic 采样率 0 ~ 1
 func WithProbabilistic(probabilistic float64) Option {

@@ -37,7 +37,7 @@ func newTransport(rc *jaegerCfg.ReporterConfig) (jaeger.Transport, error) {
 	}
 }
 
-func BuildWithOption(name string, opts ...Option) ITracer {
+func BuildWithOption(opts ...Option) ITracer {
 
 	p := Parm{
 		Probabilistic: 1,
@@ -59,12 +59,12 @@ func BuildWithOption(name string, opts ...Option) ITracer {
 			CollectorEndpoint:  p.CollectorEndpoint, //with http
 			LocalAgentHostPort: p.LocalAgentHostPort,
 		},
-		ServiceName: name,
+		ServiceName: p.Name,
 	}
 
 	jt := &jaegerTracing{
 		parm:        p,
-		serviceName: name,
+		serviceName: p.Name,
 		jcfg:        jcfg,
 		factory:     make(map[string]SpanFactory),
 	}

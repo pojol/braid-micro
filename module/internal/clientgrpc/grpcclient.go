@@ -1,5 +1,5 @@
 // 实现文件 基于 grpc 实现的 rpc-client
-package client
+package clientgrpc
 
 import (
 	"context"
