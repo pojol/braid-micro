@@ -5,7 +5,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -81,7 +80,7 @@ func (wr *swrrBalancer) Add(nod service.Node) {
 
 	wr.calcTotalWeight()
 
-	blog.Debugf("add weighted nod id : %s name : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	//fmt.Printf("add weighted nod id : %s name : %s weight : %d\n", nod.ID, nod.Name, nod.Weight)
 }
 
 func (wr *swrrBalancer) Rmv(nod service.Node) {
@@ -98,7 +97,7 @@ func (wr *swrrBalancer) Rmv(nod service.Node) {
 	wr.nods = append(wr.nods[:idx], wr.nods[idx+1:]...)
 
 	wr.calcTotalWeight()
-	blog.Debugf("rmv weighted nod id : %s name : %s", nod.ID, nod.Name)
+	//fmt.Println("rmv weighted nod id : %s name : %s\n", nod.ID, nod.Name)
 }
 
 func (wr *swrrBalancer) Update(nod service.Node) {
@@ -112,5 +111,5 @@ func (wr *swrrBalancer) Update(nod service.Node) {
 		wr.calcTotalWeight()
 	}
 
-	blog.Debugf("update weighted nod id : %s name : %s weight : %d", nod.ID, nod.Name, nod.Weight)
+	//fmt.Println("update weighted nod id : %s name : %s weight : %d\n", nod.ID, nod.Name, nod.Weight)
 }

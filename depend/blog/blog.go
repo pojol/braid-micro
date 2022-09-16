@@ -34,7 +34,7 @@ var (
 )
 
 var (
-	defaultConfig = Parm{
+	DefaultConfig = Parm{
 		lv:      int(InfoLevel),
 		size:    64, // default 64 mb
 		backups: 30, // saved 30 backup files
@@ -46,7 +46,7 @@ var (
 
 func BuildWithOption(opts ...Option) *Logger {
 
-	logParm := &defaultConfig
+	logParm := &DefaultConfig
 
 	for _, opt := range opts {
 		opt(logParm)
@@ -118,18 +118,18 @@ func newlog(p *Parm) *zap.Logger {
 }
 
 // Debugf debug级别诊断日志
-func Debugf(msg string, args ...interface{}) {
-	logPtr.normalSugared.Debugf(msg, args...)
+func (l *Logger) Debugf(msg string, args ...interface{}) {
+	l.normalSugared.Debugf(msg, args...)
 }
 
-func Infof(msg string, args ...interface{}) {
-	logPtr.normalSugared.Infof(msg, args...)
+func (l *Logger) Infof(msg string, args ...interface{}) {
+	l.normalSugared.Infof(msg, args...)
 }
 
-func Warnf(msg string, args ...interface{}) {
-	logPtr.normalSugared.Warnf(msg, args...)
+func (l *Logger) Warnf(msg string, args ...interface{}) {
+	l.normalSugared.Warnf(msg, args...)
 }
 
-func Errf(msg string, args ...interface{}) {
-	logPtr.normalSugared.Errorf(msg, args...)
+func (l *Logger) Errf(msg string, args ...interface{}) {
+	l.normalSugared.Errorf(msg, args...)
 }

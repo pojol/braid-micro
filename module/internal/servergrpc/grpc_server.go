@@ -24,7 +24,7 @@ var (
 	ErrConfigConvert = errors.New("convert linker config")
 )
 
-func BuildWithOption(serviceName string, opts ...server.Option) server.IServer {
+func BuildWithOption(serviceName string, log *blog.Logger, opts ...server.Option) server.IServer {
 
 	p := server.Parm{
 		ListenAddr: ":14222",
@@ -35,6 +35,7 @@ func BuildWithOption(serviceName string, opts ...server.Option) server.IServer {
 
 	s := &grpcServer{
 		parm:        p,
+		log:         log,
 		serviceName: serviceName,
 	}
 
@@ -58,6 +59,7 @@ type grpcServer struct {
 	serviceName string
 
 	listen net.Listener
+	log    *blog.Logger
 	parm   server.Parm
 
 	tracer opentracing.Tracer
@@ -85,13 +87,13 @@ func (s *grpcServer) Run() {
 
 	go func() {
 		if err := s.rpc.Serve(s.listen); err != nil {
-			blog.Errf("run server err %s", err.Error())
+			s.log.Errf("run server err %s", err.Error())
 		}
 	}()
 }
 
 // Close 退出处理
 func (s *grpcServer) Close() {
-	blog.Debugf("grpc-server closed")
+	s.log.Debugf("grpc-server closed")
 	s.rpc.Stop()
 }

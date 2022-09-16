@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/module/pubsub"
 )
 
 // Parm 选举器配置项
@@ -14,8 +13,6 @@ type Parm struct {
 	RefushSessionTick time.Duration
 
 	ConsulClient *consul.Client
-
-	Ps pubsub.IPubsub
 }
 
 // Option consul discover config wrapper
@@ -38,11 +35,5 @@ func WithSessionTick(t time.Duration) Option {
 func WithConsulClient(cc *consul.Client) Option {
 	return func(c *Parm) {
 		c.ConsulClient = cc
-	}
-}
-
-func WithPubsub(ps pubsub.IPubsub) Option {
-	return func(c *Parm) {
-		c.Ps = ps
 	}
 }

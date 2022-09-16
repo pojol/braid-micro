@@ -19,6 +19,7 @@ type pubsubChannel struct {
 	msgCh *UnboundedMsg
 
 	ps       *nsqPubsub
+	log      *blog.Logger
 	exitFlag int32
 
 	consumer *nsq.Consumer
@@ -41,13 +42,14 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 	return nil
 }
 
-func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) *pubsubChannel {
+func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logger, n *nsqPubsub) *pubsubChannel {
 
 	c := &pubsubChannel{
 		Name:      channelName,
 		TopicName: topicName,
 		scope:     ty,
 		ps:        n,
+		log:       log,
 		msgCh:     NewUnbounded(),
 	}
 
@@ -63,12 +65,12 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) 
 			req, _ := http.NewRequest("POST", url, nil)
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				fmt.Printf("%v request err %v", url, err.Error())
+				log.Warnf("%v request err %v", url, err.Error())
 			}
 
 			if resp != nil {
 				if resp.StatusCode != http.StatusOK {
-					fmt.Printf("nsqd create channel request status err %v", resp.StatusCode)
+					log.Warnf("nsqd create channel request status err %v", resp.StatusCode)
 				}
 
 				ioutil.ReadAll(resp.Body)
@@ -80,7 +82,7 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) 
 		cfg.MaxInFlight = len(n.parm.NsqdHttpAddress)
 		nsqConsumer, err := nsq.NewConsumer(topicName, channelName, cfg)
 		if err != nil {
-			fmt.Printf("channel %v nsq.NewConsumer err %v", channelName, err)
+			log.Warnf("channel %v nsq.NewConsumer err %v", channelName, err)
 			return nil
 		}
 		nsqConsumer.SetLoggerLevel(n.parm.NsqLogLv)
@@ -93,19 +95,19 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) 
 		if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
 			err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
 			if err != nil {
-				fmt.Printf("channel %v nsq.ConnectToNSQDs err %v", channelName, err)
+				log.Warnf("channel %v nsq.ConnectToNSQDs err %v", channelName, err)
 				return nil
 			}
 		} else {
 			err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupdAddress)
 			if err != nil {
-				fmt.Printf("channel %v nsq.ConnectToNSQLookupds err %v", channelName, err)
+				log.Warnf("channel %v nsq.ConnectToNSQLookupds err %v", channelName, err)
 				return nil
 			}
 		}
 
 		c.consumer = nsqConsumer
-		fmt.Printf("Cluster consumer %v created", channelName)
+		log.Infof("Cluster consumer %v created", channelName)
 	}
 
 	return c
@@ -114,7 +116,7 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, n *nsqPubsub) 
 func (c *pubsubChannel) Put(msg *pubsub.Message) {
 
 	if atomic.LoadInt32(&c.exitFlag) == 1 {
-		blog.Warnf("cannot write to the exiting channel %v", c.Name)
+		c.log.Warnf("cannot write to the exiting channel %v", c.Name)
 		return
 	}
 
@@ -133,7 +135,7 @@ func (c *pubsubChannel) addHandlers(handler pubsub.Handler) {
 			handler(m)
 		}
 	EXT:
-		blog.Infof("channel %v stopping handler", c.Name)
+		c.log.Infof("channel %v stopping handler", c.Name)
 	}()
 }
 
@@ -146,7 +148,7 @@ func (c *pubsubChannel) Exit() error {
 		return errors.New("exiting")
 	}
 
-	fmt.Printf("channel %v exiting", c.Name)
+	c.log.Infof("channel %v exiting", c.Name)
 
 	if c.scope == pubsub.Cluster {
 		c.consumer.Stop()

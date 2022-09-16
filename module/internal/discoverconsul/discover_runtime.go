@@ -32,7 +32,7 @@ var (
 	defaultWeight = 1024
 )
 
-func BuildWithOption(name string, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
 
 	p := discover.Parm{
 		Tag:                       "braid",
@@ -52,6 +52,7 @@ func BuildWithOption(name string, ps pubsub.IPubsub, opts ...discover.Option) di
 	e := &consulDiscover{
 		parm:    p,
 		ps:      ps,
+		log:     log,
 		nodemap: make(map[string]*syncNode),
 	}
 
@@ -89,6 +90,7 @@ type consulDiscover struct {
 	// parm
 	parm discover.Parm
 	ps   pubsub.IPubsub
+	log  *blog.Logger
 
 	// service id : service nod
 	nodemap map[string]*syncNode
@@ -245,7 +247,7 @@ func (dc *consulDiscover) discover() {
 	syncService := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				blog.Errf("consul discover syncService err %v", err)
+				dc.log.Errf("consul discover syncService err %v", err)
 			}
 		}()
 		// todo ..
@@ -266,7 +268,7 @@ func (dc *consulDiscover) weight() {
 	syncWeight := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				blog.Errf("consul discover syncWeight err %v", err)
+				dc.log.Errf("consul discover syncWeight err %v", err)
 			}
 		}()
 

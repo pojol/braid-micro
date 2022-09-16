@@ -68,6 +68,10 @@ func (b *Braid) RegisterDepend(depends ...depend.Depend) error {
 		opt(d)
 	}
 
+	if d.Logger == nil { // 日志是必选项
+		d.Logger = blog.BuildWithOption()
+	}
+
 	b.depends = d
 
 	return nil
@@ -75,7 +79,10 @@ func (b *Braid) RegisterDepend(depends ...depend.Depend) error {
 
 func (b *Braid) RegisterModule(modules ...module.Module) error {
 
-	p := &module.BraidModule{}
+	p := &module.BraidModule{
+		ServiceName: b.name,
+		Depends:     b.depends,
+	}
 
 	for _, opt := range modules {
 		opt(p)
@@ -93,7 +100,7 @@ func (b *Braid) Init() error {
 	if b.modules.Idiscover != nil {
 		err = b.modules.Idiscover.Init()
 		if err != nil {
-			blog.Errf("braid init discover err %v", err.Error())
+			b.depends.Logger.Errf("braid init discover err %v", err.Error())
 			return err
 		}
 	}
@@ -101,7 +108,7 @@ func (b *Braid) Init() error {
 	if b.modules.Ielector != nil {
 		err = b.modules.Ielector.Init()
 		if err != nil {
-			blog.Errf("braid init elector err %v", err.Error())
+			b.depends.Logger.Errf("braid init elector err %v", err.Error())
 			return err
 		}
 	}
@@ -109,7 +116,7 @@ func (b *Braid) Init() error {
 	if b.modules.Ilinkcache != nil {
 		err = b.modules.Ilinkcache.Init()
 		if err != nil {
-			blog.Errf("braid init linkcache err %v", err.Error())
+			b.depends.Logger.Errf("braid init linkcache err %v", err.Error())
 			return err
 		}
 	}

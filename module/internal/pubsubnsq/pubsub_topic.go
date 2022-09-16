@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/nsqio/go-nsq"
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/internal/braidsync"
 	"github.com/pojol/braid-go/module/pubsub"
 )
@@ -17,6 +18,7 @@ import (
 type pubsubTopic struct {
 	Name string
 	ps   *nsqPubsub
+	log  *blog.Logger
 
 	msgch    chan *pubsub.Message
 	exitFlag int32
@@ -41,6 +43,7 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 		Name:              name,
 		ps:                n,
 		scope:             scope,
+		log:               n.log,
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
 		channelUpdateChan: make(chan int),
@@ -66,7 +69,7 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 			resp, _ := http.DefaultClient.Do(req)
 			if resp != nil {
 				if resp.StatusCode != http.StatusOK {
-					fmt.Printf("lookupd create topic request status err %v", resp.StatusCode)
+					n.log.Warnf("lookupd create topic request status err %v", resp.StatusCode)
 				}
 				ioutil.ReadAll(resp.Body)
 				resp.Body.Close()
@@ -77,12 +80,12 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 		for k, addr := range n.parm.NsqdHttpAddress {
 			cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
 			if err != nil {
-				fmt.Printf("Channel new nsq producer err %v", err.Error())
+				n.log.Warnf("Channel new nsq producer err %v", err.Error())
 				continue
 			}
 
 			if err = cp.Ping(); err != nil {
-				fmt.Printf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
+				n.log.Warnf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
 				continue
 			}
 
@@ -91,11 +94,11 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 			url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
 			resp, err := http.Post(url, "application/json", nil)
 			if err != nil {
-				fmt.Printf(err.Error())
+				n.log.Warnf(err.Error())
 			}
 			if resp != nil {
 				if resp.StatusCode != http.StatusOK {
-					fmt.Printf("nsqd create topic request status err %v", resp.StatusCode)
+					n.log.Warnf("nsqd create topic request status err %v", resp.StatusCode)
 				}
 
 				ioutil.ReadAll(resp.Body)
@@ -140,10 +143,10 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
-		channel = newChannel(t.Name, name, t.scope, t.ps)
+		channel = newChannel(t.Name, name, t.scope, t.log, t.ps)
 		t.channelMap[name] = channel
 
-		//blog.Infof("Topic %v new channel %v", t.Name, name)
+		t.log.Infof("Topic %v new channel %v", t.Name, name)
 		return channel, true
 	}
 
@@ -159,7 +162,7 @@ func (t *pubsubTopic) RmvChannel(name string) error {
 		return fmt.Errorf("channel %v does not exist", name)
 	}
 
-	//blog.Infof("topic %v deleting channel %v", t.Name, name)
+	t.log.Infof("topic %v deleting channel %v", t.Name, name)
 	channel.Exit()
 
 	t.Lock()
@@ -235,7 +238,7 @@ func (t *pubsubTopic) loop() {
 	}
 
 EXT:
-	//blog.Infof("topic %v out of the loop", t.Name)
+	t.log.Infof("topic %v out of the loop", t.Name)
 }
 
 func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
@@ -254,7 +257,7 @@ func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 	}
 
 	if err != nil {
-		fmt.Printf("topic %v publish err %v\n", t.Name, err.Error())
+		t.log.Warnf("topic %v publish err %v\n", t.Name, err.Error())
 		return err
 	}
 
@@ -267,7 +270,7 @@ func (t *pubsubTopic) Exit() error {
 		return errors.New("exiting")
 	}
 
-	//blog.Infof("topic %v exiting", t.Name)
+	t.log.Infof("topic %v exiting", t.Name)
 
 	close(t.exitChan)
 	// 等待 loop 中止后处理余下逻辑

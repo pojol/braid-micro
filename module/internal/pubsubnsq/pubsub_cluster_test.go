@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ func TestClusterBroadcast(t *testing.T) {
 
 	mb := BuildWithOption(
 		"TestClusterBroadcast",
+		blog.BuildWithOption(),
 		pubsub.WithLookupAddr([]string{}),
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
@@ -81,6 +83,7 @@ func TestClusterNotify(t *testing.T) {
 
 	mb := BuildWithOption(
 		"TestClusterNotify",
+		blog.BuildWithOption(),
 		pubsub.WithLookupAddr([]string{}),
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
@@ -145,6 +148,7 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 
 	mb := BuildWithOption(
 		"BenchmarkClusterBroadcast",
+		blog.BuildWithOption(),
 		pubsub.WithLookupAddr([]string{}),
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)

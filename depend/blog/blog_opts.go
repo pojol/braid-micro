@@ -22,6 +22,18 @@ func WithLevel(loglv int) Option {
 	}
 }
 
+func WithPath(path string) Option {
+	return func(c *Parm) {
+		c.path = path
+	}
+}
+
+func WithSuffex(suffex string) Option {
+	return func(c *Parm) {
+		c.suffex = suffex
+	}
+}
+
 // WithMaxSize 日志文件保存的最大 mb
 func WithMaxSize(size int) Option {
 	return func(c *Parm) {

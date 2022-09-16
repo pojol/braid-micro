@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/module/pubsub"
 )
 
@@ -15,7 +16,7 @@ const (
 	Name = "PubsubNsq"
 )
 
-func BuildWithOption(name string, opts ...pubsub.Option) pubsub.IPubsub {
+func BuildWithOption(name string, log *blog.Logger, opts ...pubsub.Option) pubsub.IPubsub {
 
 	p := pubsub.Parm{
 		ServiceName:       name,
@@ -34,6 +35,7 @@ func BuildWithOption(name string, opts ...pubsub.Option) pubsub.IPubsub {
 
 	nsqm := &nsqPubsub{
 		parm:     p,
+		log:      log,
 		topicMap: make(map[string]*pubsubTopic),
 	}
 
@@ -44,6 +46,8 @@ type nsqPubsub struct {
 	parm pubsub.Parm
 
 	sync.RWMutex
+
+	log *blog.Logger
 
 	topicMap map[string]*pubsubTopic
 }

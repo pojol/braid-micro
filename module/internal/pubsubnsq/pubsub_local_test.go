@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,6 +15,7 @@ func TestProcNotify(t *testing.T) {
 
 	mb := BuildWithOption(
 		"TestProcNotify",
+		blog.BuildWithOption(),
 	)
 
 	var tick uint64
@@ -42,6 +44,7 @@ func TestProcExit(t *testing.T) {
 
 	mb := BuildWithOption(
 		"TestProcExit",
+		blog.BuildWithOption(),
 	)
 
 	var tick uint64
@@ -78,6 +81,7 @@ func TestProcBroadcast(t *testing.T) {
 
 	mb := BuildWithOption(
 		"TestProcBroadcast",
+		blog.BuildWithOption(),
 	)
 
 	var wg sync.WaitGroup
@@ -115,6 +119,7 @@ func BenchmarkTestProc(b *testing.B) {
 
 	mb := BuildWithOption(
 		"BenchmarkTestProc",
+		blog.BuildWithOption(),
 	)
 
 	body := []byte("msg")

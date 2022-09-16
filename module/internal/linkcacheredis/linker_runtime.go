@@ -53,7 +53,7 @@ var (
 )
 
 // Build build link-cache
-func BuildWithOption(name string, opts ...linkcache.Option) linkcache.ILinkCache {
+func BuildWithOption(name string, log *blog.Logger, opts ...linkcache.Option) linkcache.ILinkCache {
 
 	p := linkcache.Parm{
 		Mode:             linkcache.LinkerRedisModeRedis,
@@ -69,6 +69,7 @@ func BuildWithOption(name string, opts ...linkcache.Option) linkcache.ILinkCache
 		serviceName:   name,
 		electorState:  elector.EWait,
 		parm:          p,
+		log:           log,
 		activeNodeMap: make(map[string]service.Node),
 		local: &localLinker{
 			serviceName: name,
@@ -96,6 +97,7 @@ type redisLinker struct {
 
 	electorState string
 	ps           pubsub.IPubsub
+	log          *blog.Logger
 
 	local *localLinker
 
@@ -140,7 +142,7 @@ func (rl *redisLinker) Init() error {
 		statemsg := elector.ElectorDecodeStateChangeMsg(msg)
 		if statemsg.State != "" && rl.electorState != statemsg.State {
 			rl.electorState = statemsg.State
-			blog.Debugf("service state change => %v", statemsg.State)
+			rl.log.Debugf("service state change => %v", statemsg.State)
 		}
 	})
 
@@ -159,7 +161,7 @@ func (rl *redisLinker) syncLinkNum() {
 	for _, member := range members {
 		info := strings.Split(member, splitFlag)
 		if len(info) != 5 {
-			blog.Warnf("%v wrong relation string format %v", Name, member)
+			rl.log.Warnf("%v wrong relation string format %v", Name, member)
 			continue
 		}
 
@@ -171,13 +173,13 @@ func (rl *redisLinker) syncLinkNum() {
 
 		cnt, err := redis.ConnGet(conn, member)
 		if err != nil {
-			blog.Warnf("%v redis cmd err %v", Name, err.Error())
+			rl.log.Warnf("%v redis cmd err %v", Name, err.Error())
 			continue
 		}
 
 		icnt, err := strconv.Atoi(cnt)
 		if err != nil {
-			blog.Warnf("%v atoi err %v", member, cnt)
+			rl.log.Warnf("%v atoi err %v", member, cnt)
 		}
 
 		rl.ps.ClusterTopic(linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
@@ -201,7 +203,7 @@ func (rl *redisLinker) syncRelation() {
 	for _, member := range members {
 		info := strings.Split(member, splitFlag)
 		if len(info) != 5 {
-			blog.Warnf("%v wrong relation string format %v", Name, member)
+			rl.log.Warnf("%v wrong relation string format %v", Name, member)
 			continue
 		}
 
@@ -240,7 +242,7 @@ func (rl *redisLinker) syncOffline() {
 
 	members, err := redis.ConnSMembers(conn, RelationPrefix)
 	if err != nil {
-		blog.Warnf("smembers %v err %v", RelationPrefix, err.Error())
+		rl.log.Warnf("smembers %v err %v", RelationPrefix, err.Error())
 		return
 	}
 
@@ -252,7 +254,7 @@ func (rl *redisLinker) syncOffline() {
 	for _, member := range members {
 		info := strings.Split(member, splitFlag)
 		if len(info) != 5 {
-			blog.Warnf("%v wrong relation string format %v", Name, member)
+			rl.log.Warnf("%v wrong relation string format %v", Name, member)
 			continue
 		}
 
@@ -276,9 +278,9 @@ func (rl *redisLinker) syncOffline() {
 			err = rl.redisDown(service)
 		}
 
-		blog.Debugf("offline service mode:%v, name:%v, id:%v", rl.parm.Mode, service.Name, service.ID)
+		rl.log.Debugf("offline service mode:%v, name:%v, id:%v", rl.parm.Mode, service.Name, service.ID)
 		if err != nil {
-			blog.Warnf("offline err %v", err.Error())
+			rl.log.Warnf("offline err %v", err.Error())
 		}
 	}
 }

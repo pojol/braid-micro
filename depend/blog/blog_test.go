@@ -9,5 +9,5 @@ func TestLog(t *testing.T) {
 	BuildWithOption()
 	defer Close()
 
-	Infof("msg %v", 1)
+	logPtr.Infof("msg %v", 1)
 }

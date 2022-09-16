@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/module/rpc/proto"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
 )
 
 type rpcServer struct {
@@ -27,16 +30,15 @@ func (rs *rpcServer) Routing(ctx context.Context, req *proto.RouteReq) (*proto.R
 	return out, err
 }
 
-/*
 func TestNew(t *testing.T) {
 
-	blog.New(blog.NewWithDefault())
+	s := BuildWithOption(
+		"servergrpctest",
+		blog.BuildWithOption(),
+		server.WithListen(":14111"),
+	).(*grpcServer)
 
-	b := module.GetBuilder(Name)
-	b.AddModuleOption(WithListen(":14111"))
-	s := b.Build("TestNew").(server.IServer)
 	s.Init()
-
 	proto.RegisterListenServer(s.Server().(*grpc.Server), &rpcServer{})
 	s.Run()
 	defer s.Close()
@@ -48,21 +50,21 @@ func TestNew(t *testing.T) {
 	}
 	rres := new(proto.RouteRes)
 
-	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &proto.RouteReq{
+	err = conn.Invoke(context.Background(), "/proto.listen/routing", &proto.RouteReq{
 		Nod:     "normal",
 		Service: "test",
 		ReqBody: nil,
 	}, rres)
 	assert.Equal(t, err, nil)
-	err = conn.Invoke(context.Background(), "/bproto.listen/routing", &proto.RouteReq{
+
+	err = conn.Invoke(context.Background(), "/proto.listen/routing", &proto.RouteReq{
 		Nod:     "normal",
 		Service: "errtest",
 		ReqBody: nil,
 	}, rres)
-	fmt.Println(err.Error())
-	assert.NotEqual(t, err, nil)
+
+	assert.NotEqual(t, err, errors.New("routing err"))
 }
-*/
 
 func TestOpts(t *testing.T) {
 

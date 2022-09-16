@@ -3,7 +3,12 @@ package server
 
 // IServer rpc-server interface
 type IServer interface {
+	Init() error
 
 	// Server 获取 rpc 的 server 接口
 	Server() interface{}
+
+	Run()
+
+	Close()
 }

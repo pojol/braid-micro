@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/service"
 )
 
@@ -122,7 +121,7 @@ func (rl *redisLinker) redisDown(target service.Node) error {
 
 		info, err = rl.findToken(conn, key, target.Name)
 		if err != nil {
-			blog.Debugf("redis down find token err %v", err.Error())
+			rl.log.Debugf("redis down find token err %v", err.Error())
 			continue
 		}
 
@@ -135,7 +134,7 @@ func (rl *redisLinker) redisDown(target service.Node) error {
 
 	}
 
-	blog.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
+	rl.log.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
 
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	conn.Do("SREM", RelationPrefix, relationKey)

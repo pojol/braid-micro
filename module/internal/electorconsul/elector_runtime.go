@@ -8,6 +8,7 @@ import (
 
 	"github.com/pojol/braid-go/depend/blog"
 	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
@@ -20,7 +21,7 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-func BuildWithOption(name string, opts ...elector.Option) elector.IElector {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...elector.Option) elector.IElector {
 
 	p := elector.Parm{
 		ServiceName:       name,
@@ -33,9 +34,11 @@ func BuildWithOption(name string, opts ...elector.Option) elector.IElector {
 
 	e := &consulElection{
 		parm: p,
+		log:  log,
+		ps:   ps,
 	}
 
-	e.parm.Ps.LocalTopic(elector.TopicChangeState)
+	e.ps.LocalTopic(elector.TopicChangeState)
 
 	return e
 }
@@ -59,6 +62,9 @@ type consulElection struct {
 	sessionID string
 	locked    bool
 
+	log *blog.Logger
+	ps  pubsub.IPubsub
+
 	parm elector.Parm
 }
 
@@ -66,7 +72,7 @@ func (e *consulElection) watch() {
 	watchLock := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				blog.Errf("discover watchLock err %v", err)
+				e.log.Errf("discover watchLock err %v", err)
 			}
 		}()
 
@@ -74,10 +80,10 @@ func (e *consulElection) watch() {
 			succ, _ := e.parm.ConsulClient.AcquireLock(e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
-				e.parm.Ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
-				blog.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
+				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+				e.log.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.parm.Ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
+				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}
@@ -91,18 +97,19 @@ func (e *consulElection) watch() {
 	}
 }
 
-func (e *consulElection) refush() {
+func (e *consulElection) refresh() {
 
 	refushSession := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				blog.Errf("discover refush err %v", err)
+				e.log.Errf("discover refresh err %v", err)
 			}
 		}()
 
 		err := e.parm.ConsulClient.RefreshSession(e.sessionID)
 		if err != nil {
 			// log
+			e.log.Warnf("elector refresh session err %v", err.Error())
 		}
 	}
 
@@ -118,7 +125,7 @@ func (e *consulElection) refush() {
 // Run session 状态检查
 func (e *consulElection) Run() {
 	go func() {
-		e.refush()
+		e.refresh()
 	}()
 
 	go func() {
