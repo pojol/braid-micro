@@ -64,7 +64,7 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 			)
 			req, err := http.NewRequest("POST", url, nil)
 			if err != nil {
-				fmt.Printf(err.Error())
+				n.log.Warnf("post %v err %v", url, err.Error())
 			}
 			resp, _ := http.DefaultClient.Do(req)
 			if resp != nil {

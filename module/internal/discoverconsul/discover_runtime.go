@@ -58,7 +58,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *c
 		nodemap: make(map[string]*syncNode),
 	}
 
-	//e.ps.GetTopic(service.TopicServiceUpdate)
+	e.ps.LocalTopic(discover.TopicServiceUpdate)
 
 	return e
 }
@@ -175,17 +175,16 @@ func (dc *consulDiscover) discoverImpl() {
 				fmt.Printf("new service %s addr %s\n", nod.ID, sn.address)
 				dc.nodemap[nod.ID] = &sn
 
-				/*
-					dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-						EventAddService,
-						service.Node{
-							ID:      sn.id,
-							Name:    sn.service,
-							Address: sn.address,
-							Weight:  sn.physWeight,
-						},
-					))
-				*/
+				dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+					discover.EventAddService,
+					service.Node{
+						ID:      sn.id,
+						Name:    sn.service,
+						Address: sn.address,
+						Weight:  sn.physWeight,
+					},
+				))
+
 			}
 
 		}
@@ -198,16 +197,15 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := servicesnodes[k]; !ok {
 			fmt.Printf("remove service %s id %s\n", dc.nodemap[k].service, dc.nodemap[k].id)
 
-			/*
-				dc.ps.GetTopic(service.TopicServiceUpdate).Pub(service.DiscoverEncodeUpdateMsg(
-					EventRemoveService,
-					service.Node{
-						ID:      dc.nodemap[k].id,
-						Name:    dc.nodemap[k].service,
-						Address: dc.nodemap[k].address,
-					},
-				))
-			*/
+			dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+				discover.EventRemoveService,
+				service.Node{
+					ID:      dc.nodemap[k].id,
+					Name:    dc.nodemap[k].service,
+					Address: dc.nodemap[k].address,
+				},
+			))
+
 			delete(dc.nodemap, k)
 		}
 

@@ -24,9 +24,8 @@ type pubsubChannel struct {
 
 	consumer *nsq.Consumer
 
-	Name      string
-	TopicName string
-	scope     pubsub.ScopeTy
+	Name  string
+	scope pubsub.ScopeTy
 }
 
 type consumerHandler struct {
@@ -45,12 +44,11 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logger, n *pubsubTopic) *pubsubChannel {
 
 	c := &pubsubChannel{
-		Name:      channelName,
-		TopicName: topicName,
-		scope:     ty,
-		ps:        n,
-		log:       log,
-		msgCh:     NewUnbounded(),
+		Name:  channelName,
+		scope: ty,
+		ps:    n,
+		log:   log,
+		msgCh: NewUnbounded(),
 	}
 
 	if ty == pubsub.Cluster {
