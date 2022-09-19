@@ -43,6 +43,7 @@ func BuildWithOption(opts ...Option) ITracer {
 		Probabilistic: 1,
 		SlowRequest:   time.Millisecond * 200,
 		SlowSpan:      time.Millisecond * 50,
+		Name:          "braid",
 	}
 
 	for _, opt := range opts {

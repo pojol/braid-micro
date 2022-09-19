@@ -53,7 +53,7 @@ var (
 )
 
 // Build build link-cache
-func BuildWithOption(name string, log *blog.Logger, opts ...linkcache.Option) linkcache.ILinkCache {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *redis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
 
 	p := linkcache.Parm{
 		Mode:             linkcache.LinkerRedisModeRedis,
@@ -65,11 +65,17 @@ func BuildWithOption(name string, log *blog.Logger, opts ...linkcache.Option) li
 		opt(&p)
 	}
 
+	if client == nil {
+		panic(errors.New("linkcache need depend redis client"))
+	}
+
 	lc := &redisLinker{
 		serviceName:   name,
 		electorState:  elector.EWait,
+		ps:            ps,
 		parm:          p,
 		log:           log,
+		client:        client,
 		activeNodeMap: make(map[string]service.Node),
 		local: &localLinker{
 			serviceName: name,
@@ -99,7 +105,8 @@ type redisLinker struct {
 	ps           pubsub.IPubsub
 	log          *blog.Logger
 
-	local *localLinker
+	local  *localLinker
+	client *redis.Client
 
 	// 从属节点
 	child []string

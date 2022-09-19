@@ -83,7 +83,7 @@ func (nmb *nsqPubsub) ClusterTopic(name string) pubsub.ITopic {
 	return nmb.getTopic(name, pubsub.Cluster)
 }
 
-func (nmb *nsqPubsub) RmvTopic(name string) error {
+func (nmb *nsqPubsub) rmvTopic(name string) error {
 	nmb.RLock()
 	topic, ok := nmb.topicMap[name]
 	nmb.RUnlock()
@@ -93,7 +93,10 @@ func (nmb *nsqPubsub) RmvTopic(name string) error {
 	}
 
 	//blog.Infof("deleting topic %v", name)
-	topic.Exit()
+	err := topic.Exit()
+	if err != nil {
+		return err
+	}
 
 	nmb.Lock()
 	delete(nmb.topicMap, name)

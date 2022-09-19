@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/pubsub"
 )
@@ -21,7 +22,7 @@ var (
 	ErrConfigConvert = errors.New("convert config error")
 )
 
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...elector.Option) elector.IElector {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...elector.Option) elector.IElector {
 
 	p := elector.Parm{
 		ServiceName:       name,
@@ -33,9 +34,14 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...e
 	}
 
 	e := &consulElection{
-		parm: p,
-		log:  log,
-		ps:   ps,
+		parm:   p,
+		log:    log,
+		ps:     ps,
+		client: client,
+	}
+
+	if client == nil {
+		panic(errors.New("discover need depend consul client"))
 	}
 
 	e.ps.LocalTopic(elector.TopicChangeState)
@@ -45,7 +51,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...e
 
 func (e *consulElection) Init() error {
 
-	sid, err := e.parm.ConsulClient.CreateSession(e.parm.ServiceName + "_lead")
+	sid, err := e.client.CreateSession(e.parm.ServiceName + "_lead")
 	if err != nil {
 		return fmt.Errorf("%v Dependency check error %v", e.parm.ServiceName, "consul")
 	}
@@ -58,6 +64,8 @@ func (e *consulElection) Init() error {
 type consulElection struct {
 	lockTicker   *time.Ticker
 	refushTicker *time.Ticker
+
+	client *consul.Client
 
 	sessionID string
 	locked    bool
@@ -77,7 +85,7 @@ func (e *consulElection) watch() {
 		}()
 
 		if !e.locked {
-			succ, _ := e.parm.ConsulClient.AcquireLock(e.parm.ServiceName, e.sessionID)
+			succ, _ := e.client.AcquireLock(e.parm.ServiceName, e.sessionID)
 			if succ {
 				e.locked = true
 				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
@@ -106,7 +114,7 @@ func (e *consulElection) refresh() {
 			}
 		}()
 
-		err := e.parm.ConsulClient.RefreshSession(e.sessionID)
+		err := e.client.RefreshSession(e.sessionID)
 		if err != nil {
 			// log
 			e.log.Warnf("elector refresh session err %v", err.Error())
@@ -135,6 +143,6 @@ func (e *consulElection) Run() {
 
 // Close 释放锁，删除session
 func (e *consulElection) Close() {
-	e.parm.ConsulClient.ReleaseLock(e.parm.ServiceName, e.sessionID)
-	e.parm.ConsulClient.DeleteSession(e.sessionID)
+	e.client.ReleaseLock(e.parm.ServiceName, e.sessionID)
+	e.client.DeleteSession(e.sessionID)
 }

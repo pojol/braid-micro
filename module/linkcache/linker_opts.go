@@ -1,10 +1,5 @@
 package linkcache
 
-import (
-	"github.com/pojol/braid-go/depend/redis"
-	"github.com/pojol/braid-go/module/pubsub"
-)
-
 // mode
 const (
 	LinkerRedisModeLocal = "mode_local"
@@ -15,10 +10,6 @@ const (
 type Parm struct {
 	Mode     string
 	SyncTick int // ms
-
-	Ps pubsub.IPubsub
-
-	RedisClient *redis.Client
 
 	//
 	SyncRelationTick int // second
@@ -42,17 +33,5 @@ func WithSyncTick(mstime int) Option {
 func WithMode(mode string) Option {
 	return func(c *Parm) {
 		c.Mode = mode
-	}
-}
-
-func WithPubsub(ps pubsub.IPubsub) Option {
-	return func(c *Parm) {
-		c.Ps = ps
-	}
-}
-
-func WithRedisClient(client *redis.Client) Option {
-	return func(c *Parm) {
-		c.RedisClient = client
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/pubsub"
@@ -32,7 +33,7 @@ var (
 	defaultWeight = 1024
 )
 
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...discover.Option) discover.IDiscover {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...discover.Option) discover.IDiscover {
 
 	p := discover.Parm{
 		Tag:                       "braid",
@@ -45,14 +46,15 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, opts ...d
 		opt(&p)
 	}
 
-	if p.Client == nil {
-		panic(errors.New("discover depend consul client"))
+	if client == nil {
+		panic(errors.New("discover need depend consul client"))
 	}
 
 	e := &consulDiscover{
 		parm:    p,
 		ps:      ps,
 		log:     log,
+		client:  client,
 		nodemap: make(map[string]*syncNode),
 	}
 
@@ -86,6 +88,8 @@ func (dc *consulDiscover) Init() error {
 type consulDiscover struct {
 	discoverTicker   *time.Ticker
 	syncWeightTicker *time.Ticker
+
+	client *consul.Client
 
 	// parm
 	parm discover.Parm
@@ -127,14 +131,14 @@ func (dc *consulDiscover) discoverImpl() {
 
 	servicesnodes := make(map[string]bool)
 
-	services, err := dc.parm.Client.CatalogListServices()
+	services, err := dc.client.CatalogListServices()
 	if err != nil {
 		fmt.Println("discover impl err", err.Error())
 		return
 	}
 
 	for _, v := range services {
-		cs, err := dc.parm.Client.CatalogGetService(v.Name)
+		cs, err := dc.client.CatalogGetService(v.Name)
 		if err != nil {
 			continue
 		}

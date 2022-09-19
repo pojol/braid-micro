@@ -9,7 +9,7 @@ import (
 )
 
 func (rl *redisLinker) getConn() redis.Conn {
-	return rl.parm.RedisClient.Conn()
+	return rl.client.Conn()
 }
 
 func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName string) (target *linkInfo, err error) {

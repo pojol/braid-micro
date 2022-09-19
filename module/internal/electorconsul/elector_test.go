@@ -2,8 +2,15 @@ package electorconsul
 
 import (
 	"testing"
+	"time"
 
+	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/internal/pubsubnsq"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -11,40 +18,41 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-/*
 func TestElection(t *testing.T) {
 
-	blog.New(blog.NewWithDefault())
-	mb := module.GetBuilder(pubsubnsq.Name).Build("TestElection").(pubsub.IPubsub)
+	log := blog.BuildWithOption()
 
-	eb := module.GetBuilder(Name)
-	eb.AddModuleOption(WithConsulAddr(mock.ConsulAddr))
+	ps := pubsubnsq.BuildWithOption("", log, pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 
-	e := eb.Build("test_elector_with_consul",
-		moduleparm.WithPubsub(mb)).(elector.IElector)
+	e := BuildWithOption(
+		"TestElection",
+		log,
+		ps,
+		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
+	)
 
 	e.Run()
 	time.Sleep(time.Second)
 	e.Close()
 }
-*/
 
-/*
 func TestParm(t *testing.T) {
 
-	blog.New(blog.NewWithDefault())
-	mb := module.GetBuilder(pubsubnsq.Name).Build("TestParm").(pubsub.IPubsub)
+	log := blog.BuildWithOption()
 
-	eb := module.GetBuilder(Name)
-	eb.AddModuleOption(WithConsulAddr(mock.ConsulAddr))
-	eb.AddModuleOption(WithLockTick(time.Second))
-	eb.AddModuleOption(WithSessionTick(time.Second))
+	ps := pubsubnsq.BuildWithOption("", log, pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
 
-	e := eb.Build("test_elector_with_consul",
-		moduleparm.WithPubsub(mb)).(*consulElection)
+	el := BuildWithOption(
+		"TestElection",
+		log,
+		ps,
+		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
+		elector.WithLockTick(time.Second),
+		elector.WithSessionTick(time.Second),
+	)
 
-	assert.Equal(t, e.parm.ConsulAddr, mock.ConsulAddr)
-	assert.Equal(t, e.parm.LockTick, time.Second)
-	assert.Equal(t, e.parm.RefushSessionTick, time.Second)
+	consulel := el.(*consulElection)
+
+	assert.Equal(t, consulel.parm.LockTick, time.Second)
+	assert.Equal(t, consulel.parm.RefushSessionTick, time.Second)
 }
-*/

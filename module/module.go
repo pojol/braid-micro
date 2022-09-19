@@ -63,6 +63,7 @@ func Discover(opts ...discover.Option) Module {
 			c.ServiceName,
 			c.Depends.Logger,
 			c.Ipubsub,
+			c.Depends.ConsulClient,
 			opts...,
 		)
 	}
@@ -73,6 +74,8 @@ func LinkCache(opts ...linkcache.Option) Module {
 		c.Ilinkcache = linkcacheredis.BuildWithOption(
 			c.ServiceName,
 			c.Depends.Logger,
+			c.Ipubsub,
+			c.Depends.RedisClient,
 			opts...,
 		)
 	}
@@ -84,6 +87,7 @@ func Elector(opts ...elector.Option) Module {
 			c.ServiceName,
 			c.Depends.Logger,
 			c.Ipubsub,
+			c.Depends.ConsulClient,
 			opts...,
 		)
 	}

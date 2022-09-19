@@ -143,7 +143,7 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
-		channel = newChannel(t.Name, name, t.scope, t.log, t.ps)
+		channel = newChannel(t.Name, name, t.scope, t.log, t)
 		t.channelMap[name] = channel
 
 		t.log.Infof("Topic %v new channel %v", t.Name, name)
@@ -154,7 +154,7 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 }
 
-func (t *pubsubTopic) RmvChannel(name string) error {
+func (t *pubsubTopic) rmvChannel(name string) error {
 	t.RLock()
 	channel, ok := t.channelMap[name]
 	t.RUnlock()
@@ -163,7 +163,10 @@ func (t *pubsubTopic) RmvChannel(name string) error {
 	}
 
 	t.log.Infof("topic %v deleting channel %v", t.Name, name)
-	channel.Exit()
+	err := channel.Exit()
+	if err != nil {
+		return err
+	}
 
 	t.Lock()
 	delete(t.channelMap, name)
@@ -262,6 +265,10 @@ func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
 	}
 
 	return nil
+}
+
+func (t *pubsubTopic) Close() error {
+	return t.ps.rmvTopic(t.Name)
 }
 
 func (t *pubsubTopic) Exit() error {

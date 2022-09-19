@@ -22,7 +22,7 @@ func TestDiscover(t *testing.T) {
 		"base_dev",
 		blog.BuildWithOption(),
 		nil,
-		discover.WithConsulClient(consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr}))),
+		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
 		discover.WithSyncServiceInterval(time.Millisecond*100),
 		discover.WithSyncServiceWeightInterval(time.Millisecond*100),
 		discover.WithBlacklist([]string{"gate"}),
