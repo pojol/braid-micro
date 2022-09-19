@@ -60,7 +60,8 @@ func TestProcExit(t *testing.T) {
 		atomic.AddUint64(&tick, 1)
 	})
 
-	topic.RmvChannel("Normal_1")
+	err := channel1.Close()
+	assert.Equal(t, err, nil)
 
 	topic.Pub(&pubsub.Message{Body: []byte("msg")})
 
@@ -68,7 +69,7 @@ func TestProcExit(t *testing.T) {
 		<-time.After(time.Second * 2)
 		assert.Equal(t, atomic.LoadUint64(&tick), uint64(1))
 
-		err := mb.RmvTopic("TestProcExit")
+		err := topic.Close()
 		assert.Equal(t, err, nil)
 
 		err = topic.Pub(&pubsub.Message{Body: []byte("msg")})

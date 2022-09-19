@@ -18,7 +18,7 @@ type pubsubChannel struct {
 
 	msgCh *UnboundedMsg
 
-	ps       *nsqPubsub
+	ps       *pubsubTopic
 	log      *blog.Logger
 	exitFlag int32
 
@@ -42,7 +42,7 @@ func (ch *consumerHandler) HandleMessage(msg *nsq.Message) error {
 	return nil
 }
 
-func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logger, n *nsqPubsub) *pubsubChannel {
+func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logger, n *pubsubTopic) *pubsubChannel {
 
 	c := &pubsubChannel{
 		Name:      channelName,
@@ -55,7 +55,7 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logg
 
 	if ty == pubsub.Cluster {
 
-		for _, addr := range n.parm.NsqdHttpAddress {
+		for _, addr := range n.ps.parm.NsqdHttpAddress {
 			url := fmt.Sprintf("http://%s/channel/create?topic=%s&channel=%s",
 				addr,
 				topicName,
@@ -79,27 +79,27 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logg
 		}
 
 		cfg := nsq.NewConfig()
-		cfg.MaxInFlight = len(n.parm.NsqdHttpAddress)
+		cfg.MaxInFlight = len(n.ps.parm.NsqdHttpAddress)
 		nsqConsumer, err := nsq.NewConsumer(topicName, channelName, cfg)
 		if err != nil {
 			log.Warnf("channel %v nsq.NewConsumer err %v", channelName, err)
 			return nil
 		}
-		nsqConsumer.SetLoggerLevel(n.parm.NsqLogLv)
+		nsqConsumer.SetLoggerLevel(n.ps.parm.NsqLogLv)
 
 		nsqConsumer.AddConcurrentHandlers(&consumerHandler{
 			c:       c,
 			channel: channelName,
-		}, int(n.parm.ConcurrentHandler))
+		}, int(n.ps.parm.ConcurrentHandler))
 
-		if len(n.parm.LookupdAddress) == 0 { // 不推荐的处理方式
-			err = nsqConsumer.ConnectToNSQDs(n.parm.NsqdAddress)
+		if len(n.ps.parm.LookupdAddress) == 0 { // 不推荐的处理方式
+			err = nsqConsumer.ConnectToNSQDs(n.ps.parm.NsqdAddress)
 			if err != nil {
 				log.Warnf("channel %v nsq.ConnectToNSQDs err %v", channelName, err)
 				return nil
 			}
 		} else {
-			err = nsqConsumer.ConnectToNSQLookupds(n.parm.LookupdAddress)
+			err = nsqConsumer.ConnectToNSQLookupds(n.ps.parm.LookupdAddress)
 			if err != nil {
 				log.Warnf("channel %v nsq.ConnectToNSQLookupds err %v", channelName, err)
 				return nil
@@ -141,6 +141,10 @@ func (c *pubsubChannel) addHandlers(handler pubsub.Handler) {
 
 func (c *pubsubChannel) Arrived(handler pubsub.Handler) {
 	c.addHandlers(handler)
+}
+
+func (c *pubsubChannel) Close() error {
+	return c.ps.rmvChannel(c.Name)
 }
 
 func (c *pubsubChannel) Exit() error {

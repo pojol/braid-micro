@@ -32,10 +32,9 @@ func TestClusterBroadcast(t *testing.T) {
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
-	topic := "test.clusterBroadcast"
-
-	channel1 := mb.ClusterTopic(topic).Sub("Normal_1")
-	channel2 := mb.ClusterTopic(topic).Sub("Normal_2")
+	topic := mb.ClusterTopic("test.clusterBroadcast")
+	channel1 := topic.Sub("Normal_1")
+	channel2 := topic.Sub("Normal_2")
 
 	msgcnt := 10000
 
@@ -59,12 +58,13 @@ func TestClusterBroadcast(t *testing.T) {
 	}()
 
 	for i := 0; i < msgcnt; i++ {
-		mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: []byte("test msg")})
+		topic.Pub(&pubsub.Message{Body: []byte("test msg")})
 	}
 
 	select {
 	case <-done:
-		mb.RmvTopic(topic)
+		err := topic.Close()
+		assert.Equal(t, err, nil)
 		// pass
 	case <-time.After(time.Second * 5):
 		fmt.Println("timeout")

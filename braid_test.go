@@ -7,6 +7,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pojol/braid-go/depend"
 	"github.com/pojol/braid-go/depend/consul"
+	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module"
@@ -32,7 +33,7 @@ func TestInit(t *testing.T) {
 
 	b.RegisterDepend(
 		depend.Logger(),
-		depend.Redis(),
+		depend.Redis(redis.WithAddr(mock.RedisAddr)),
 		depend.Tracer(
 			tracer.WithHTTP(mock.JaegerAddr),
 			tracer.WithProbabilistic(1),
@@ -54,7 +55,7 @@ func TestInit(t *testing.T) {
 			server.WithListen(":14222"),
 			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
 		),
-		module.Discover(), // pass
+		module.Discover(),
 		module.Elector(
 			elector.WithLockTick(3*time.Second)),
 		module.LinkCache(

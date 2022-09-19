@@ -2,8 +2,6 @@ package discover
 
 import (
 	"time"
-
-	"github.com/pojol/braid-go/depend/consul"
 )
 
 // Parm discover config
@@ -21,8 +19,6 @@ type Parm struct {
 
 	// 黑名单列表，在黑名单的服务将不会被加入到 services 中
 	Blacklist []string
-
-	Client *consul.Client
 }
 
 // Option consul discover config wrapper
@@ -53,11 +49,5 @@ func WithSyncServiceInterval(interval time.Duration) Option {
 func WithSyncServiceWeightInterval(interval time.Duration) Option {
 	return func(c *Parm) {
 		c.SyncServiceWeightInterval = interval
-	}
-}
-
-func WithConsulClient(c *consul.Client) Option {
-	return func(p *Parm) {
-		p.Client = c
 	}
 }

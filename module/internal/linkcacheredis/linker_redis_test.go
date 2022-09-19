@@ -41,12 +41,8 @@ func TestLinkerTarget(t *testing.T) {
 	lc := BuildWithOption(
 		LinkerRedisPrefix,
 		blog.BuildWithOption(),
-		linkcache.WithPubsub(
-			ps,
-		),
-		linkcache.WithRedisClient(
-			redisclient,
-		),
+		ps,
+		redisclient,
 	)
 
 	redisclient.Del(LinkerRedisPrefix + "*")
@@ -99,7 +95,6 @@ func TestLinkerTarget(t *testing.T) {
 
 }
 
-/*
 func TestLocalTarget(t *testing.T) {
 	var tmu sync.Mutex
 	tmu.Lock()
@@ -107,46 +102,32 @@ func TestLocalTarget(t *testing.T) {
 	LinkerRedisPrefix = "TestLocalTarget-"
 	tmu.Unlock()
 
-	blog.New(blog.NewWithDefault())
+	log := blog.BuildWithOption()
 
-	mbb := module.GetBuilder(pubsubnsq.Name)
-	mbb.AddModuleOption(pubsubnsq.WithLookupAddr([]string{}))
-	mbb.AddModuleOption(pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}))
-	mb := mbb.Build("TestLocalTarget").(pubsub.IPubsub)
+	ps := pubsubnsq.BuildWithOption(
+		"",
+		log,
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	)
+	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
 
-	eb := module.GetBuilder(electorconsul.Name)
-	eb.AddModuleOption(electorconsul.WithConsulAddr(mock.ConsulAddr))
-	e := eb.Build("TestLocalTarget",
-		moduleparm.WithPubsub(mb)).(elector.IElector)
-	defer e.Close()
+	lc := BuildWithOption(
+		LinkerRedisPrefix,
+		log,
+		ps,
+		redisclient,
+		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+	)
 
-	b := module.GetBuilder(Name)
-	b.AddModuleOption(WithRedisAddr(mock.RedisAddr))
-	b.AddModuleOption(WithMode(LinkerRedisModeLocal))
-
-	lc := b.Build("localgate",
-		moduleparm.WithPubsub(mb)).(linkcache.ILinkCache)
-
-	// clean
-	rclient := redis.New()
-	rclient.Init(redis.Config{
-		Address:        mock.RedisAddr,
-		ReadTimeOut:    5 * time.Second,
-		WriteTimeOut:   5 * time.Second,
-		ConnectTimeOut: 2 * time.Second,
-		MaxIdle:        16,
-		MaxActive:      128,
-		IdleTimeout:    0,
-	})
-	rclient.Del(LinkerRedisPrefix + "*")
+	redisclient.Del(LinkerRedisPrefix + "*")
 
 	lc.Init()
 	lc.Run()
 	defer lc.Close()
 
-	mb.GetTopic(elector.ChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
 
-	nods := []discover.Node{
+	nods := []service.Node{
 		{
 			ID:      "local001",
 			Name:    "localbase",
@@ -183,14 +164,6 @@ func TestLocalTarget(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 500)
 }
-*/
-
-/*
-func TestDown(t *testing.T) {
-	LinkerRedisPrefix = "TestLinkerRedisDown-"
-
-}
-*/
 
 /*
 func BenchmarkLink(b *testing.B) {
