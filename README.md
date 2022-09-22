@@ -42,13 +42,13 @@
 	b, _ := NewService("braid")
 
 	b.RegisterDepend(
-		module.LoggerDepend(),
-		module.RedisDepend(),
-		module.TracerDepend(
+		depend.Logger(),
+		depend.Redis(redis.WithAddr(mock.RedisAddr)),
+		depend.Tracer(
 			tracer.WithHTTP(mock.JaegerAddr),
 			tracer.WithProbabilistic(1),
 		),
-		module.ConsulDepend(
+		depend.Consul(
 			consul.WithAddress([]string{mock.ConsulAddr}),
 		),
 	)

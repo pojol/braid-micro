@@ -27,7 +27,7 @@ func EncodeStateChangeMsg(state string) *pubsub.Message {
 }
 
 // DecodeStateChangeMsg decode
-func ElectorDecodeStateChangeMsg(msg *pubsub.Message) StateChangeMsg {
+func DecodeStateChangeMsg(msg *pubsub.Message) StateChangeMsg {
 	bmmsg := StateChangeMsg{}
 	json.Unmarshal(msg.Body, &bmmsg)
 	return bmmsg

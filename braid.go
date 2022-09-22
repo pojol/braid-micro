@@ -44,7 +44,7 @@ type Braid struct {
 	// depend
 	depends *depend.BraidDepend
 
-	sync.RWMutex
+	rw sync.RWMutex
 }
 
 var (

@@ -146,7 +146,7 @@ func (rl *redisLinker) Init() error {
 	})
 
 	changeState.Arrived(func(msg *pubsub.Message) {
-		statemsg := elector.ElectorDecodeStateChangeMsg(msg)
+		statemsg := elector.DecodeStateChangeMsg(msg)
 		if statemsg.State != "" && rl.electorState != statemsg.State {
 			rl.electorState = statemsg.State
 			rl.log.Debugf("service state change => %v", statemsg.State)

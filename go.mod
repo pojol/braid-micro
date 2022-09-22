@@ -7,15 +7,13 @@ require (
 	github.com/garyburd/redigo v1.6.2
 	github.com/gogo/protobuf v1.3.2
 	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/consul v1.13.1 // indirect
-	github.com/hashicorp/consul/api v1.14.0 // indirect
-	github.com/kr/pretty v0.2.1 // indirect
+	github.com/hashicorp/consul/api v1.14.0
+	github.com/hashicorp/consul/sdk v0.11.0 // indirect
+	github.com/hashicorp/serf v0.9.8 // indirect
 	github.com/labstack/echo/v4 v4.1.6
 	github.com/labstack/gommon v0.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/nsqio/go-nsq v1.0.8
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v1.12.2 // indirect
@@ -26,6 +24,8 @@ require (
 	go.uber.org/atomic v1.5.1 // indirect
 	go.uber.org/zap v1.13.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
+	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/grpc v1.37.1
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )

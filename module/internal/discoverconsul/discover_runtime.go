@@ -3,7 +3,6 @@ package discoverconsul
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -30,7 +29,7 @@ var (
 
 	// 权重预设值，可以约等于节点支持的最大连接数
 	// 在开启linker的情况下，节点的连接数越多权重值就越低，直到降到最低的 1权重
-	defaultWeight = 1024
+	//defaultWeight = 1024
 )
 
 func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...discover.Option) discover.IDiscover {
@@ -55,7 +54,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *c
 		ps:      ps,
 		log:     log,
 		client:  client,
-		nodemap: make(map[string]*syncNode),
+		nodemap: make(map[string]*service.Node),
 	}
 
 	e.ps.LocalTopic(discover.TopicServiceUpdate)
@@ -97,20 +96,9 @@ type consulDiscover struct {
 	log  *blog.Logger
 
 	// service id : service nod
-	nodemap map[string]*syncNode
+	nodemap map[string]*service.Node
 
 	lock sync.Mutex
-}
-
-type syncNode struct {
-	service string
-	id      string
-	address string
-
-	linknum int
-
-	dyncWeight int
-	physWeight int
 }
 
 func (dc *consulDiscover) InBlacklist(name string) bool {
@@ -133,30 +121,34 @@ func (dc *consulDiscover) discoverImpl() {
 
 	services, err := dc.client.CatalogListServices()
 	if err != nil {
-		fmt.Println("discover impl err", err.Error())
+		dc.log.Warnf("discover impl err %v", err.Error())
 		return
 	}
 
 	for _, v := range services {
 		cs, err := dc.client.CatalogGetService(v.Name)
 		if err != nil {
+			dc.log.Warnf("catalog get service err %v", err)
 			continue
 		}
 
 		if v.Name == "" || len(cs.Nodes) == 0 {
-			fmt.Println("not nodes", v.Name, len(v.Nodes))
+			dc.log.Warnf("not nodes %v %v", v.Name, len(v.Nodes))
 			continue
 		}
 
 		if !utils.ContainsInSlice(v.Tags, dc.parm.Tag) {
+			dc.log.Debugf("rule out with service tag %v, self tag %v", v.Tags, dc.parm.Tag)
 			continue
 		}
 
 		if v.Name == dc.parm.Name {
+			dc.log.Debugf("rule out with self")
 			continue
 		}
 
 		if utils.ContainsInSlice(dc.parm.Blacklist, v.Name) {
+			dc.log.Debugf("rule out with black list %v", v.Name)
 			continue // 排除黑名单节点
 		}
 
@@ -165,24 +157,19 @@ func (dc *consulDiscover) discoverImpl() {
 
 			servicesnodes[nod.ID] = true
 
-			if _, ok := dc.nodemap[nod.ID]; !ok { // new
+			if _, ok := dc.nodemap[nod.ID]; !ok {
 
-				sn := syncNode{
-					service:    nod.ID,
-					address:    nod.Address,
-					physWeight: defaultWeight,
+				sn := service.Node{
+					Name:    v.Name,
+					ID:      nod.ID,
+					Address: nod.Address,
 				}
-				fmt.Printf("new service %s addr %s\n", nod.ID, sn.address)
+				dc.log.Infof("new service %s node %s addr %s", v.Name, nod.ID, sn.Address)
 				dc.nodemap[nod.ID] = &sn
 
 				dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
 					discover.EventAddService,
-					service.Node{
-						ID:      sn.id,
-						Name:    sn.service,
-						Address: sn.address,
-						Weight:  sn.physWeight,
-					},
+					sn,
 				))
 
 			}
@@ -195,15 +182,11 @@ func (dc *consulDiscover) discoverImpl() {
 	for k := range dc.nodemap {
 
 		if _, ok := servicesnodes[k]; !ok {
-			fmt.Printf("remove service %s id %s\n", dc.nodemap[k].service, dc.nodemap[k].id)
+			dc.log.Infof("remove service %s node %s", dc.nodemap[k].Name, dc.nodemap[k].ID)
 
 			dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
 				discover.EventRemoveService,
-				service.Node{
-					ID:      dc.nodemap[k].id,
-					Name:    dc.nodemap[k].service,
-					Address: dc.nodemap[k].address,
-				},
+				*dc.nodemap[k],
 			))
 
 			delete(dc.nodemap, k)
@@ -217,32 +200,34 @@ func (dc *consulDiscover) syncWeight() {
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
 
-	for k, v := range dc.nodemap {
-		if v.linknum == 0 {
-			continue
-		}
+	/*
+		for k, v := range dc.nodemap {
+			if v.linknum == 0 {
+				continue
+			}
 
-		if v.linknum == v.dyncWeight {
-			continue
-		}
+			if v.linknum == v.dyncWeight {
+				continue
+			}
 
-		dc.nodemap[k].dyncWeight = v.linknum
-		nweight := 0
-		if dc.nodemap[k].physWeight-v.linknum > 0 {
-			nweight = dc.nodemap[k].physWeight - v.linknum
-		} else {
-			nweight = 1
-		}
+			dc.nodemap[k].dyncWeight = v.linknum
+			nweight := 0
+			if dc.nodemap[k].physWeight-v.linknum > 0 {
+				nweight = dc.nodemap[k].physWeight - v.linknum
+			} else {
+				nweight = 1
+			}
 
-		dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
-			discover.EventUpdateService,
-			service.Node{
-				ID:     v.id,
-				Name:   v.service,
-				Weight: nweight,
-			},
-		))
-	}
+			dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+				discover.EventUpdateService,
+				service.Node{
+					ID:     v.id,
+					Name:   v.service,
+					Weight: nweight,
+				},
+			))
+		}
+	*/
 }
 
 func (dc *consulDiscover) discover() {
