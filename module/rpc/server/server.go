@@ -4,11 +4,9 @@ package server
 // IServer rpc-server interface
 type IServer interface {
 	Init() error
+	Run()
+	Close()
 
 	// Server 获取 rpc 的 server 接口
 	Server() interface{}
-
-	Run()
-
-	Close()
 }

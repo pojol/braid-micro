@@ -108,6 +108,8 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	}
 
 EXT:
+	c.log.Infof("[Client] new connect addr : %v err : %v", addr, err)
+
 	return conn, err
 }
 
@@ -119,7 +121,7 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 	go func() {
 		var result error
 		if err := conn.Close(); err != nil {
-			result = fmt.Errorf("%w %v", err, "failed to close gRPC client")
+			result = fmt.Errorf("[Client] %w %v", err, "failed to close gRPC client")
 		}
 		doneCh <- result
 	}()
@@ -128,6 +130,7 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 	case <-ctx.Done():
 		return errors.New("failed to close gRPC client because of timeout")
 	case err := <-doneCh:
+		c.log.Infof("[Client] close connect addr : %v err : %v", conn.Target(), err)
 		return err
 	}
 }
@@ -146,7 +149,7 @@ func (c *grpcClient) Init() error {
 			if !ok {
 				conn, err := c.newconn(dmsg.Nod.Address)
 				if err != nil {
-					c.log.Errf("new grpc conn err %s", err.Error())
+					c.log.Errf("[Client] new grpc conn err %s", err.Error())
 				} else {
 					c.connmap.Store(dmsg.Nod.Address, conn)
 				}
@@ -157,7 +160,7 @@ func (c *grpcClient) Init() error {
 				conn := mc.(*grpc.ClientConn)
 				err = c.closeconn(conn)
 				if err != nil {
-					c.log.Errf("close grpc conn err %s", err.Error())
+					c.log.Errf("[Client] close grpc conn err %s", err.Error())
 				} else {
 					c.connmap.Delete(dmsg.Nod.Address)
 				}
@@ -180,7 +183,7 @@ func (c *grpcClient) getConn(address string) (*grpc.ClientConn, error) {
 	}
 
 	if conn.GetState() == connectivity.TransientFailure {
-		c.log.Debugf("reset connect backoff")
+		c.log.Warnf("[Client] reset connect backoff")
 		conn.ResetConnectBackoff()
 	}
 
@@ -221,7 +224,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	if address == "" {
 		nod, err = c.pick(target, token, c.linkcache != nil)
 		if err != nil {
-			c.log.Debugf("pick warning %s", err.Error())
+			c.log.Warnf("[Client] pick warning %s", err.Error())
 			return ""
 		}
 
@@ -229,7 +232,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 		if (c.linkcache != nil) && token != "" {
 			err = c.linkcache.Link(token, nod)
 			if err != nil {
-				c.log.Debugf("link warning %s %s %s", token, target, err.Error())
+				c.log.Warnf("[Client] link warning %s %s %s", token, target, err.Error())
 			}
 		}
 	}
@@ -245,12 +248,12 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	address = c.findTarget(ctx, token, nodName)
 	if address == "" {
-		return fmt.Errorf("find target warning %s %s", token, nodName)
+		return fmt.Errorf("find target warning token : %s node : %s", token, nodName)
 	}
 
 	conn, err := c.getConn(address)
 	if err != nil {
-		c.log.Debugf("client get conn warning %s", err.Error())
+		c.log.Warnf("[Client] client get conn warning %s", err.Error())
 		return err
 	}
 
@@ -258,7 +261,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 		for _, v := range opts {
 			callopt, ok := v.(grpc.CallOption)
 			if !ok {
-				c.log.Warnf("client call option type mismatch")
+				c.log.Warnf("[Client] call option type mismatch")
 			}
 			grpcopts = append(grpcopts, callopt)
 		}
@@ -266,7 +269,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 
 	err = conn.Invoke(ctx, methon, args, reply, grpcopts...)
 	if err != nil {
-		c.log.Warnf("client invoke warning %s, target = %s, methon = %s, addr = %s, token = %s", err.Error(), nodName, methon, address, token)
+		c.log.Warnf("[Client] invoke warning %s, target = %s, methon = %s, addr = %s, token = %s", err.Error(), nodName, methon, address, token)
 		if c.linkcache != nil {
 			c.linkcache.Unlink(token)
 		}

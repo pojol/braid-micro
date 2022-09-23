@@ -97,6 +97,22 @@ func (b *Braid) RegisterModule(modules ...module.Module) error {
 func (b *Braid) Init() error {
 	var err error
 
+	if b.modules.Iclient != nil {
+		err = b.modules.Iclient.Init()
+		if err != nil {
+			b.depends.Logger.Errf("braid init client err %v", err.Error())
+			return err
+		}
+	}
+
+	if b.modules.Iserver != nil {
+		err = b.modules.Iserver.Init()
+		if err != nil {
+			b.depends.Logger.Errf("braid init server err %v", err.Error())
+			return err
+		}
+	}
+
 	if b.modules.Idiscover != nil {
 		err = b.modules.Idiscover.Init()
 		if err != nil {
@@ -127,6 +143,10 @@ func (b *Braid) Init() error {
 // Run 运行braid
 func (b *Braid) Run() {
 	fmt.Printf(banner, Version)
+
+	if b.modules.Iserver != nil {
+		b.modules.Iserver.Run()
+	}
 
 	if b.modules.Idiscover != nil {
 		b.modules.Idiscover.Run()
@@ -169,6 +189,14 @@ func Tracer() tracer.ITracer {
 
 // Close 关闭braid
 func (b *Braid) Close() {
+
+	if b.modules.Iclient != nil {
+		b.modules.Iclient.Close()
+	}
+
+	if b.modules.Iserver != nil {
+		b.modules.Iserver.Close()
+	}
 
 	if b.modules.Idiscover != nil {
 		b.modules.Idiscover.Close()

@@ -8,6 +8,8 @@ import (
 
 // IClient rpc-client interface
 type IClient interface {
+	Init() error
+	Close()
 
 	// Invoke 发起一次 rpc 调用
 	//

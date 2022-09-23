@@ -89,7 +89,7 @@ func (e *consulElection) watch() {
 			if succ {
 				e.locked = true
 				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
-				e.log.Debugf("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
+				e.log.Infof("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
 				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}

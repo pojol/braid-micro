@@ -2,7 +2,6 @@
 package balancer
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -91,7 +90,6 @@ func (bbg *baseBalancerGroup) Run() {
 			bbg.Lock()
 
 			if _, ok := bbg.picker[dmsg.Nod.Name]; !ok {
-				fmt.Println("add service", dmsg.Nod.Name)
 				bbg.picker[dmsg.Nod.Name] = &balancerStrategy{
 					randomPicker: &randomBalancer{},
 					swrrPicker:   &swrrBalancer{},
@@ -128,16 +126,17 @@ func (bbg *baseBalancerGroup) Pick(strategy string, target string) (service.Node
 	defer bbg.RUnlock()
 
 	var nod service.Node
+	var err error
 
 	if _, ok := bbg.picker[target]; ok {
 		if strategy == StrategyRandom {
-			return bbg.picker[target].randomPicker.Get()
+			nod, err = bbg.picker[target].randomPicker.Get()
 		} else if strategy == StrategySwrr {
-			return bbg.picker[target].swrrPicker.Get()
+			nod, err = bbg.picker[target].swrrPicker.Get()
 		}
 	}
 
-	return nod, errors.New("can't find balancer, with strategy")
+	return nod, err
 }
 
 func (bbg *baseBalancerGroup) Close() {
