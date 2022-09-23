@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/internal/utils"
+	"github.com/pojol/braid-go/mock"
 	"github.com/stretchr/testify/assert"
 )
 
-const mock_consul_addr = "47.103.70.168:8900"
-
 func TestServicesList(t *testing.T) {
 
-	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+	client := BuildWithOption(WithAddress([]string{mock.ConsulAddr}), WithTimeOut(time.Second*10))
 
 	_, err := client.CatalogListServices()
 	assert.Equal(t, err, nil)
@@ -21,14 +20,14 @@ func TestServicesList(t *testing.T) {
 }
 
 func TestGetService(t *testing.T) {
-	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+	client := BuildWithOption(WithAddress([]string{mock.ConsulAddr}), WithTimeOut(time.Second*10))
 
 	services, err := client.CatalogListServices()
 	assert.Equal(t, err, nil)
 
 	for _, v := range services {
 
-		if !utils.ContainsInSlice(v.Tags, "mist_dev") {
+		if !utils.ContainsInSlice(v.Tags, "braid") {
 			continue
 		}
 

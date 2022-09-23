@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/mock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +17,7 @@ func TestSession(t *testing.T) {
 
 	sessionName := "test" + strconv.Itoa(r)
 
-	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+	client := BuildWithOption(WithAddress([]string{mock.ConsulAddr}), WithTimeOut(time.Second*10))
 
 	id, err := client.CreateSession(sessionName)
 	if err != nil {
