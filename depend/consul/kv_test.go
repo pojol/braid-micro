@@ -32,9 +32,5 @@ func TestKv(t *testing.T) {
 	}
 	assert.Equal(t, err, nil)
 
-	ok, err := client.AcquireLock("xxx", id)
-	print(ok, err)
-	assert.NotEqual(t, err, nil)
-
 	client.DeleteSession(id)
 }
