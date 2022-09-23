@@ -28,13 +28,6 @@
 * **Tracer** - Distributed tracing system, used to monitor the internal state of the program running in microservices
 * **Linkcache** - Link cache used to maintain connection information in distributed systems
 
-### Modules
-
-|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
-|-|-|-|-|-|-|-|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
-||balancerswrr|electork8s|grpc-server|||
-
 ### Quick start
 
 ```go
@@ -78,6 +71,57 @@
 	defer b.Close()
 
 ```
+
+
+### Sample
+* RPC - 
+	```go
+		err := braid.Client().Invoke(
+			ctx,
+			"target",
+			"methon",
+			token,
+			body,
+			res,
+		)
+	```
+* Pubsub
+	```go
+		lc := braid.Pubsub().LocalTopic("topic").Sub("name")
+		lc.Arrived(func(msg *pubsub.Message){ 
+			/* todo ... */ 
+		})
+		defer lc.Close()
+
+		cc := braid.ClusterTopic("topic").Sub("name")
+		cc.Arrived(func(msg *pubsub.Message){ 
+			/* todo ... */
+		})
+		defer cc.Close()
+	```
+* Tracer
+	```go
+	b.RegisterDepend(
+		depend.Tracer(
+			tracer.WithHTTP(jaegerAddr),
+			tracer.WithProbabilistic(jaegerProbabilistic),
+			tracer.WithSpanFactory(
+				tracer.TracerFactory{
+					Name:    mspan.Mongo,
+					Factory: mspan.CreateMongoSpanFactory(),
+				},
+			),
+		),
+	)
+
+	span := braid.Tracer().GetSpan(mspan.Mongo)
+
+	span.Begin(ctx)
+	defer span.End()
+
+	// todo ...
+	span.SetTag("key", val)
+	```
 
 
 #### **Pub-sub** Benchmark
