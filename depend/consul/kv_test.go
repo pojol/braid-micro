@@ -1,0 +1,39 @@
+package consul
+
+import (
+	"fmt"
+	"math/rand"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestKv(t *testing.T) {
+
+	rand.Seed(time.Now().UnixNano())
+	r := rand.Intn(1000)
+
+	sessionName := "test" + strconv.Itoa(r)
+
+	client := BuildWithOption(WithAddress([]string{mock_consul_addr}), WithTimeOut(time.Second*10))
+
+	id, err := client.CreateSession(sessionName)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
+
+	client.AcquireLock(sessionName, id)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, err, nil)
+
+	ok, err := client.AcquireLock("xxx", id)
+	print(ok, err)
+	assert.NotEqual(t, err, nil)
+
+	client.DeleteSession(id)
+}

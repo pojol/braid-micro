@@ -1,17 +1,13 @@
-// 接口文件 elector 选举，主要用于分布式系统中的选举
-//
-// 这个模块会创建 ChangeState Topic，通过这个 Topic 发布当前进程所处于的状态
 package elector
 
 import (
 	"encoding/json"
 
-	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
 )
 
 const (
-	ChangeState = "elector.changeState"
+	TopicChangeState = "elector.local.changeState"
 )
 
 // StateChangeMsg become master msg
@@ -51,5 +47,7 @@ const (
 
 // IElector election interface
 type IElector interface {
-	module.IModule
+	Init() error
+	Run()
+	Close()
 }

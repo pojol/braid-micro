@@ -1,62 +1,104 @@
 package module
 
 import (
-	"strings"
+	"github.com/pojol/braid-go/depend"
+	"github.com/pojol/braid-go/module/discover"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/internal/clientgrpc"
+	"github.com/pojol/braid-go/module/internal/discoverconsul"
+	"github.com/pojol/braid-go/module/internal/electorconsul"
+	"github.com/pojol/braid-go/module/internal/linkcacheredis"
+	"github.com/pojol/braid-go/module/internal/pubsubnsq"
+	"github.com/pojol/braid-go/module/internal/servergrpc"
+	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
 )
 
-type ModuleType int32
+type BraidModule struct {
+	ServiceName string
 
-const (
-	Discover ModuleType = iota + 1
-	Balancer
-	Elector
-	Linkcache
-	Tracer
-	Client
-	Server
-	Pubsub
-	Logger
-)
+	Depends *depend.BraidDepend
 
-// Builder builder
-type IBuilder interface {
-	Build(name string, buildOpts ...interface{}) interface{}
+	Iclient client.IClient
+	Iserver server.IServer
 
-	Name() string
-	Type() ModuleType
+	Idiscover  discover.IDiscover
+	Ielector   elector.IElector
+	Ilinkcache linkcache.ILinkCache
 
-	AddModuleOption(opt interface{})
+	Ipubsub pubsub.IPubsub
 }
 
-// IModule module
-type IModule interface {
+type Module func(*BraidModule)
 
-	// Init 模块的初始化阶段
-	// 这个阶段主要职责是：部署和检测支撑本模块的运行依赖等...
-	Init() error
+func Client(opts ...client.Option) Module {
+	return func(c *BraidModule) {
 
-	// Run 模块的运行期
-	// 这个阶段主要职责是：主要用于提供周期性服务，一般会运行在goroutine中。
-	Run()
+		c.Iclient = clientgrpc.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			c.Ipubsub,
+			c.Ilinkcache,
+			opts...,
+		)
 
-	// Close 关闭模块
-	// 这个阶段主要职责是：关闭本模块，并释放模块中依赖的各种资源。
-	Close()
-}
-
-var (
-	m = make(map[string]IBuilder)
-)
-
-// Register 注册balancer
-func Register(b IBuilder) {
-	m[strings.ToLower(b.Name())] = b
-}
-
-// GetBuilder 获取构建器
-func GetBuilder(name string) IBuilder {
-	if b, ok := m[strings.ToLower(name)]; ok {
-		return b
 	}
-	return nil
+}
+
+func Server(opts ...server.Option) Module {
+	return func(c *BraidModule) {
+		c.Iserver = servergrpc.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			opts...,
+		)
+	}
+}
+
+func Discover(opts ...discover.Option) Module {
+	return func(c *BraidModule) {
+		c.Idiscover = discoverconsul.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			c.Ipubsub,
+			c.Depends.ConsulClient,
+			opts...,
+		)
+	}
+}
+
+func LinkCache(opts ...linkcache.Option) Module {
+	return func(c *BraidModule) {
+		c.Ilinkcache = linkcacheredis.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			c.Ipubsub,
+			c.Depends.RedisClient,
+			opts...,
+		)
+	}
+}
+
+func Elector(opts ...elector.Option) Module {
+	return func(c *BraidModule) {
+		c.Ielector = electorconsul.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			c.Ipubsub,
+			c.Depends.ConsulClient,
+			opts...,
+		)
+	}
+}
+
+func Pubsub(opts ...pubsub.Option) Module {
+	return func(c *BraidModule) {
+		c.Ipubsub = pubsubnsq.BuildWithOption(
+			c.ServiceName,
+			c.Depends.Logger,
+			opts...,
+		)
+	}
 }

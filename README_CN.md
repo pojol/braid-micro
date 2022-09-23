@@ -43,25 +43,43 @@
 
 ```go
 
-s := braid.NewService("gate")   // 在服务 gate 中，创建一个新的节点
+	b, _ := NewService("braid")
 
-// 将功能模块注册到节点中
-s.Register(
-    braid.Module(braid.LoggerZap),
-    braid.Module(braid.PubsubNsq,
-        pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-        pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-    ),
-    braid.Module(               // Discover 模块
-        discoverconsul.Name,    // 也可以 braid.DiscoverConsul
-        discoverconsul.WithConsulAddr(consulAddr)
-    ),
-)
+b.RegisterDepend(
+		depend.Logger(),
+		depend.Redis(redis.WithAddr(mock.RedisAddr)),
+		depend.Tracer(
+			tracer.WithHTTP(mock.JaegerAddr),
+			tracer.WithProbabilistic(1),
+		),
+		depend.Consul(
+			consul.WithAddress([]string{mock.ConsulAddr}),
+		),
+	)
 
-s.Init()    // 节点初始化
-s.Run()     // 节点运行
+	b.RegisterModule(
+		module.Pubsub(
+			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		),
+		module.Client(
+			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+		),
+		module.Server(
+			server.WithListen(":14222"),
+			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+		),
+		module.Discover(),
+		module.Elector(
+			elector.WithLockTick(3*time.Second)),
+		module.LinkCache(
+			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+		),
+	)
 
-defer s.Close() // 释放节点中相关的模块
+	b.Init()
+	b.Run()
+	defer b.Close()
 
 ```
 

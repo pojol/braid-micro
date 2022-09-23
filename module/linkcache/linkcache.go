@@ -8,15 +8,16 @@ package linkcache
 import (
 	"encoding/json"
 
-	"github.com/pojol/braid-go/module"
-	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/pubsub"
+	"github.com/pojol/braid-go/service"
 )
 
 const (
-	ServiceLinkNum = "linkcache.serviceLinkNum"
+	// 当前节点连接数事件
+	TopicLinkNum = "linkcache.cluster.serviceLinkNum"
 
-	TokenUnlink = "linkcache.tokenUnlink"
+	// token 离线事件
+	TopicUnlink = "linkcache.cluster.tokenUnlink"
 )
 
 // LinkNumMsg msg struct
@@ -26,7 +27,7 @@ type LinkNumMsg struct {
 }
 
 // EncodeLinkNumMsg encode linknum msg
-func EncodeLinkNumMsg(id string, num int) *pubsub.Message {
+func EncodeNumMsg(id string, num int) *pubsub.Message {
 	byt, _ := json.Marshal(&LinkNumMsg{
 		ID:  id,
 		Num: num,
@@ -38,7 +39,7 @@ func EncodeLinkNumMsg(id string, num int) *pubsub.Message {
 }
 
 // DecodeLinkNumMsg decode linknum msg
-func DecodeLinkNumMsg(msg *pubsub.Message) LinkNumMsg {
+func DecodeNumMsg(msg *pubsub.Message) LinkNumMsg {
 	lnmsg := LinkNumMsg{}
 	json.Unmarshal(msg.Body, &lnmsg)
 	return lnmsg
@@ -55,17 +56,19 @@ func DecodeLinkNumMsg(msg *pubsub.Message) LinkNumMsg {
 //  |    +-----------+  |
 //  +-------------------+
 type ILinkCache interface {
-	module.IModule
+	Init() error
+	Run()
+	Close()
 
 	// Target 通过服务名，获取 token 指向的目标服务器地址信息
 	Target(token string, serviceName string) (targetAddr string, err error)
 
 	// Link 将 token 和目标服务器连接信息写入到缓存中
-	Link(token string, target discover.Node) error
+	Link(token string, target service.Node) error
 
 	// Unlink 将 token 和目标服务器连接信息，解除绑定关系
 	Unlink(token string) error
 
 	// Down 清理目标节点的连接信息（因为该服务已经退出
-	Down(target discover.Node) error
+	Down(target service.Node) error
 }
