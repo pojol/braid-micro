@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
@@ -101,7 +102,7 @@ type redisLinker struct {
 	serviceName string
 	parm        linkcache.Parm
 
-	electorState string
+	electorState int32
 	ps           pubsub.IPubsub
 	log          *blog.Logger
 
@@ -147,9 +148,10 @@ func (rl *redisLinker) Init() error {
 
 	changeState.Arrived(func(msg *pubsub.Message) {
 		statemsg := elector.DecodeStateChangeMsg(msg)
-		if statemsg.State != "" && rl.electorState != statemsg.State {
-			rl.electorState = statemsg.State
-			rl.log.Debugf("service state change => %v", statemsg.State)
+		if statemsg.State != 0 && atomic.LoadInt32(&rl.electorState) != statemsg.State {
+			if atomic.CompareAndSwapInt32(&rl.electorState, rl.electorState, statemsg.State) {
+				rl.log.Infof("service state change => %v", statemsg.State)
+			}
 		}
 	})
 
@@ -243,7 +245,7 @@ func (rl *redisLinker) syncOffline() {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	if rl.parm.Mode != linkcache.LinkerRedisModeLocal && rl.electorState != elector.EMaster {
+	if rl.parm.Mode != linkcache.LinkerRedisModeLocal && atomic.LoadInt32(&rl.electorState) != elector.EMaster {
 		return
 	}
 
@@ -381,7 +383,7 @@ func (rl *redisLinker) Unlink(token string) error {
 
 	// 尝试将自身名下的节点中的token释放掉
 	for _, child := range rl.child {
-		if rl.parm.Mode == linkcache.LinkerRedisModeRedis && rl.electorState == elector.EMaster {
+		if rl.parm.Mode == linkcache.LinkerRedisModeRedis && atomic.LoadInt32(&rl.electorState) == elector.EMaster {
 			err = rl.redisUnlink(token, child)
 		} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 			err = rl.localUnlink(token, child)
@@ -399,7 +401,7 @@ func (rl *redisLinker) Down(target service.Node) error {
 
 	var err error
 
-	if rl.parm.Mode == linkcache.LinkerRedisModeRedis && rl.electorState == elector.EMaster {
+	if rl.parm.Mode == linkcache.LinkerRedisModeRedis && atomic.LoadInt32(&rl.electorState) == elector.EMaster {
 		err = rl.redisDown(target)
 	} else if rl.parm.Mode == linkcache.LinkerRedisModeLocal {
 		err = rl.localDown(target)
