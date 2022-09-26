@@ -32,43 +32,43 @@
 
 ```go
 
-	b, _ := NewService("braid")
+b, _ := NewService("braid")
 
-	b.RegisterDepend(
-		depend.Logger(),
-		depend.Redis(redis.WithAddr(mock.RedisAddr)),
-		depend.Tracer(
-			tracer.WithHTTP(mock.JaegerAddr),
-			tracer.WithProbabilistic(1),
-		),
-		depend.Consul(
-			consul.WithAddress([]string{mock.ConsulAddr}),
-		),
-	)
+b.RegisterDepend(
+	depend.Logger(),
+	depend.Redis(redis.WithAddr(mock.RedisAddr)),
+	depend.Tracer(
+		tracer.WithHTTP(mock.JaegerAddr),
+		tracer.WithProbabilistic(1),
+	),
+	depend.Consul(
+		consul.WithAddress([]string{mock.ConsulAddr}),
+	),
+)
 
-	b.RegisterModule(
-		module.Pubsub(
-			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-		),
-		module.Client(
-			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-		),
-		module.Server(
-			server.WithListen(":14222"),
-			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-		),
-		module.Discover(),
-		module.Elector(
-			elector.WithLockTick(3*time.Second)),
-		module.LinkCache(
-			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
-		),
-	)
+b.RegisterModule(
+	module.Pubsub(
+		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	),
+	module.Client(
+		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+	),
+	module.Server(
+		server.WithListen(":14222"),
+		server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+	),
+	module.Discover(),
+	module.Elector(
+		elector.WithLockTick(3*time.Second)),
+	module.LinkCache(
+		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+	),
+)
 
-	b.Init()
-	b.Run()
-	defer b.Close()
+b.Init()
+b.Run()
+defer b.Close()
 
 ```
 
@@ -76,28 +76,28 @@
 ### Sample
 * RPC - 
 	```go
-		err := braid.Client().Invoke(
-			ctx,
-			"target",
-			"methon",
-			token,
-			body,
-			res,
-		)
+	err := braid.Client().Invoke(
+		ctx,
+		"target",
+		"methon",
+		token,
+		body,
+		res,
+	)
 	```
 * Pubsub
 	```go
-		lc := braid.Pubsub().LocalTopic("topic").Sub("name")
-		lc.Arrived(func(msg *pubsub.Message){ 
-			/* todo ... */ 
-		})
-		defer lc.Close()
+	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
+	lc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */ 
+	})
+	defer lc.Close()
 
-		cc := braid.ClusterTopic("topic").Sub("name")
-		cc.Arrived(func(msg *pubsub.Message){ 
-			/* todo ... */
-		})
-		defer cc.Close()
+	cc := braid.ClusterTopic("topic").Sub("name")
+	cc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */
+	})
+	defer cc.Close()
 	```
 * Tracer
 	```go

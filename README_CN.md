@@ -33,77 +33,77 @@
 
 ```go
 	
-	// 创建服务
-	b, _ := NewService("braid")
+// 创建服务
+b, _ := NewService("braid")
 
-	// 注册依赖
-	b.RegisterDepend(
-		depend.Logger(),
-		depend.Redis(redis.WithAddr(mock.RedisAddr)),
-		depend.Tracer(
-			tracer.WithHTTP(mock.JaegerAddr),
-			tracer.WithProbabilistic(1),
-		),
-		depend.Consul(
-			consul.WithAddress([]string{mock.ConsulAddr}),
-		),
-	)
+// 注册依赖
+b.RegisterDepend(
+	depend.Logger(),
+	depend.Redis(redis.WithAddr(mock.RedisAddr)),
+	depend.Tracer(
+		tracer.WithHTTP(mock.JaegerAddr),
+		tracer.WithProbabilistic(1),
+	),
+	depend.Consul(
+		consul.WithAddress([]string{mock.ConsulAddr}),
+	),
+)
 
-	// 注册模块
-	b.RegisterModule(
-		module.Pubsub(
-			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-		),
-		module.Client(
-			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-		),
-		module.Server(
-			server.WithListen(":14222"),
-			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-		),
-		module.Discover(),
-		module.Elector(
-			elector.WithLockTick(3*time.Second)),
-		module.LinkCache(
-			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
-		),
-	)
+// 注册模块
+b.RegisterModule(
+	module.Pubsub(
+		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	),
+	module.Client(
+		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+	),
+	module.Server(
+		server.WithListen(":14222"),
+		server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+	),
+	module.Discover(),
+	module.Elector(
+		elector.WithLockTick(3*time.Second)),
+	module.LinkCache(
+		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+	),
+)
 
-	b.Init()
-	b.Run()
-	defer b.Close()
+b.Init()
+b.Run()
+defer b.Close()
 
 ```
 
 ### 使用
 * RPC - 
 	```go
-		// 发起一次 rpc 调用
-		err = braid.Client().Invoke(
-			ctx,
-			"target",
-			"methon",
-			token,
-			body,
-			res,
-		)
+	// 发起一次 rpc 调用
+	err = braid.Client().Invoke(
+		ctx,
+		"target",
+		"methon",
+		token,
+		body,
+		res,
+	)
 	```
 * Pubsub
 	```go
-		// 订阅一个进程内的主题接收消息并处理
-		lc := braid.Pubsub().LocalTopic("topic").Sub("name")
-		lc.Arrived(func(msg *pubsub.Message){ 
-			/* todo ... */ 
-		})
-		defer lc.Close()
+	// 订阅一个进程内的主题接收消息并处理
+	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
+	lc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */ 
+	})
+	defer lc.Close()
 
-		// 订阅一个集群中的主题
-		cc := braid.ClusterTopic("topic").Sub("name")
-		cc.Arrived(func(msg *pubsub.Message){ 
-			/* todo ... */
-		})
-		defer cc.Close()
+	// 订阅一个集群中的主题
+	cc := braid.ClusterTopic("topic").Sub("name")
+	cc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */
+	})
+	defer cc.Close()
 	```
 * Tracer
 	```go
