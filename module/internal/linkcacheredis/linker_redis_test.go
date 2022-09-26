@@ -28,7 +28,7 @@ func TestLinkerTarget(t *testing.T) {
 	var tmu sync.Mutex
 	tmu.Lock()
 	// 用于生成测试用例使用的key前缀
-	LinkerRedisPrefix = "TestLinkerTarget-"
+	LinkerRedisPrefix := "TestLinkerTarget-"
 	tmu.Unlock()
 
 	ps := pubsubnsq.BuildWithOption(
@@ -99,7 +99,7 @@ func TestLocalTarget(t *testing.T) {
 	var tmu sync.Mutex
 	tmu.Lock()
 	// 用于生成测试用例使用的key前缀
-	LinkerRedisPrefix = "TestLocalTarget-"
+	LinkerRedisPrefix := "TestLocalTarget-"
 	tmu.Unlock()
 
 	log := blog.BuildWithOption()
@@ -167,7 +167,7 @@ func TestLocalTarget(t *testing.T) {
 
 /*
 func BenchmarkLink(b *testing.B) {
-	LinkerRedisPrefix = "benchmarklink"
+	LinkerRedisPrefix := "benchmarklink"
 
 	blog.New(blog.NewWithDefault())
 
