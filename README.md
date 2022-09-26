@@ -78,15 +78,17 @@ defer b.Close()
 	```go
 	err := braid.Client().Invoke(
 		ctx,
-		"target",
-		"methon",
-		token,
+		"target service name (login",
+		"methon (/login/guest",
+		"token (optional",
 		body,
 		res,
 	)
 	```
 * Pubsub
 	```go
+	braid.Pubsub().LocalTopic("topic").Pub(*pubsub.Message)
+
 	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
 	lc.Arrived(func(msg *pubsub.Message){ 
 		/* todo ... */ 

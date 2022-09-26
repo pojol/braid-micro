@@ -82,9 +82,9 @@ defer b.Close()
 	// 发起一次 rpc 调用
 	err = braid.Client().Invoke(
 		ctx,
-		"target",
-		"methon",
-		token,
+		"目标服务名 (login",
+		"路径 (/login/guest",
+		"token (可选，当开启linkcache功能，通过这个凭证可以保证带有凭证的调用链路是一致的",
 		body,
 		res,
 	)
