@@ -44,5 +44,4 @@ func TestGetService(t *testing.T) {
 
 	}
 
-	t.Fail()
 }

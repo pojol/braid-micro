@@ -39,5 +39,4 @@ func TestDiscover(t *testing.T) {
 	time.Sleep(time.Second)
 	d.Close()
 
-	t.FailNow()
 }
