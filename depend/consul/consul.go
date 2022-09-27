@@ -146,18 +146,17 @@ func (c *Client) Client() *consul.Client {
 		// set the address
 		c.parm.cfg.Address = addr
 
-		fmt.Println("address", c.parm.cfg.Address)
-
 		// create a new client
 		tmpClient, err := consul.NewClient(c.parm.cfg)
 		if err != nil {
 			fmt.Println("consul.NewClient", err.Error())
+			continue
 		}
 
 		// test the client
 		_, err = tmpClient.Agent().Host()
 		if err != nil {
-			fmt.Println("consul agent host err", err.Error())
+			fmt.Println("[Consul] agent host err", err.Error())
 			continue
 		}
 
@@ -166,8 +165,12 @@ func (c *Client) Client() *consul.Client {
 		return c.client
 	}
 
+	var err error
 	// set the default
-	c.client, _ = consul.NewClient(c.parm.cfg)
+	c.client, err = consul.NewClient(c.parm.cfg)
+	if err != nil {
+		fmt.Println("[Consul] new client err", err.Error())
+	}
 
 	// return the client
 	return c.client
