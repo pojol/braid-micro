@@ -19,7 +19,7 @@ const (
 
 var (
 	// ErrConfigConvert 配置转换失败
-	ErrConfigConvert = errors.New("convert config error")
+	ErrConfigConvert = errors.New("[Elector] convert config error")
 )
 
 func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...elector.Option) elector.IElector {
@@ -41,7 +41,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *c
 	}
 
 	if client == nil {
-		panic(errors.New("discover need depend consul client"))
+		panic(errors.New("[Elector] need depend consul client"))
 	}
 
 	e.ps.LocalTopic(elector.TopicChangeState)
@@ -53,7 +53,7 @@ func (e *consulElection) Init() error {
 
 	sid, err := e.client.CreateSession(e.parm.ServiceName + "_lead")
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v", e.parm.ServiceName, "consul")
+		return fmt.Errorf("[Elector] %v Dependency check error %v", e.parm.ServiceName, "consul")
 	}
 
 	e.sessionID = sid
@@ -80,7 +80,7 @@ func (e *consulElection) watch() {
 	watchLock := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				e.log.Errf("discover watchLock err %v", err)
+				e.log.Errf("[Elector] watchLock err %v", err)
 			}
 		}()
 
@@ -89,7 +89,7 @@ func (e *consulElection) watch() {
 			if succ {
 				e.locked = true
 				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
-				e.log.Infof("acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
+				e.log.Infof("[Elector] acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
 				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
 			}
@@ -110,14 +110,14 @@ func (e *consulElection) refresh() {
 	refushSession := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				e.log.Errf("discover refresh err %v", err)
+				e.log.Errf("[Elector] refresh err %v", err)
 			}
 		}()
 
 		err := e.client.RefreshSession(e.sessionID)
 		if err != nil {
 			// log
-			e.log.Warnf("elector refresh session err %v", err.Error())
+			e.log.Warnf("[Elector] refresh session err %v", err.Error())
 		}
 	}
 

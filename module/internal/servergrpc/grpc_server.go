@@ -69,7 +69,9 @@ func (s *grpcServer) Init() error {
 
 	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
 	if err != nil {
-		return fmt.Errorf("%v Dependency check error %v [%v]", s.serviceName, "tcp", s.parm.ListenAddr)
+		return fmt.Errorf("%v [GRPC] server check error %v [%v]", s.serviceName, "tcp", s.parm.ListenAddr)
+	} else {
+		s.log.Infof("[GRPC] server listen: [tcp] %v", s.parm.ListenAddr)
 	}
 
 	s.listen = rpcListen
@@ -87,13 +89,13 @@ func (s *grpcServer) Run() {
 
 	go func() {
 		if err := s.rpc.Serve(s.listen); err != nil {
-			s.log.Errf("run server err %s", err.Error())
+			s.log.Errf("[GRPC] server serving err %s", err.Error())
 		}
 	}()
 }
 
 // Close 退出处理
 func (s *grpcServer) Close() {
-	s.log.Debugf("grpc-server closed")
+	s.log.Infof("grpc-server closed")
 	s.rpc.Stop()
 }
