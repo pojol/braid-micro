@@ -28,38 +28,102 @@
 * **Tracer** - Distributed tracing system, used to monitor the internal state of the program running in microservices
 * **Linkcache** - Link cache used to maintain connection information in distributed systems
 
-### Modules
-
-|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
-|-|-|-|-|-|-|-|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
-||balancerswrr|electork8s|grpc-server|||
-
 ### Quick start
 
 ```go
 
-s := braid.NewService("gate")   // create a new node in the service gate
+b, _ := NewService("braid")
 
-// register module in node
-s.Register(
-    braid.Module(braid.LoggerZap),
-    braid.Module(braid.PubsubNsq,
-        pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-        pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-    ),
-    braid.Module(
-        braid.DiscoverConsul,    // discover module
-        discoverconsul.WithConsulAddr(consulAddr)
-    ),
+b.RegisterDepend(
+	depend.Logger(),
+	depend.Redis(redis.WithAddr(mock.RedisAddr)),
+	depend.Tracer(
+		tracer.WithHTTP(mock.JaegerAddr),
+		tracer.WithProbabilistic(1),
+	),
+	depend.Consul(
+		consul.WithAddress([]string{mock.ConsulAddr}),
+	),
 )
 
-s.Init()
-s.Run()
+b.RegisterModule(
+	module.Pubsub(
+		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	),
+	module.Client(
+		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+	),
+	module.Server(
+		server.WithListen(":14222"),
+		server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+	),
+	module.Discover(),
+	module.Elector(
+		elector.WithLockTick(3*time.Second)),
+	module.LinkCache(
+		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+	),
+)
 
-defer s.Close()
+b.Init()
+b.Run()
+defer b.Close()
 
 ```
+
+
+### Sample
+* RPC - 
+	```go
+	err := braid.Client().Invoke(
+		ctx,
+		"target service name (login",
+		"methon (/login/guest",
+		"token (optional",
+		body,
+		res,
+	)
+	```
+* Pubsub
+	```go
+	braid.Pubsub().LocalTopic("topic").Pub(*pubsub.Message)
+
+	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
+	lc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */ 
+	})
+	defer lc.Close()
+
+	cc := braid.ClusterTopic("topic").Sub("name")
+	cc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */
+	})
+	defer cc.Close()
+	```
+* Tracer
+	```go
+	b.RegisterDepend(
+		depend.Tracer(
+			tracer.WithHTTP(jaegerAddr),
+			tracer.WithProbabilistic(jaegerProbabilistic),
+			tracer.WithSpanFactory(
+				tracer.TracerFactory{
+					Name:    mspan.Mongo,
+					Factory: mspan.CreateMongoSpanFactory(),
+				},
+			),
+		),
+	)
+
+	span := braid.Tracer().GetSpan(mspan.Mongo)
+
+	span.Begin(ctx)
+	defer span.End()
+
+	// todo ...
+	span.SetTag("key", val)
+	```
 
 
 #### **Pub-sub** Benchmark

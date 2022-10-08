@@ -1,0 +1,29 @@
+
+syntax = "proto3";
+
+package proto;
+
+service listen {
+    rpc routing(routeReq) returns (routeRes) {}
+}
+
+message routeReq {
+    // nod 目标服务节点名
+    string nod = 1;
+    // service 功能函数名
+    string service = 2;
+    string token = 3;
+    // body
+    bytes reqBody = 4;
+    // meta 元数据用于用户定制开发
+    repeated Header meta = 5;
+}
+
+message Header {
+    string key = 1;
+    string val = 2;
+}
+
+message routeRes {
+    bytes resBody = 1;
+}

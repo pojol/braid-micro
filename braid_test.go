@@ -1,109 +1,69 @@
 package braid
 
 import (
-	"fmt"
-	"sync"
 	"testing"
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/pojol/braid-go/depend"
+	"github.com/pojol/braid-go/depend/consul"
+	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/mock"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/elector"
+	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/pubsub"
-	"github.com/pojol/braid-go/modules/discoverconsul"
-	"github.com/pojol/braid-go/modules/electorconsul"
-	"github.com/pojol/braid-go/modules/linkerredis"
-	"github.com/pojol/braid-go/modules/pubsubnsq"
-	"github.com/pojol/braid-go/modules/zaplogger"
+	"github.com/pojol/braid-go/module/rpc/client"
+	"github.com/pojol/braid-go/module/rpc/server"
 )
 
 func TestMain(m *testing.M) {
 
 	mock.Init()
 	m.Run()
+
 }
 
-func TestPlugin(t *testing.T) {
+func TestInit(t *testing.T) {
 
 	b, _ := NewService(
-		"test_plugin",
+		"test_init",
 	)
 
-	b.Register(
-		Module(LoggerZap),
-		Module(PubsubNsq,
-			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	b.RegisterDepend(
+		depend.Logger(),
+		depend.Redis(redis.WithAddr(mock.RedisAddr)),
+		depend.Tracer(
+			tracer.WithHTTP(mock.JaegerAddr),
+			tracer.WithProbabilistic(1),
 		),
-		Module(linkerredis.Name, linkerredis.WithRedisAddr(mock.RedisAddr)),
-		Module(discoverconsul.Name, discoverconsul.WithConsulAddr(mock.ConsulAddr)),
-		Module(electorconsul.Name,
-			electorconsul.WithConsulAddr(mock.ConsulAddr),
-			electorconsul.WithLockTick(time.Second*2),
+		depend.Consul(
+			consul.WithAddress([]string{mock.ConsulAddr}),
+		),
+	)
+
+	b.RegisterModule(
+		module.Pubsub(
+			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+		),
+		module.Client(
+			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+		),
+		module.Server(
+			server.WithListen(":14222"),
+			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+		),
+		module.Discover(),
+		module.Elector(
+			elector.WithLockTick(3*time.Second)),
+		module.LinkCache(
+			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
 		),
 	)
 
 	b.Init()
 	b.Run()
 	defer b.Close()
-}
-
-func TestWithClient(t *testing.T) {
-	/*
-		b := New("test")
-		b.RegistModule(DiscoverByConsul(mock.ConsulAddr, discoverconsul.WithInterval(time.Second*3)),
-			BalancerBySwrr(),
-			GRPCClient(grpcclient.WithPoolCapacity(128)))
-
-		b.Run()
-		defer b.Close()
-
-		Client().Invoke(context.TODO(), "targeNodeName", "/proto.node/method", "", nil, nil)
-	*/
-}
-
-func TestMutiPubsub(t *testing.T) {
-
-	b, _ := NewService(
-		"test_plugin",
-	)
-	b.Register(
-		Module(zaplogger.Name),
-		Module(pubsubnsq.Name,
-			pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-		),
-	)
-
-	var wg sync.WaitGroup
-	done := make(chan struct{})
-
-	Pubsub().RegistTopic("TestMutiPubsub", pubsub.ScopeProc)
-
-	topic := Pubsub().GetTopic("TestMutiPubsub")
-	c1 := topic.Sub("Normal")
-
-	wg.Add(1000)
-	for i := 0; i < 1000; i++ {
-		go func() {
-			topic.Pub(&pubsub.Message{Body: []byte("msg")})
-		}()
-	}
-
-	c1.Arrived(func(msg *pubsub.Message) {
-		wg.Done()
-	})
-
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// pass
-		fmt.Println("done")
-	case <-time.After(time.Second):
-		// time out
-		fmt.Println("timeout")
-		t.FailNow()
-	}
 }

@@ -4,13 +4,12 @@ package client
 
 import (
 	"context"
-
-	"github.com/pojol/braid-go/module"
 )
 
 // IClient rpc-client interface
 type IClient interface {
-	module.IModule
+	Init() error
+	Close()
 
 	// Invoke 发起一次 rpc 调用
 	//

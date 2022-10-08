@@ -29,43 +29,106 @@
 * **Tracer** - 分布式追踪，主要用于监控微服务中程序运行的内部状态
 * **Linkcache** - 链路缓存，主要用于维护，传入用户唯一凭证（token，的调用链路，使该 token 的调用 a1->b1->c2 ... 保持不变
 
-### 模块
-> 默认提供的微服务模块，[**文档地址**](https://docs.braid-go.fun/)
-
-|**Discovery**|**Balancing**|**Elector**|**RPC**|**Pub-sub**|**Tracer**|**LinkCache**|
-|-|-|-|-|-|-|-|
-|服务发现|负载均衡|选举|RPC|发布-订阅|分布式追踪|链路缓存|
-|discoverconsul|balancerrandom|electorconsul|grpc-client|mailbox|jaegertracer|linkerredis
-||balancerswrr|electork8s|grpc-server|||
-
 ### 构建
-> 构建braid的运行环境。
 
 ```go
+	
+// 创建服务
+b, _ := NewService("braid")
 
-s := braid.NewService("gate")   // 在服务 gate 中，创建一个新的节点
-
-// 将功能模块注册到节点中
-s.Register(
-    braid.Module(braid.LoggerZap),
-    braid.Module(braid.PubsubNsq,
-        pubsubnsq.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-        pubsubnsq.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-    ),
-    braid.Module(               // Discover 模块
-        discoverconsul.Name,    // 也可以 braid.DiscoverConsul
-        discoverconsul.WithConsulAddr(consulAddr)
-    ),
+// 注册依赖
+b.RegisterDepend(
+	depend.Logger(),
+	depend.Redis(redis.WithAddr(mock.RedisAddr)),
+	depend.Tracer(
+		tracer.WithHTTP(mock.JaegerAddr),
+		tracer.WithProbabilistic(1),
+	),
+	depend.Consul(
+		consul.WithAddress([]string{mock.ConsulAddr}),
+	),
 )
 
-s.Init()    // 节点初始化
-s.Run()     // 节点运行
+// 注册模块
+b.RegisterModule(
+	module.Pubsub(
+		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
+		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
+	),
+	module.Client(
+		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+	),
+	module.Server(
+		server.WithListen(":14222"),
+		server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+	),
+	module.Discover(),
+	module.Elector(
+		elector.WithLockTick(3*time.Second)),
+	module.LinkCache(
+		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
+	),
+)
 
-defer s.Close() // 释放节点中相关的模块
+b.Init()
+b.Run()
+defer b.Close()
 
 ```
 
+### 使用
+* RPC - 
+	```go
+	// 发起一次 rpc 调用
+	err = braid.Client().Invoke(
+		ctx,
+		"目标服务名 (login",
+		"路径 (/login/guest",
+		"token (可选，当开启linkcache功能，通过这个凭证可以保证带有凭证的调用链路是一致的",
+		body,
+		res,
+	)
+	```
+* Pubsub
+	```go
+	// 订阅一个进程内的主题接收消息并处理
+	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
+	lc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */ 
+	})
+	defer lc.Close()
 
+	// 订阅一个集群中的主题
+	cc := braid.ClusterTopic("topic").Sub("name")
+	cc.Arrived(func(msg *pubsub.Message){ 
+		/* todo ... */
+	})
+	defer cc.Close()
+	```
+* Tracer
+	```go
+	// 在注册阶段将需要用到的 span 注册到 tracer
+	b.RegisterDepend(
+		depend.Tracer(
+			tracer.WithHTTP(jaegerAddr),
+			tracer.WithProbabilistic(jaegerProbabilistic),
+			tracer.WithSpanFactory(
+				tracer.TracerFactory{
+					Name:    mspan.Mongo,
+					Factory: mspan.CreateMongoSpanFactory(),
+				},
+			),
+		),
+	)
+
+	span := braid.Tracer().GetSpan(mspan.Mongo)
+
+	span.Begin(ctx)
+	defer span.End()
+
+	// todo ...
+	span.SetTag("key", val)
+	```
 
 #### **Pub-sub** Benchmark
 *  ScopeProc
