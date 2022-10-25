@@ -7,6 +7,8 @@ import (
 
 	"github.com/pojol/braid-go/depend"
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/consul"
+	"github.com/pojol/braid-go/depend/redis"
 	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
@@ -185,6 +187,18 @@ func Pubsub() pubsub.IPubsub {
 // Tracer tracing
 func Tracer() tracer.ITracer {
 	return braidGlobal.depends.Tracer
+}
+
+func Consul() *consul.Client {
+	return braidGlobal.depends.ConsulClient
+}
+
+func Redis() *redis.Client {
+	return braidGlobal.depends.RedisClient
+}
+
+func Logger() *blog.Logger {
+	return braidGlobal.depends.Logger
 }
 
 // Close 关闭braid
