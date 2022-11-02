@@ -66,6 +66,10 @@ func BuildWithOption(opts ...Option) *Client {
 		cc.httpClient.Timeout = cc.parm.timeout
 	}
 
+	if cc.parm.token != "" {
+		cc.parm.cfg.Token = cc.parm.token
+	}
+
 	// check if there are any addrs
 	var addrs []string
 

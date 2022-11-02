@@ -20,6 +20,8 @@ type Parm struct {
 
 	timeout time.Duration
 
+	token string
+
 	tlsConfig *tls.Config
 }
 
@@ -52,6 +54,12 @@ func WithAddress(address []string) Option {
 func WithTimeOut(timeout time.Duration) Option {
 	return func(c *Parm) {
 		c.timeout = timeout
+	}
+}
+
+func WithToken(token string) Option {
+	return func(c *Parm) {
+		c.token = token
 	}
 }
 
