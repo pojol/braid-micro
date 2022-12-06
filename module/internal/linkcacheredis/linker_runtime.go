@@ -85,8 +85,8 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *r
 		},
 	}
 
-	lc.ps.ClusterTopic(linkcache.TopicUnlink)
-	lc.ps.ClusterTopic(linkcache.TopicLinkNum)
+	lc.ps.ClusterTopic(name + "." + linkcache.TopicUnlink)
+	lc.ps.ClusterTopic(name + "." + linkcache.TopicLinkNum)
 
 	return lc
 }
