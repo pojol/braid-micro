@@ -42,10 +42,8 @@ type ITopic interface {
 
 	// Sub 获取topic中的channel
 	//
-	// 如果在 topic 中没有该 channel 则创建一个新的 channel 到 topic
-	//
-	// 如果在 topic 中已有同名的 channel 则获取到该 channel
-	// 这个时候如果同时有多个 sub 指向同一个 channel 则代表有多个 consumer 对该 channel 进行消费（随机获得
+	//  如果传入 同名 ChannelName 则不同的 Channel 随机到同一条 Topic 消息（竞争
+	//  如果传入 不同 ChannelName 则每个 Channel 都能获取到 Topic 发布的这一条消息（广播
 	Sub(channelName string) IChannel
 
 	//

@@ -1,6 +1,6 @@
 module github.com/pojol/braid-go
 
-go 1.17
+go 1.18
 
 require (
 	github.com/garyburd/redigo v1.6.4

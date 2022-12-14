@@ -12,6 +12,8 @@ type Parm struct {
 	Tracer tracer.ITracer
 
 	Interceptors []grpc.UnaryServerInterceptor
+
+	GracefulStop bool
 }
 
 // Option config wraps
@@ -21,6 +23,12 @@ type Option func(*Parm)
 func WithListen(address string) Option {
 	return func(c *Parm) {
 		c.ListenAddr = address
+	}
+}
+
+func WithGracefulStop() Option {
+	return func(c *Parm) {
+		c.GracefulStop = true
 	}
 }
 

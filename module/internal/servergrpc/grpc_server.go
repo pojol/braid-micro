@@ -97,5 +97,9 @@ func (s *grpcServer) Run() {
 // Close 退出处理
 func (s *grpcServer) Close() {
 	s.log.Infof("grpc-server closed")
-	s.rpc.Stop()
+	if s.parm.GracefulStop {
+		s.rpc.GracefulStop()
+	} else {
+		s.rpc.Stop()
+	}
 }
