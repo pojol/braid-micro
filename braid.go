@@ -181,24 +181,39 @@ func Server() server.IServer {
 
 // Mailbox pub-sub
 func Pubsub() pubsub.IPubsub {
-	return braidGlobal.modules.Ipubsub
+	if braidGlobal != nil {
+		return braidGlobal.modules.Ipubsub
+	}
+	return nil
 }
 
 // Tracer tracing
 func Tracer() tracer.ITracer {
-	return braidGlobal.depends.Tracer
+	if braidGlobal != nil {
+		return braidGlobal.depends.Tracer
+	}
+	return nil
 }
 
 func Consul() *consul.Client {
-	return braidGlobal.depends.ConsulClient
+	if braidGlobal != nil {
+		return braidGlobal.depends.ConsulClient
+	}
+	return nil
 }
 
 func Redis() *redis.Client {
-	return braidGlobal.depends.RedisClient
+	if braidGlobal != nil {
+		return braidGlobal.depends.RedisClient
+	}
+	return nil
 }
 
 func Logger() *blog.Logger {
-	return braidGlobal.depends.Logger
+	if braidGlobal != nil {
+		return braidGlobal.depends.Logger
+	}
+	return nil
 }
 
 // Close 关闭braid
