@@ -82,8 +82,8 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	ps.ClusterTopic(linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
-	ps.ClusterTopic(linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
+	ps.ClusterTopic("." + linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
+	ps.ClusterTopic("." + linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 

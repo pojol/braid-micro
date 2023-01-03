@@ -125,7 +125,7 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.ps.ClusterTopic(linkcache.TopicUnlink).Sub(Name + "-" + ip)
+	tokenUnlink := rl.ps.ClusterTopic(rl.serviceName + "." + linkcache.TopicUnlink).Sub(Name + "-" + ip)
 	serviceUpdate := rl.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
 	changeState := rl.ps.LocalTopic(elector.TopicChangeState).Sub(Name)
 
@@ -191,7 +191,7 @@ func (rl *redisLinker) syncLinkNum() {
 			rl.log.Warnf("%v atoi err %v", member, cnt)
 		}
 
-		rl.ps.ClusterTopic(linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
+		rl.ps.ClusterTopic(rl.serviceName + "." + linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
 	}
 }
 

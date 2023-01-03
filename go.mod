@@ -3,7 +3,6 @@ module github.com/pojol/braid-go
 go 1.18
 
 require (
-	github.com/garyburd/redigo v1.6.4
 	github.com/gogo/protobuf v1.3.2
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
