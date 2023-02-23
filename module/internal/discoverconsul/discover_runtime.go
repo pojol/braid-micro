@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pojol/braid-go/depend/bconsul"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/pubsub"
@@ -33,7 +33,7 @@ var (
 	defaultWeight = 1024
 )
 
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...discover.Option) discover.IDiscover {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *bconsul.Client, opts ...discover.Option) discover.IDiscover {
 
 	p := discover.Parm{
 		Tag:                       "braid",
@@ -89,7 +89,7 @@ type consulDiscover struct {
 	discoverTicker   *time.Ticker
 	syncWeightTicker *time.Ticker
 
-	client *consul.Client
+	client *bconsul.Client
 
 	// parm
 	parm discover.Parm

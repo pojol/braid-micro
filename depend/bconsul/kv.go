@@ -1,4 +1,4 @@
-package consul
+package bconsul
 
 import (
 	"github.com/hashicorp/consul/api"

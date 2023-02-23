@@ -7,9 +7,6 @@ import (
 
 	"github.com/pojol/braid-go/depend"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/redis"
-	"github.com/pojol/braid-go/depend/tracer"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
@@ -183,35 +180,6 @@ func Server() server.IServer {
 func Pubsub() pubsub.IPubsub {
 	if braidGlobal != nil {
 		return braidGlobal.modules.Ipubsub
-	}
-	return nil
-}
-
-// Tracer tracing
-func Tracer() tracer.ITracer {
-	if braidGlobal != nil {
-		return braidGlobal.depends.Tracer
-	}
-	return nil
-}
-
-func Consul() *consul.Client {
-	if braidGlobal != nil {
-		return braidGlobal.depends.ConsulClient
-	}
-	return nil
-}
-
-func Redis() *redis.Client {
-	if braidGlobal != nil {
-		return braidGlobal.depends.RedisClient
-	}
-	return nil
-}
-
-func Logger() *blog.Logger {
-	if braidGlobal != nil {
-		return braidGlobal.depends.Logger
 	}
 	return nil
 }

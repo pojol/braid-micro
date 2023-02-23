@@ -9,7 +9,7 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/depend/btracer"
 	"github.com/pojol/braid-go/module/rpc/server"
 	"google.golang.org/grpc"
 )
@@ -41,7 +41,7 @@ func BuildWithOption(serviceName string, log *blog.Logger, opts ...server.Option
 
 	if p.Tracer != nil {
 		s.tracer = p.Tracer.GetTracing().(opentracing.Tracer)
-		p.Interceptors = append(p.Interceptors, tracer.ServerInterceptor(s.tracer))
+		p.Interceptors = append(p.Interceptors, btracer.ServerInterceptor(s.tracer))
 	}
 
 	if len(p.Interceptors) != 0 {

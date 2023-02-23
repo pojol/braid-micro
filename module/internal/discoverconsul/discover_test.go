@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/depend/bconsul"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/internal/pubsubnsq"
@@ -26,7 +26,7 @@ func TestDiscover(t *testing.T) {
 		"base_dev",
 		log,
 		pubsubnsq.BuildWithOption("", log, pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr})),
-		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
+		bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
 		discover.WithSyncServiceInterval(time.Millisecond*100),
 		discover.WithSyncServiceWeightInterval(time.Millisecond*100),
 		discover.WithBlacklist([]string{"gate"}),

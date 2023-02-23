@@ -1,4 +1,4 @@
-package consul
+package bconsul
 
 // AgentCheck represents a check known to the agent
 type AgentCheck struct {

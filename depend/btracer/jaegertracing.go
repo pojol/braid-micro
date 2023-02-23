@@ -1,5 +1,5 @@
 // 实现文件 jaegertracing 基于 jaeger 实现的分布式追踪服务
-package tracer
+package btracer
 
 import (
 	"errors"

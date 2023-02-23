@@ -6,9 +6,10 @@ import (
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pojol/braid-go/depend"
-	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/redis"
-	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/depend/bconsul"
+	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/depend/bredis"
+	"github.com/pojol/braid-go/depend/btracer"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/elector"
@@ -32,14 +33,14 @@ func TestInit(t *testing.T) {
 	)
 
 	b.RegisterDepend(
-		depend.Logger(),
-		depend.Redis(redis.WithAddr(mock.RedisAddr)),
+		depend.Logger(blog.BuildWithOption()),
+		depend.Redis(bredis.BuildWithOption(bredis.WithAddr(mock.RedisAddr))),
 		depend.Tracer(
-			tracer.WithHTTP(mock.JaegerAddr),
-			tracer.WithProbabilistic(1),
+			btracer.WithHTTP(mock.JaegerAddr),
+			btracer.WithProbabilistic(1),
 		),
 		depend.Consul(
-			consul.WithAddress([]string{mock.ConsulAddr}),
+			bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
 		),
 	)
 

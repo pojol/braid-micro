@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
@@ -36,7 +36,7 @@ func TestLinkerTarget(t *testing.T) {
 		blog.BuildWithOption(),
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
-	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
+	redisclient := bredis.BuildWithOption(bredis.WithAddr(mock.RedisAddr))
 
 	lc := BuildWithOption(
 		LinkerRedisPrefix,
@@ -109,7 +109,7 @@ func TestLocalTarget(t *testing.T) {
 		log,
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
-	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
+	redisclient := bredis.BuildWithOption(bredis.WithAddr(mock.RedisAddr))
 
 	lc := BuildWithOption(
 		LinkerRedisPrefix,

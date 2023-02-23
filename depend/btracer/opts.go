@@ -1,4 +1,4 @@
-package tracer
+package btracer
 
 import (
 	"time"

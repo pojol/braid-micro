@@ -3,7 +3,7 @@ package client
 import (
 	"time"
 
-	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/depend/btracer"
 	"google.golang.org/grpc"
 )
 
@@ -15,7 +15,7 @@ type Parm struct {
 	PoolCapacity int
 	PoolIdle     time.Duration
 
-	Tracer tracer.ITracer
+	Tracer btracer.ITracer
 
 	Interceptors []grpc.UnaryClientInterceptor
 }
@@ -50,7 +50,7 @@ func AppendInterceptors(interceptor grpc.UnaryClientInterceptor) Option {
 	}
 }
 
-func WithTracer(t tracer.ITracer) Option {
+func WithTracer(t btracer.ITracer) Option {
 	return func(c *Parm) {
 		c.Tracer = t
 	}

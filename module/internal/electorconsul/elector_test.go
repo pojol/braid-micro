@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pojol/braid-go/depend/bconsul"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/internal/pubsubnsq"
@@ -28,7 +28,7 @@ func TestElection(t *testing.T) {
 		"TestElection",
 		log,
 		ps,
-		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
+		bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
 	)
 
 	e.Run()
@@ -46,7 +46,7 @@ func TestParm(t *testing.T) {
 		"TestElection",
 		log,
 		ps,
-		consul.BuildWithOption(consul.WithAddress([]string{mock.ConsulAddr})),
+		bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
 		elector.WithLockTick(time.Second),
 		elector.WithSessionTick(time.Second),
 	)

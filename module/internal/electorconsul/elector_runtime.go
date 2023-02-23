@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pojol/braid-go/depend/bconsul"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/pubsub"
 )
@@ -22,7 +22,7 @@ var (
 	ErrConfigConvert = errors.New("[Elector] convert config error")
 )
 
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *consul.Client, opts ...elector.Option) elector.IElector {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *bconsul.Client, opts ...elector.Option) elector.IElector {
 
 	p := elector.Parm{
 		ServiceName:       name,
@@ -65,7 +65,7 @@ type consulElection struct {
 	lockTicker   *time.Ticker
 	refushTicker *time.Ticker
 
-	client *consul.Client
+	client *bconsul.Client
 
 	sessionID string
 	locked    bool

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
@@ -54,7 +54,7 @@ var (
 )
 
 // Build build link-cache
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *redis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *bredis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
 
 	p := linkcache.Parm{
 		Mode:             linkcache.LinkerRedisModeRedis,
@@ -107,7 +107,7 @@ type redisLinker struct {
 	log          *blog.Logger
 
 	local  *localLinker
-	client *redis.Client
+	client *bredis.Client
 
 	// 从属节点
 	child []string
@@ -162,7 +162,7 @@ func (rl *redisLinker) syncLinkNum() {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	members, err := redis.ConnSMembers(conn, RelationPrefix)
+	members, err := bredis.ConnSMembers(conn, RelationPrefix)
 	if err != nil {
 		return
 	}
@@ -180,7 +180,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		cnt, err := redis.ConnGet(conn, member)
+		cnt, err := bredis.ConnGet(conn, member)
 		if err != nil {
 			rl.log.Warnf("%v redis cmd err %v", Name, err.Error())
 			continue
@@ -199,7 +199,7 @@ func (rl *redisLinker) syncRelation() {
 	conn := rl.getConn()
 	defer conn.Close()
 
-	members, err := redis.ConnSMembers(conn, RelationPrefix)
+	members, err := bredis.ConnSMembers(conn, RelationPrefix)
 	if err != nil {
 		return
 	}
@@ -249,7 +249,7 @@ func (rl *redisLinker) syncOffline() {
 		return
 	}
 
-	members, err := redis.ConnSMembers(conn, RelationPrefix)
+	members, err := bredis.ConnSMembers(conn, RelationPrefix)
 	if err != nil {
 		rl.log.Warnf("smembers %v err %v", RelationPrefix, err.Error())
 		return

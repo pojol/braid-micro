@@ -1,4 +1,4 @@
-package consul
+package bconsul
 
 import (
 	"crypto/tls"
