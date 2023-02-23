@@ -17,6 +17,7 @@ import (
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestMain(m *testing.M) {
@@ -34,7 +35,7 @@ func TestInit(t *testing.T) {
 
 	b.RegisterDepend(
 		depend.Logger(blog.BuildWithOption()),
-		depend.Redis(bredis.BuildWithOption(bredis.WithAddr(mock.RedisAddr))),
+		depend.Redis(bredis.BuildWithOption(&redis.Options{Addr: mock.RedisAddr})),
 		depend.Tracer(
 			btracer.WithHTTP(mock.JaegerAddr),
 			btracer.WithProbabilistic(1),

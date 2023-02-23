@@ -1,6 +1,7 @@
 package linkcacheredis
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -10,13 +11,13 @@ import (
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/internal/utils"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -54,7 +55,7 @@ var (
 )
 
 // Build build link-cache
-func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *bredis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
+func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *redis.Client, opts ...linkcache.Option) linkcache.ILinkCache {
 
 	p := linkcache.Parm{
 		Mode:             linkcache.LinkerRedisModeRedis,
@@ -107,7 +108,7 @@ type redisLinker struct {
 	log          *blog.Logger
 
 	local  *localLinker
-	client *bredis.Client
+	client *redis.Client
 
 	// 从属节点
 	child []string
@@ -162,11 +163,9 @@ func (rl *redisLinker) Init() error {
 	return nil
 }
 
-func (rl *redisLinker) syncLinkNum() {
-	conn := rl.getConn()
-	defer conn.Close()
+func (rl *redisLinker) syncLinkNum(ctx context.Context) {
 
-	members, err := bredis.ConnSMembers(conn, RelationPrefix)
+	members, err := rl.client.SMembers(ctx, RelationPrefix).Result()
 	if err != nil {
 		return
 	}
@@ -184,7 +183,7 @@ func (rl *redisLinker) syncLinkNum() {
 			continue
 		}
 
-		cnt, err := bredis.ConnGet(conn, member)
+		cnt, err := rl.client.Get(ctx, member).Result()
 		if err != nil {
 			rl.log.Warnf("%v redis cmd err %v", Name, err.Error())
 			continue
@@ -199,11 +198,9 @@ func (rl *redisLinker) syncLinkNum() {
 	}
 }
 
-func (rl *redisLinker) syncRelation() {
-	conn := rl.getConn()
-	defer conn.Close()
+func (rl *redisLinker) syncRelation(ctx context.Context) {
 
-	members, err := bredis.ConnSMembers(conn, RelationPrefix)
+	members, err := rl.client.SMembers(ctx, RelationPrefix).Result()
 	if err != nil {
 		return
 	}
@@ -245,15 +242,13 @@ func (rl *redisLinker) rmvOfflineService(service service.Node) {
 	rl.Unlock()
 }
 
-func (rl *redisLinker) syncOffline() {
-	conn := rl.getConn()
-	defer conn.Close()
+func (rl *redisLinker) syncOffline(ctx context.Context) {
 
 	if rl.parm.Mode != linkcache.LinkerRedisModeLocal && atomic.LoadInt32(&rl.electorState) != elector.EMaster {
 		return
 	}
 
-	members, err := bredis.ConnSMembers(conn, RelationPrefix)
+	members, err := rl.client.SMembers(ctx, RelationPrefix).Result()
 	if err != nil {
 		rl.log.Warnf("smembers %v err %v", RelationPrefix, err.Error())
 		return
@@ -322,12 +317,12 @@ func (rl *redisLinker) Run() {
 		}()
 	*/
 
-	rl.syncRelation()
+	rl.syncRelation(context.TODO())
 	go func() {
 		tick := time.NewTicker(time.Second * time.Duration(rl.parm.SyncRelationTick))
 		for {
 			<-tick.C
-			rl.syncRelation()
+			rl.syncRelation(context.TODO())
 		}
 	}()
 
@@ -335,7 +330,7 @@ func (rl *redisLinker) Run() {
 		tick := time.NewTicker(time.Second * time.Duration(rl.parm.SyncOfflineTick))
 		for {
 			<-tick.C
-			rl.syncOffline()
+			rl.syncOffline(context.TODO())
 		}
 	}()
 }

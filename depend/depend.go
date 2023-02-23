@@ -3,15 +3,15 @@ package depend
 import (
 	"github.com/pojol/braid-go/depend/bconsul"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/depend/btracer"
+	"github.com/redis/go-redis/v9"
 )
 
 type BraidDepend struct {
 	Tracer       btracer.ITracer
 	ConsulClient *bconsul.Client
 	Logger       *blog.Logger
-	RedisClient  *bredis.Client
+	RedisClient  *redis.Client
 }
 
 type Depend func(*BraidDepend)
@@ -22,7 +22,7 @@ func Logger(log *blog.Logger) Depend {
 	}
 }
 
-func Redis(client *bredis.Client) Depend {
+func Redis(client *redis.Client) Depend {
 	return func(d *BraidDepend) {
 		d.RedisClient = client
 	}
