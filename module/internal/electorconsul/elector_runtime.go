@@ -49,6 +49,10 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *b
 	return e
 }
 
+func (e *consulElection) Name() string {
+	return Name
+}
+
 func (e *consulElection) Init() error {
 
 	sid, err := e.client.CreateSession(e.parm.ServiceName + "_lead")

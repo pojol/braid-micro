@@ -11,9 +11,9 @@ import (
 	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/depend/btracer"
 	"github.com/pojol/braid-go/mock"
-	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/elector"
 	"github.com/pojol/braid-go/module/linkcache"
+	"github.com/pojol/braid-go/module/modules"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
@@ -45,21 +45,21 @@ func TestInit(t *testing.T) {
 	)
 
 	b.RegisterModule(
-		module.Pubsub(
+		modules.Pubsub(
 			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
 			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 		),
-		module.Client(
+		modules.Client(
 			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
 		),
-		module.Server(
+		modules.Server(
 			server.WithListen(":14222"),
 			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
 		),
-		module.Discover(),
-		module.Elector(
+		modules.Discover(),
+		modules.Elector(
 			elector.WithLockTick(3*time.Second)),
-		module.LinkCache(
+		modules.LinkCache(
 			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
 		),
 	)

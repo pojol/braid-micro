@@ -63,6 +63,10 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *b
 	return e
 }
 
+func (dc *consulDiscover) Name() string {
+	return Name
+}
+
 func (dc *consulDiscover) Init() error {
 	/*
 		ip, err := utils.GetLocalIP()

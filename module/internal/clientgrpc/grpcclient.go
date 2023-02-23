@@ -135,6 +135,10 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 	}
 }
 
+func (c *grpcClient) Name() string {
+	return Name
+}
+
 func (c *grpcClient) Init() error {
 	var err error
 
@@ -276,6 +280,10 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	}
 
 	return err
+}
+
+func (c *grpcClient) Run() {
+
 }
 
 func (c *grpcClient) Close() {

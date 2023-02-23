@@ -65,6 +65,10 @@ type grpcServer struct {
 	tracer opentracing.Tracer
 }
 
+func (s *grpcServer) Name() string {
+	return Name
+}
+
 func (s *grpcServer) Init() error {
 
 	rpcListen, err := net.Listen("tcp", s.parm.ListenAddr)
@@ -92,6 +96,7 @@ func (s *grpcServer) Run() {
 			s.log.Errf("[GRPC] server serving err %s", err.Error())
 		}
 	}()
+
 }
 
 // Close 退出处理

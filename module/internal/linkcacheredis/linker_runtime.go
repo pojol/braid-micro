@@ -117,6 +117,10 @@ type redisLinker struct {
 	sync.RWMutex
 }
 
+func (rl *redisLinker) Name() string {
+	return Name
+}
+
 func (rl *redisLinker) Init() error {
 	var err error
 

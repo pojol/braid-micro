@@ -3,6 +3,7 @@ package elector
 import (
 	"encoding/json"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
 )
 
@@ -44,7 +45,5 @@ func DecodeStateChangeMsg(msg *pubsub.Message) StateChangeMsg {
 
 // IElector election interface
 type IElector interface {
-	Init() error
-	Run()
-	Close()
+	module.IModule
 }
