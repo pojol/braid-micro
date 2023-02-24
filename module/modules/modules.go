@@ -97,7 +97,7 @@ func Elector(opts ...elector.Option) Module {
 	}
 }
 
-func Pubsub(opts ...pubsub.Option) Module {
+func Pubsub(opts ...pubsub.NsqOption) Module {
 	return func(c *BraidModule) {
 		c.Ipubsub = pubsubnsq.BuildWithOption(
 			c.ServiceName,

@@ -10,13 +10,14 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"github.com/pojol/braid-go/depend/blog"
+	"github.com/pojol/braid-go/module/internal/unboundedmsg"
 	"github.com/pojol/braid-go/module/pubsub"
 )
 
 type pubsubChannel struct {
 	sync.RWMutex
 
-	msgCh *UnboundedMsg
+	msgCh *unboundedmsg.UnboundedMsg
 
 	ps       *pubsubTopic
 	log      *blog.Logger
@@ -48,7 +49,7 @@ func newChannel(topicName, channelName string, ty pubsub.ScopeTy, log *blog.Logg
 		scope: ty,
 		ps:    n,
 		log:   log,
-		msgCh: NewUnbounded(),
+		msgCh: unboundedmsg.NewUnbounded(),
 	}
 
 	if ty == pubsub.Cluster {

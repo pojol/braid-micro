@@ -16,9 +16,9 @@ const (
 	Name = "PubsubNsq"
 )
 
-func BuildWithOption(name string, log *blog.Logger, opts ...pubsub.Option) pubsub.IPubsub {
+func BuildWithOption(name string, log *blog.Logger, opts ...pubsub.NsqOption) pubsub.IPubsub {
 
-	p := pubsub.Parm{
+	p := pubsub.NsqParm{
 		ServiceName:       name,
 		NsqLogLv:          nsq.LogLevelWarning,
 		ConcurrentHandler: 1,
@@ -43,7 +43,7 @@ func BuildWithOption(name string, log *blog.Logger, opts ...pubsub.Option) pubsu
 }
 
 type nsqPubsub struct {
-	parm pubsub.Parm
+	parm pubsub.NsqParm
 
 	sync.RWMutex
 

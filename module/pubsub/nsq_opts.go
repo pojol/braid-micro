@@ -3,7 +3,7 @@ package pubsub
 import "github.com/nsqio/go-nsq"
 
 // Parm nsq config
-type Parm struct {
+type NsqParm struct {
 	nsqCfg nsq.Config
 
 	LookupdAddress  []string // lookupd 地址
@@ -22,53 +22,39 @@ type Parm struct {
 }
 
 var (
-	DefaultConfig = Parm{
+	DefaultConfig = NsqParm{
 		NsqLogLv:          nsq.LogLevelInfo,
 		ConcurrentHandler: 1,
 	}
 )
 
-func NewWithOption(opts ...Option) *Parm {
-	logParm := &DefaultConfig
-
-	for _, opt := range opts {
-		opt(logParm)
-	}
-
-	return logParm
-}
-
-func NewWithDefault() *Parm {
-	return &DefaultConfig
-}
-
 // Option config wraps
-type Option func(*Parm)
+type NsqOption func(*NsqParm)
 
 // WithChannel 通过 channel 构建
-func WithChannelSize(channelsize int32) Option {
-	return func(c *Parm) {
+func WithChannelSize(channelsize int32) NsqOption {
+	return func(c *NsqParm) {
 		c.ChannelLength = channelsize
 	}
 }
 
 // WithNsqConfig nsq config
-func WithNsqConfig(cfg nsq.Config) Option {
-	return func(c *Parm) {
+func WithNsqConfig(cfg nsq.Config) NsqOption {
+	return func(c *NsqParm) {
 		c.nsqCfg = cfg
 	}
 }
 
 // WithLookupAddr lookup addr
-func WithLookupAddr(addr []string) Option {
-	return func(c *Parm) {
+func WithLookupAddr(addr []string) NsqOption {
+	return func(c *NsqParm) {
 		c.LookupdAddress = addr
 	}
 }
 
 // WithNsqdAddr nsqd addr
-func WithNsqdAddr(tcpAddr []string, httpAddr []string) Option {
-	return func(c *Parm) {
+func WithNsqdAddr(tcpAddr []string, httpAddr []string) NsqOption {
+	return func(c *NsqParm) {
 		if len(tcpAddr) != len(httpAddr) {
 			panic("The addresses of tcp and http should match")
 		}
@@ -79,15 +65,15 @@ func WithNsqdAddr(tcpAddr []string, httpAddr []string) Option {
 }
 
 // WithNsqLogLv 修改nsq的日志等级
-func WithNsqLogLv(lv nsq.LogLevel) Option {
-	return func(c *Parm) {
+func WithNsqLogLv(lv nsq.LogLevel) NsqOption {
+	return func(c *NsqParm) {
 		c.NsqLogLv = lv
 	}
 }
 
 // WithHandlerConcurrent 消费者接收句柄的并发数量（默认1
-func WithHandlerConcurrent(cnt int32) Option {
-	return func(c *Parm) {
+func WithHandlerConcurrent(cnt int32) NsqOption {
+	return func(c *NsqParm) {
 		c.ConcurrentHandler = cnt
 	}
 }
