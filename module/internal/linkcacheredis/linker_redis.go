@@ -2,23 +2,17 @@
 package linkcacheredis
 
 import (
+	"context"
 	"encoding/json"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/pojol/braid-go/service"
 )
 
-func (rl *redisLinker) getConn() redis.Conn {
-	return rl.client.Conn()
-}
-
-func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName string) (target *linkInfo, err error) {
+func (rl *redisLinker) findToken(token string, serviceName string) (target *linkInfo, err error) {
 
 	info := linkInfo{}
 
-	byt, err := redis.Bytes(conn.Do("HGET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+serviceName,
-		token),
-	)
+	byt, err := rl.client.HGet(context.TODO(), RoutePrefix+splitFlag+rl.serviceName+splitFlag+serviceName, token).Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -33,10 +27,7 @@ func (rl *redisLinker) findToken(conn redis.Conn, token string, serviceName stri
 
 func (rl *redisLinker) redisTarget(token string, serviceName string) (target string, err error) {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
-	info, err := rl.findToken(conn, token, serviceName)
+	info, err := rl.findToken(token, serviceName)
 	if err != nil {
 		return "", err
 	}
@@ -46,10 +37,7 @@ func (rl *redisLinker) redisTarget(token string, serviceName string) (target str
 
 func (rl *redisLinker) redisLink(token string, target service.Node) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
-	var cnt int
+	var cnt uint64
 	var err error
 
 	info := linkInfo{
@@ -60,17 +48,11 @@ func (rl *redisLinker) redisLink(token string, target service.Node) error {
 
 	byt, _ := json.Marshal(&info)
 
-	cnt, err = redis.Int(conn.Do("HSET", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name,
-		token,
-		byt,
-	))
-
+	cnt, err = rl.client.HSet(context.TODO(), RoutePrefix+splitFlag+rl.serviceName+splitFlag+target.Name, token, byt).Uint64()
 	if err == nil && cnt != 0 {
-
 		relationKey := rl.getLinkNumKey(target.Name, target.ID)
-		conn.Do("SADD", RelationPrefix, relationKey)
-		conn.Do("INCR", relationKey)
-
+		rl.client.SAdd(context.TODO(), RelationPrefix, relationKey)
+		rl.client.Incr(context.TODO(), relationKey)
 	}
 
 	//l.logger.Debugf("linked parent %s, target %s, token %s", l.serviceName, cia, token)
@@ -79,23 +61,18 @@ func (rl *redisLinker) redisLink(token string, target service.Node) error {
 
 func (rl *redisLinker) redisUnlink(token string, target string) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
-	var cnt int
+	var cnt uint64
 	var err error
 	var info *linkInfo
 
-	info, err = rl.findToken(conn, token, target)
+	info, err = rl.findToken(token, target)
 	if err != nil {
 		return nil
 	}
 
-	cnt, err = redis.Int(conn.Do("HDEL", RoutePrefix+splitFlag+rl.serviceName+splitFlag+target,
-		token))
-
+	cnt, err = rl.client.HDel(context.TODO(), RoutePrefix+splitFlag+rl.serviceName+splitFlag+target, token).Uint64()
 	if err == nil && cnt == 1 {
-		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
+		rl.client.Decr(context.TODO(), rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
 	return nil
@@ -104,31 +81,27 @@ func (rl *redisLinker) redisUnlink(token string, target string) error {
 // todo
 func (rl *redisLinker) redisDown(target service.Node) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
 	var info *linkInfo
-	var cnt int64
+	var cnt uint64
 
 	routekey := RoutePrefix + splitFlag + rl.serviceName + splitFlag + target.Name
+	ctx := context.TODO()
 
-	tokenMap, err := redis.StringMap(conn.Do("HGETALL", routekey))
+	tokenMap, err := rl.client.HGetAll(ctx, routekey).Result()
 	if err != nil {
 		return err
 	}
 
 	for key := range tokenMap {
 
-		info, err = rl.findToken(conn, key, target.Name)
+		info, err = rl.findToken(key, target.Name)
 		if err != nil {
 			rl.log.Debugf("redis down find token err %v", err.Error())
 			continue
 		}
 
 		if info.TargetID == target.ID {
-			rmcnt, _ := redis.Int64(conn.Do("HDEL", routekey,
-				key))
-
+			rmcnt, _ := rl.client.HDel(ctx, routekey, key).Uint64()
 			cnt += rmcnt
 		}
 
@@ -137,8 +110,8 @@ func (rl *redisLinker) redisDown(target service.Node) error {
 	rl.log.Debugf("redis down route del cnt:%v, total:%v, key:%v", cnt, len(tokenMap), routekey)
 
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
-	conn.Do("SREM", RelationPrefix, relationKey)
-	conn.Do("DEL", relationKey)
+	rl.client.SRem(ctx, RelationPrefix, relationKey)
+	rl.client.Del(ctx, relationKey)
 
 	return nil
 }

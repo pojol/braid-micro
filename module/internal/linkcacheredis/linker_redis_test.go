@@ -1,12 +1,13 @@
 package linkcacheredis
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/redis"
+	"github.com/pojol/braid-go/depend/bredis"
 	"github.com/pojol/braid-go/mock"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/elector"
@@ -14,6 +15,7 @@ import (
 	"github.com/pojol/braid-go/module/linkcache"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -36,7 +38,9 @@ func TestLinkerTarget(t *testing.T) {
 		blog.BuildWithOption(),
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
-	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
+	redisclient := bredis.BuildWithOption(&redis.Options{
+		Addr: mock.RedisAddr,
+	})
 
 	lc := BuildWithOption(
 		LinkerRedisPrefix,
@@ -45,7 +49,7 @@ func TestLinkerTarget(t *testing.T) {
 		redisclient,
 	)
 
-	redisclient.Del(LinkerRedisPrefix + "*")
+	redisclient.Del(context.TODO(), LinkerRedisPrefix+"*")
 
 	lc.Init()
 	lc.Run()
@@ -109,7 +113,7 @@ func TestLocalTarget(t *testing.T) {
 		log,
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
-	redisclient := redis.BuildWithOption(redis.WithAddr(mock.RedisAddr))
+	redisclient := bredis.BuildWithOption(&redis.Options{Addr: mock.RedisAddr})
 
 	lc := BuildWithOption(
 		LinkerRedisPrefix,
@@ -119,7 +123,7 @@ func TestLocalTarget(t *testing.T) {
 		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
 	)
 
-	redisclient.Del(LinkerRedisPrefix + "*")
+	redisclient.Del(context.TODO(), LinkerRedisPrefix+"*")
 
 	lc.Init()
 	lc.Run()

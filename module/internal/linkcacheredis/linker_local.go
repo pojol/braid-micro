@@ -1,6 +1,7 @@
 package linkcacheredis
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pojol/braid-go/service"
@@ -95,32 +96,26 @@ func (rl *redisLinker) localTarget(token string, serviceName string) (string, er
 
 func (rl *redisLinker) localLink(token string, target service.Node) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
 	rl.local.link(token, target)
 
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	if !rl.local.isRelationMember(relationKey) {
 		rl.local.addRelation(relationKey)
 
-		conn.Do("SADD", RelationPrefix, relationKey)
+		rl.client.SAdd(context.TODO(), RelationPrefix, relationKey)
 	}
 
-	conn.Do("INCR", rl.getLinkNumKey(target.Name, target.ID))
+	rl.client.Incr(context.TODO(), rl.getLinkNumKey(target.Name, target.ID))
 
 	return nil
 }
 
 func (rl *redisLinker) localUnlink(token string, target string) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
 	info := rl.local.unlink(token, target)
 
 	if info.TargetID != "" {
-		conn.Do("DECR", rl.getLinkNumKey(info.TargetName, info.TargetID))
+		rl.client.Decr(context.TODO(), rl.getLinkNumKey(info.TargetName, info.TargetID))
 	}
 
 	return nil
@@ -128,16 +123,13 @@ func (rl *redisLinker) localUnlink(token string, target string) error {
 
 func (rl *redisLinker) localDown(target service.Node) error {
 
-	conn := rl.getConn()
-	defer conn.Close()
-
 	rl.local.down(target)
 
 	relationKey := rl.getLinkNumKey(target.Name, target.ID)
 	rl.local.rmvRelation(relationKey)
 
-	conn.Do("SREM", RelationPrefix, relationKey)
-	conn.Do("DEL", rl.getLinkNumKey(target.Name, target.ID))
+	rl.client.SRem(context.TODO(), RelationPrefix, relationKey)
+	rl.client.Del(context.TODO(), rl.getLinkNumKey(target.Name, target.ID))
 
 	return nil
 }

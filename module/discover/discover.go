@@ -3,6 +3,7 @@ package discover
 import (
 	"encoding/json"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
@@ -46,7 +47,5 @@ const (
 
 // IDiscover discover interface
 type IDiscover interface {
-	Init() error
-	Run()
-	Close()
+	module.IModule
 }

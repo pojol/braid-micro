@@ -3,14 +3,10 @@ package braid
 import (
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/pojol/braid-go/depend"
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/consul"
-	"github.com/pojol/braid-go/depend/redis"
-	"github.com/pojol/braid-go/depend/tracer"
-	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/modules"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/module/rpc/client"
 	"github.com/pojol/braid-go/module/rpc/server"
@@ -41,12 +37,10 @@ type Braid struct {
 	name string
 
 	// modules
-	modules *module.BraidModule
+	mods *modules.BraidModule
 
 	// depend
 	depends *depend.BraidDepend
-
-	rw sync.RWMutex
 }
 
 var (
@@ -79,18 +73,18 @@ func (b *Braid) RegisterDepend(depends ...depend.Depend) error {
 	return nil
 }
 
-func (b *Braid) RegisterModule(modules ...module.Module) error {
+func (b *Braid) RegisterModule(mods ...modules.Module) error {
 
-	p := &module.BraidModule{
+	p := &modules.BraidModule{
 		ServiceName: b.name,
 		Depends:     b.depends,
 	}
 
-	for _, opt := range modules {
+	for _, opt := range mods {
 		opt(p)
 	}
 
-	b.modules = p
+	b.mods = p
 
 	return nil
 }
@@ -99,42 +93,10 @@ func (b *Braid) RegisterModule(modules ...module.Module) error {
 func (b *Braid) Init() error {
 	var err error
 
-	if b.modules.Iclient != nil {
-		err = b.modules.Iclient.Init()
+	for _, mod := range b.mods.Mods() {
+		err = mod.Init()
 		if err != nil {
-			b.depends.Logger.Errf("braid init client err %v", err.Error())
-			return err
-		}
-	}
-
-	if b.modules.Iserver != nil {
-		err = b.modules.Iserver.Init()
-		if err != nil {
-			b.depends.Logger.Errf("braid init server err %v", err.Error())
-			return err
-		}
-	}
-
-	if b.modules.Idiscover != nil {
-		err = b.modules.Idiscover.Init()
-		if err != nil {
-			b.depends.Logger.Errf("braid init discover err %v", err.Error())
-			return err
-		}
-	}
-
-	if b.modules.Ielector != nil {
-		err = b.modules.Ielector.Init()
-		if err != nil {
-			b.depends.Logger.Errf("braid init elector err %v", err.Error())
-			return err
-		}
-	}
-
-	if b.modules.Ilinkcache != nil {
-		err = b.modules.Ilinkcache.Init()
-		if err != nil {
-			b.depends.Logger.Errf("braid init linkcache err %v", err.Error())
+			b.depends.Logger.Errf("braid init %v err %v", mod.Name(), err.Error())
 			return err
 		}
 	}
@@ -146,35 +108,23 @@ func (b *Braid) Init() error {
 func (b *Braid) Run() {
 	fmt.Printf(banner, Version)
 
-	if b.modules.Iserver != nil {
-		b.modules.Iserver.Run()
-	}
-
-	if b.modules.Idiscover != nil {
-		b.modules.Idiscover.Run()
-	}
-
-	if b.modules.Ielector != nil {
-		b.modules.Ielector.Run()
-	}
-
-	if b.modules.Ilinkcache != nil {
-		b.modules.Ilinkcache.Run()
+	for _, mod := range b.mods.Mods() {
+		mod.Run()
 	}
 
 }
 
 // GetClient get client interface
 func Client() client.IClient {
-	if braidGlobal != nil && braidGlobal.modules.Iclient != nil {
-		return braidGlobal.modules.Iclient
+	if braidGlobal != nil && braidGlobal.mods.IClient != nil {
+		return braidGlobal.mods.IClient
 	}
 	return nil
 }
 
 func Server() server.IServer {
-	if braidGlobal != nil && braidGlobal.modules.Iserver != nil {
-		return braidGlobal.modules.Iserver
+	if braidGlobal != nil && braidGlobal.mods.IServer != nil {
+		return braidGlobal.mods.IServer
 	}
 	return nil
 }
@@ -182,36 +132,7 @@ func Server() server.IServer {
 // Mailbox pub-sub
 func Pubsub() pubsub.IPubsub {
 	if braidGlobal != nil {
-		return braidGlobal.modules.Ipubsub
-	}
-	return nil
-}
-
-// Tracer tracing
-func Tracer() tracer.ITracer {
-	if braidGlobal != nil {
-		return braidGlobal.depends.Tracer
-	}
-	return nil
-}
-
-func Consul() *consul.Client {
-	if braidGlobal != nil {
-		return braidGlobal.depends.ConsulClient
-	}
-	return nil
-}
-
-func Redis() *redis.Client {
-	if braidGlobal != nil {
-		return braidGlobal.depends.RedisClient
-	}
-	return nil
-}
-
-func Logger() *blog.Logger {
-	if braidGlobal != nil {
-		return braidGlobal.depends.Logger
+		return braidGlobal.mods.Ipubsub
 	}
 	return nil
 }
@@ -219,24 +140,8 @@ func Logger() *blog.Logger {
 // Close 关闭braid
 func (b *Braid) Close() {
 
-	if b.modules.Iclient != nil {
-		b.modules.Iclient.Close()
-	}
-
-	if b.modules.Iserver != nil {
-		b.modules.Iserver.Close()
-	}
-
-	if b.modules.Idiscover != nil {
-		b.modules.Idiscover.Close()
-	}
-
-	if b.modules.Ielector != nil {
-		b.modules.Ielector.Close()
-	}
-
-	if b.modules.Ilinkcache != nil {
-		b.modules.Ilinkcache.Close()
+	for _, mod := range b.mods.Mods() {
+		mod.Close()
 	}
 
 }

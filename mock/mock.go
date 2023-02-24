@@ -39,7 +39,7 @@ func Init() {
 	// 构造测试环境
 	RedisAddr = os.Getenv(mockRedisEnv)
 	if RedisAddr == "" {
-		RedisAddr = "redis://127.0.0.1:6379/0"
+		RedisAddr = "127.0.0.1:6379"
 	}
 
 	// 构造测试环境

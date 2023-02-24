@@ -12,7 +12,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/tracer"
+	"github.com/pojol/braid-go/depend/btracer"
 	"github.com/pojol/braid-go/module/discover"
 	"github.com/pojol/braid-go/module/internal/balancer"
 	"github.com/pojol/braid-go/module/linkcache"
@@ -92,7 +92,7 @@ func (c *grpcClient) newconn(addr string) (*grpc.ClientConn, error) {
 	var err error
 
 	if c.tracer != nil {
-		c.parm.Interceptors = append(c.parm.Interceptors, tracer.ClientInterceptor(c.tracer))
+		c.parm.Interceptors = append(c.parm.Interceptors, btracer.ClientInterceptor(c.tracer))
 	}
 
 	if len(c.parm.Interceptors) > 0 {
@@ -133,6 +133,10 @@ func (c *grpcClient) closeconn(conn *grpc.ClientConn) error {
 		c.log.Infof("[Client] close connect addr : %v err : %v", conn.Target(), err)
 		return err
 	}
+}
+
+func (c *grpcClient) Name() string {
+	return Name
 }
 
 func (c *grpcClient) Init() error {
@@ -276,6 +280,10 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	}
 
 	return err
+}
+
+func (c *grpcClient) Run() {
+
 }
 
 func (c *grpcClient) Close() {

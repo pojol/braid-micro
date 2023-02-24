@@ -8,6 +8,7 @@ package linkcache
 import (
 	"encoding/json"
 
+	"github.com/pojol/braid-go/module"
 	"github.com/pojol/braid-go/module/pubsub"
 	"github.com/pojol/braid-go/service"
 )
@@ -56,9 +57,7 @@ func DecodeNumMsg(msg *pubsub.Message) LinkNumMsg {
 //  |    +-----------+  |
 //  +-------------------+
 type ILinkCache interface {
-	Init() error
-	Run()
-	Close()
+	module.IModule
 
 	// Target 通过服务名，获取 token 指向的目标服务器地址信息
 	Target(token string, serviceName string) (targetAddr string, err error)
