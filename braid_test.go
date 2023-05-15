@@ -33,13 +33,15 @@ func TestInit(t *testing.T) {
 		"test_init",
 	)
 
+	trc := btracer.BuildWithOption(
+		btracer.WithHTTP(mock.JaegerAddr),
+		btracer.WithProbabilistic(1),
+	)
+
 	b.RegisterDepend(
 		depend.Logger(blog.BuildWithOption()),
 		depend.Redis(bredis.BuildWithOption(&redis.Options{Addr: mock.RedisAddr})),
-		depend.Tracer(
-			btracer.WithHTTP(mock.JaegerAddr),
-			btracer.WithProbabilistic(1),
-		),
+		depend.Tracer(trc),
 		depend.Consul(
 			bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
 		),
@@ -52,6 +54,7 @@ func TestInit(t *testing.T) {
 		),
 		modules.Client(
 			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+			client.WithTracer(trc),
 		),
 		modules.Server(
 			server.WithListen(":14222"),

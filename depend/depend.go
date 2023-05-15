@@ -28,9 +28,9 @@ func Redis(client *redis.Client) Depend {
 	}
 }
 
-func Tracer(opts ...btracer.Option) Depend {
+func Tracer(t btracer.ITracer) Depend {
 	return func(d *BraidDepend) {
-		d.Tracer = btracer.BuildWithOption(opts...)
+		d.Tracer = t
 	}
 }
 
