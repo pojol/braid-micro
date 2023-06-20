@@ -15,10 +15,10 @@ import (
 
 const (
 	// 当前节点连接数事件
-	TopicLinkNum = "linkcache.cluster.serviceLinkNum"
+	TopicLinkNum = "linkcache.serviceLinkNum"
 
 	// token 离线事件
-	TopicUnlink = "linkcache.cluster.tokenUnlink"
+	TopicUnlink = "linkcache.tokenUnlink"
 )
 
 // LinkNumMsg msg struct

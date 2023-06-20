@@ -145,7 +145,7 @@ func (c *grpcClient) Init() error {
 	c.b.Init() // 初始化自身的负载均衡器
 	defer c.b.Run()
 
-	serviceUpdate := c.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
+	serviceUpdate := c.ps.Topic(discover.TopicServiceUpdate).Sub(context.TODO(), Name)
 	serviceUpdate.Arrived(func(msg *pubsub.Message) {
 		dmsg := discover.DecodeUpdateMsg(msg)
 		if dmsg.Event == discover.EventAddService {

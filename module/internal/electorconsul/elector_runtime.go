@@ -2,6 +2,7 @@
 package electorconsul
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -44,7 +45,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *b
 		panic(errors.New("[Elector] need depend consul client"))
 	}
 
-	e.ps.LocalTopic(elector.TopicChangeState)
+	e.ps.Topic(elector.TopicChangeState)
 
 	return e
 }
@@ -57,10 +58,12 @@ func (e *consulElection) Init() error {
 
 	sid, err := e.client.CreateSession(e.parm.ServiceName + "_lead")
 	if err != nil {
+		e.log.Warnf("[Elector] %v Dependency check error %v", e.parm.ServiceName, err.Error())
 		return fmt.Errorf("[Elector] %v Dependency check error %v", e.parm.ServiceName, "consul")
 	}
 
 	e.sessionID = sid
+	e.log.Infof("[Eleactor] create session succ id:%v\n", sid)
 
 	return nil
 }
@@ -89,13 +92,16 @@ func (e *consulElection) watch() {
 		}()
 
 		if !e.locked {
-			succ, _ := e.client.AcquireLock(e.parm.ServiceName, e.sessionID)
+			succ, err := e.client.AcquireLock(e.parm.ServiceName, e.sessionID)
+			if err != nil {
+				e.log.Warnf("[Elector] acquire lock service %s err %v", e.parm.ServiceName, err.Error())
+			}
 			if succ {
 				e.locked = true
-				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+				e.ps.Topic(elector.TopicChangeState).Pub(context.TODO(), elector.EncodeStateChangeMsg(elector.EMaster))
 				e.log.Infof("[Elector] acquire lock service %s, id %s", e.parm.ServiceName, e.sessionID)
 			} else {
-				e.ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.ESlave))
+				e.ps.Topic(elector.TopicChangeState).Pub(context.TODO(), elector.EncodeStateChangeMsg(elector.ESlave))
 			}
 		}
 	}

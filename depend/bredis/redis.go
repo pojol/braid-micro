@@ -1,6 +1,7 @@
 package bredis
 
 import (
+	"context"
 	"errors"
 
 	"github.com/redis/go-redis/v9"
@@ -16,14 +17,22 @@ var (
 )
 
 func BuildWithOption(opt *redis.Options) *redis.Client {
-	client = redis.NewClient(opt)
-
-	return client
+	return _newRedisClient(opt)
 }
 
 // InitWithDefault 基于默认配置进行初始化
 func BuildWithDefault() *redis.Client {
-	client = redis.NewClient(defaultConnPoolConfig)
+	return _newRedisClient(defaultConnPoolConfig)
+}
+
+func _newRedisClient(opt *redis.Options) *redis.Client {
+
+	client = redis.NewClient(opt)
+
+	_, err := client.Ping(context.TODO()).Result()
+	if err != nil {
+		panic(err)
+	}
 
 	return client
 }

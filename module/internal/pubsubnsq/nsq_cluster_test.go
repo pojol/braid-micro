@@ -1,6 +1,7 @@
 package pubsubnsq
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -32,9 +33,9 @@ func TestClusterBroadcast(t *testing.T) {
 		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
 	)
 
-	topic := mb.ClusterTopic("test.clusterBroadcast")
-	channel1 := topic.Sub("Normal_1")
-	channel2 := topic.Sub("Normal_2")
+	topic := mb.Topic("test.clusterBroadcast")
+	channel1 := topic.Sub(context.TODO(), "Normal_1")
+	channel2 := topic.Sub(context.TODO(), "Normal_2")
 
 	msgcnt := 10000
 
@@ -58,7 +59,7 @@ func TestClusterBroadcast(t *testing.T) {
 	}()
 
 	for i := 0; i < msgcnt; i++ {
-		topic.Pub(&pubsub.Message{Body: []byte("test msg")})
+		topic.Pub(context.TODO(), &pubsub.Message{Body: []byte("test msg")})
 	}
 
 	select {
@@ -92,8 +93,8 @@ func TestClusterNotify(t *testing.T) {
 
 	topic := "test.clusterNotify"
 
-	channel1 := mb.ClusterTopic(topic).Sub("Normal")
-	channel2 := mb.ClusterTopic(topic).Sub("Normal")
+	channel1 := mb.Topic(topic).Sub(context.TODO(), "Normal")
+	channel2 := mb.Topic(topic).Sub(context.TODO(), "Normal")
 
 	channel1.Arrived(func(msg *pubsub.Message) {
 		atomic.AddUint64(&tick, 1)
@@ -102,7 +103,7 @@ func TestClusterNotify(t *testing.T) {
 		atomic.AddUint64(&tick, 1)
 	})
 
-	mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: []byte("msg")})
+	mb.Topic(topic).Pub(context.TODO(), &pubsub.Message{Body: []byte("msg")})
 
 	for {
 		<-time.After(time.Second * 3)
@@ -156,8 +157,8 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 	topic := "benchmark.ClusterBroadcast"
 	body := []byte("msg")
 
-	c1 := mb.ClusterTopic(topic).Sub("Normal_1")
-	c2 := mb.ClusterTopic(topic).Sub("Normal_2")
+	c1 := mb.Topic(topic).Sub(context.TODO(), "Normal_1")
+	c2 := mb.Topic(topic).Sub(context.TODO(), "Normal_2")
 
 	c1.Arrived(func(msg *pubsub.Message) {
 	})
@@ -169,7 +170,7 @@ func BenchmarkClusterBroadcast(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			mb.ClusterTopic(topic).Pub(&pubsub.Message{Body: body})
+			mb.Topic(topic).Pub(context.TODO(), &pubsub.Message{Body: body})
 		}
 	})
 

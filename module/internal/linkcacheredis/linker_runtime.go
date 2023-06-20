@@ -86,8 +86,8 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *r
 		},
 	}
 
-	lc.ps.ClusterTopic(name + "." + linkcache.TopicUnlink)
-	lc.ps.ClusterTopic(name + "." + linkcache.TopicLinkNum)
+	lc.ps.Topic(name + "." + linkcache.TopicUnlink)
+	lc.ps.Topic(name + "." + linkcache.TopicLinkNum)
 
 	return lc
 }
@@ -130,9 +130,9 @@ func (rl *redisLinker) Init() error {
 		return fmt.Errorf("%v GetLocalIP err %v", rl.serviceName, err.Error())
 	}
 
-	tokenUnlink := rl.ps.ClusterTopic(rl.serviceName + "." + linkcache.TopicUnlink).Sub(Name + "-" + ip)
-	serviceUpdate := rl.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
-	changeState := rl.ps.LocalTopic(elector.TopicChangeState).Sub(Name)
+	tokenUnlink := rl.ps.Topic(rl.serviceName+"."+linkcache.TopicUnlink).Sub(context.TODO(), Name+"-"+ip)
+	serviceUpdate := rl.ps.Topic(discover.TopicServiceUpdate).Sub(context.TODO(), Name)
+	changeState := rl.ps.Topic(elector.TopicChangeState).Sub(context.TODO(), Name)
 
 	tokenUnlink.Arrived(func(msg *pubsub.Message) {
 		token := string(msg.Body)
@@ -194,7 +194,7 @@ func (rl *redisLinker) syncLinkNum(ctx context.Context) {
 			rl.log.Warnf("%v atoi err %v", member, cnt)
 		}
 
-		rl.ps.ClusterTopic(rl.serviceName + "." + linkcache.TopicLinkNum).Pub(linkcache.EncodeNumMsg(id, icnt))
+		rl.ps.Topic(rl.serviceName+"."+linkcache.TopicLinkNum).Pub(ctx, linkcache.EncodeNumMsg(id, icnt))
 	}
 }
 

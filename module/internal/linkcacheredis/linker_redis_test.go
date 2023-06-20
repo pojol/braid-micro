@@ -55,7 +55,7 @@ func TestLinkerTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	ps.Topic(elector.TopicChangeState).Pub(context.TODO(), elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []service.Node{
 		{
@@ -86,13 +86,13 @@ func TestLinkerTarget(t *testing.T) {
 	_, err = lc.Target("unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	ps.ClusterTopic("." + linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token01")})
-	ps.ClusterTopic("." + linkcache.TopicUnlink).Pub(&pubsub.Message{Body: []byte("token02")})
+	ps.Topic("."+linkcache.TopicUnlink).Pub(context.TODO(), &pubsub.Message{Body: []byte("token01")})
+	ps.Topic("."+linkcache.TopicUnlink).Pub(context.TODO(), &pubsub.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 
 	for _, v := range nods {
-		ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(discover.EventRemoveService, v))
+		ps.Topic(discover.TopicServiceUpdate).Pub(context.TODO(), discover.EncodeUpdateMsg(discover.EventRemoveService, v))
 	}
 
 	time.Sleep(time.Millisecond * 100)
@@ -129,7 +129,7 @@ func TestLocalTarget(t *testing.T) {
 	lc.Run()
 	defer lc.Close()
 
-	ps.LocalTopic(elector.TopicChangeState).Pub(elector.EncodeStateChangeMsg(elector.EMaster))
+	ps.Topic(elector.TopicChangeState).Pub(context.TODO(), elector.EncodeStateChangeMsg(elector.EMaster))
 
 	nods := []service.Node{
 		{

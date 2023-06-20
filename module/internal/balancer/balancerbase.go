@@ -2,6 +2,7 @@
 package balancer
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -78,7 +79,7 @@ func BuildWithOption(name string, ps pubsub.IPubsub, opts ...Option) IBalancer {
 
 func (bbg *baseBalancerGroup) Init() {
 
-	bbg.serviceUpdate = bbg.ps.LocalTopic(discover.TopicServiceUpdate).Sub(Name)
+	bbg.serviceUpdate = bbg.ps.Topic(discover.TopicServiceUpdate).Sub(context.TODO(), Name)
 
 }
 

@@ -1,32 +1,17 @@
 // 接口文件 pubsub
 package pubsub
 
+import "context"
+
 // Message 消息体
 type Message struct {
 	Body []byte
 }
 
-// ScopeTy 作用域类型
-type ScopeTy int32
-
-const (
-	// 作用域: 进程内
-	//
-	// 在这个作用域的 topic 发布-消费 消息都只在当前进程内进行
-	Local ScopeTy = 0 + iota
-	// 作用域: 集群中
-	//
-	// 在这个作用域的 topic 发布-消费 消息都会被整个集群所感知
-	//
-	// 因此在使用这个作用域的 topic 时，要特别注意重名的问题。当我们需要同时获取某个 topic 消息时
-	// 最好在 channel 中按具体的业务逻辑加入类似 IP UUID 等参数，以区分不同的 channel 和 consumer
-	Cluster
-)
-
 // Handler 消息到达的函数句柄
 type Handler func(*Message)
 
-// IChannel 信道，topic的子集
+// IChannel 信道，topic的消费队列
 type IChannel interface {
 	// Arrived 绑定消息到达的函数句柄
 	Arrived(Handler)
@@ -35,27 +20,21 @@ type IChannel interface {
 	Close() error
 }
 
-// ITopic 话题，某类消息的聚合
+// ITopic 话题，消息对象
 type ITopic interface {
-	// Pub 向 topic 中发送一条消息
-	Pub(*Message) error
+	// Pub 向 topic 发送一条消息
+	Pub(ctx context.Context, msg *Message) error
 
-	// Sub 获取topic中的channel
-	//
-	//  如果传入 同名 ChannelName 则不同的 Channel 随机到同一条 Topic 消息（竞争
-	//  如果传入 不同 ChannelName 则每个 Channel 都能获取到 Topic 发布的这一条消息（广播
-	Sub(channelName string) IChannel
+	// Sub 向 topic 订阅消息
+	//  channelName 信道名称，如果订阅的信道已经存在（同名）则每个消费端随机消费消息
+	//  如果不存在，则创建一个新的信道，每个信道都可以消费 topic 的全部消息
+	Sub(ctx context.Context, channelName string) IChannel
 
-	//
+	// Close 关闭 topic
 	Close() error
 }
 
 // IPubsub 发布-订阅，管理集群中的所有 Topic
 type IPubsub interface {
-
-	// LocalTopic 获取一个本地的 topic
-	LocalTopic(name string) ITopic
-
-	// ClusterTopic 获取一个作用于集群的 topic
-	ClusterTopic(name string) ITopic
+	Topic(name string) ITopic
 }

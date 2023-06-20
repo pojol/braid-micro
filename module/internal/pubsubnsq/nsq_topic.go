@@ -1,6 +1,7 @@
 package pubsubnsq
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -24,8 +25,6 @@ type pubsubTopic struct {
 	exitFlag int32
 	producer []*nsq.Producer
 
-	scope pubsub.ScopeTy
-
 	waitGroup braidsync.WaitGroupWrapper
 
 	startChan         chan int
@@ -37,12 +36,11 @@ type pubsubTopic struct {
 	channelMap map[string]*pubsubChannel
 }
 
-func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
+func newTopic(name string, n *nsqPubsub) *pubsubTopic {
 
 	topic := &pubsubTopic{
 		Name:              name,
 		ps:                n,
-		scope:             scope,
 		log:               n.log,
 		startChan:         make(chan int, 1),
 		exitChan:          make(chan int),
@@ -51,63 +49,61 @@ func newTopic(name string, scope pubsub.ScopeTy, n *nsqPubsub) *pubsubTopic {
 		channelMap:        make(map[string]*pubsubChannel),
 	}
 
-	if scope == pubsub.Cluster {
-		cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
-		var err error
-		var cp *nsq.Producer
+	cps := make([]*nsq.Producer, 0, len(n.parm.NsqdAddress))
+	var err error
+	var cp *nsq.Producer
 
-		for _, addr := range n.parm.LookupdAddress {
+	for _, addr := range n.parm.LookupdAddress {
 
-			url := fmt.Sprintf("http://%s/topic/create?topic=%s",
-				addr,
-				name,
-			)
-			req, err := http.NewRequest("POST", url, nil)
-			if err != nil {
-				n.log.Warnf("post %v err %v", url, err.Error())
+		url := fmt.Sprintf("http://%s/topic/create?topic=%s",
+			addr,
+			name,
+		)
+		req, err := http.NewRequest("POST", url, nil)
+		if err != nil {
+			n.log.Warnf("post %v err %v", url, err.Error())
+		}
+		resp, _ := http.DefaultClient.Do(req)
+		if resp != nil {
+			if resp.StatusCode != http.StatusOK {
+				n.log.Warnf("lookupd create topic request status err %v", resp.StatusCode)
 			}
-			resp, _ := http.DefaultClient.Do(req)
-			if resp != nil {
-				if resp.StatusCode != http.StatusOK {
-					n.log.Warnf("lookupd create topic request status err %v", resp.StatusCode)
-				}
-				ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-			}
-
+			ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 		}
 
-		for k, addr := range n.parm.NsqdHttpAddress {
-			cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
-			if err != nil {
-				n.log.Warnf("Channel new nsq producer err %v", err.Error())
-				continue
-			}
-
-			if err = cp.Ping(); err != nil {
-				n.log.Warnf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
-				continue
-			}
-
-			cps = append(cps, cp)
-
-			url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
-			resp, err := http.Post(url, "application/json", nil)
-			if err != nil {
-				n.log.Warnf(err.Error())
-			}
-			if resp != nil {
-				if resp.StatusCode != http.StatusOK {
-					n.log.Warnf("nsqd create topic request status err %v", resp.StatusCode)
-				}
-
-				ioutil.ReadAll(resp.Body)
-				resp.Body.Close()
-			}
-		}
-
-		topic.producer = cps
 	}
+
+	for k, addr := range n.parm.NsqdHttpAddress {
+		cp, err = nsq.NewProducer(n.parm.NsqdAddress[k], nsq.NewConfig())
+		if err != nil {
+			n.log.Warnf("Channel new nsq producer err %v", err.Error())
+			continue
+		}
+
+		if err = cp.Ping(); err != nil {
+			n.log.Warnf("Channel nsq producer ping err %v addr %v", err.Error(), addr)
+			continue
+		}
+
+		cps = append(cps, cp)
+
+		url := fmt.Sprintf("http://%s/topic/create?topic=%s", addr, name)
+		resp, err := http.Post(url, "application/json", nil)
+		if err != nil {
+			n.log.Warnf("post url %v err %v", url, err.Error())
+		}
+		if resp != nil {
+			if resp.StatusCode != http.StatusOK {
+				n.log.Warnf("nsqd create topic request status err %v", resp.StatusCode)
+			}
+
+			ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+		}
+	}
+
+	topic.producer = cps
 
 	topic.waitGroup.Wrap(topic.loop)
 
@@ -122,7 +118,7 @@ func (t *pubsubTopic) start() {
 	}
 }
 
-func (t *pubsubTopic) Sub(name string) pubsub.IChannel {
+func (t *pubsubTopic) Sub(ctx context.Context, name string) pubsub.IChannel {
 
 	t.Lock()
 	c, isNew := t.getOrCreateChannel(name)
@@ -143,7 +139,7 @@ func (t *pubsubTopic) getOrCreateChannel(name string) (pubsub.IChannel, bool) {
 
 	channel, ok := t.channelMap[name]
 	if !ok {
-		channel = newChannel(t.Name, name, t.scope, t.log, t)
+		channel = newChannel(t.Name, name, t.log, t)
 		t.channelMap[name] = channel
 
 		t.log.Infof("Topic %v new channel %v", t.Name, name)
@@ -244,21 +240,15 @@ EXT:
 	t.log.Infof("topic %v out of the loop", t.Name)
 }
 
-func (t *pubsubTopic) Pub(msg *pubsub.Message) error {
+func (t *pubsubTopic) Pub(ctx context.Context, msg *pubsub.Message) error {
 	t.RLock()
 	defer t.RUnlock()
 
 	if atomic.LoadInt32(&t.exitFlag) == 1 {
 		return errors.New("exiting")
 	}
-	var err error
 
-	if t.scope == pubsub.Local {
-		err = t.put(msg)
-	} else {
-		err = t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
-	}
-
+	err := t.producer[rand.Intn(len(t.producer))].Publish(t.Name, msg.Body)
 	if err != nil {
 		t.log.Warnf("topic %v publish err %v\n", t.Name, err.Error())
 		return err

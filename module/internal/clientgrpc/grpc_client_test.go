@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 	s.Run()
 
 	// 伪造一个节点用于测试
-	ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+	ps.Topic(discover.TopicServiceUpdate).Pub(context.TODO(), discover.EncodeUpdateMsg(
 		discover.EventAddService,
 		service.Node{
 			ID:      "testnod",

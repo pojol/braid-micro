@@ -2,6 +2,7 @@
 package discoverconsul
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"sync"
@@ -58,7 +59,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *b
 		nodemap: make(map[string]*service.Node),
 	}
 
-	e.ps.LocalTopic(discover.TopicServiceUpdate)
+	e.ps.Topic(discover.TopicServiceUpdate)
 
 	return e
 }
@@ -172,7 +173,7 @@ func (dc *consulDiscover) discoverImpl() {
 				dc.log.Infof("[Discover] new service %s node %s addr %s", v.Name, nod.ID, sn.Address)
 				dc.nodemap[nod.ID] = &sn
 
-				dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+				dc.ps.Topic(discover.TopicServiceUpdate).Pub(context.TODO(), discover.EncodeUpdateMsg(
 					discover.EventAddService,
 					sn,
 				))
@@ -189,7 +190,7 @@ func (dc *consulDiscover) discoverImpl() {
 		if _, ok := servicesnodes[k]; !ok {
 			dc.log.Infof("[Discover] remove service %s node %s", dc.nodemap[k].Name, dc.nodemap[k].ID)
 
-			dc.ps.LocalTopic(discover.TopicServiceUpdate).Pub(discover.EncodeUpdateMsg(
+			dc.ps.Topic(discover.TopicServiceUpdate).Pub(context.TODO(), discover.EncodeUpdateMsg(
 				discover.EventRemoveService,
 				*dc.nodemap[k],
 			))

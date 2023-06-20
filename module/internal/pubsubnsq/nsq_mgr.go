@@ -52,20 +52,12 @@ type nsqPubsub struct {
 	topicMap map[string]*pubsubTopic
 }
 
-func (nmb *nsqPubsub) getTopic(name string, ty pubsub.ScopeTy) pubsub.ITopic {
+func (nmb *nsqPubsub) getTopic(name string) pubsub.ITopic {
 
-	nmb.RLock()
-	t, ok := nmb.topicMap[name]
-	nmb.RUnlock()
-	if ok {
-		if t.scope != ty {
-			fmt.Printf("[%v] Same topic with different scope\n", name)
-		}
-		return t
-	}
+	var t *pubsubTopic
 
 	nmb.Lock()
-	t = newTopic(name, ty, nmb)
+	t = newTopic(name, nmb)
 	nmb.topicMap[name] = t
 	nmb.Unlock()
 
@@ -75,12 +67,8 @@ func (nmb *nsqPubsub) getTopic(name string, ty pubsub.ScopeTy) pubsub.ITopic {
 	return t
 }
 
-func (nmb *nsqPubsub) LocalTopic(name string) pubsub.ITopic {
-	return nmb.getTopic(name, pubsub.Local)
-}
-
-func (nmb *nsqPubsub) ClusterTopic(name string) pubsub.ITopic {
-	return nmb.getTopic(name, pubsub.Cluster)
+func (nmb *nsqPubsub) Topic(name string) pubsub.ITopic {
+	return nmb.getTopic(name)
 }
 
 func (nmb *nsqPubsub) rmvTopic(name string) error {
