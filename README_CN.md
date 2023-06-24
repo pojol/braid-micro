@@ -32,103 +32,72 @@
 ### 构建
 
 ```go
-	
-// 创建服务
-b, _ := NewService("braid")
+b, _ := NewService(
+		"braid",
+		uuid.New().String(),
+		&components.DefaultDirector{
+			Opts: &components.DirectorOpts{
+				// gprc-client
+				ClientOpts: []grpcclient.Option{
+					grpcclient.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+				},
+				// grpc-server
+				ServerOpts: []grpcserver.Option{
+					grpcserver.WithListen(":14222"),
+					grpcserver.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+					grpcserver.RegisterHandler(func(srv *grpc.Server) {
+						// register grpc handler
+					}),
+				},
+				// 选举 elector
+				ElectorOpts: []electorconsul.Option{
+					electorconsul.WithLockTick(3 * time.Second),
+				},
+				// 链路缓存
+				LinkcacheOpts: []linkcacheredis.Option{
+					linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
+				},
+			},
+		},
+	)
 
-// 注册依赖
-b.RegisterDepend(
-	depend.Logger(),
-	depend.Redis(redis.WithAddr(mock.RedisAddr)),
-	depend.Tracer(
-		tracer.WithHTTP(mock.JaegerAddr),
-		tracer.WithProbabilistic(1),
-	),
-	depend.Consul(
-		consul.WithAddress([]string{mock.ConsulAddr}),
-	),
-)
-
-// 注册模块
-b.RegisterModule(
-	module.Pubsub(
-		pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-		pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-	),
-	module.Client(
-		client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-	),
-	module.Server(
-		server.WithListen(":14222"),
-		server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-	),
-	module.Discover(),
-	module.Elector(
-		elector.WithLockTick(3*time.Second)),
-	module.LinkCache(
-		linkcache.WithMode(linkcache.LinkerRedisModeLocal),
-	),
-)
-
-b.Init()
-b.Run()
-defer b.Close()
+	b.Init()
+	b.Run()
+	b.Close()
 
 ```
 
-### 使用
-* RPC - 
-	```go
-	// 发起一次 rpc 调用
-	err = braid.Client().Invoke(
-		ctx,
-		"目标服务名 (login",
-		"路径 (/login/guest",
-		"token (可选，当开启linkcache功能，通过这个凭证可以保证带有凭证的调用链路是一致的",
-		body,
-		res,
-	)
-	```
-* Pubsub
-	```go
-	// 订阅一个进程内的主题接收消息并处理
-	lc := braid.Pubsub().LocalTopic("topic").Sub("name")
-	lc.Arrived(func(msg *pubsub.Message){ 
-		/* todo ... */ 
-	})
-	defer lc.Close()
+* Rpc
+```go
+err := braid.Send(
+	ctx,
+	"login", // target service name
+	"/user.password", // methon
+	"token", // (optional
+	body,
+	res,
+)
+```
+* Pub
+```go
+braid.Topic(meta.TopicLinkcacheUnlink).Pub(
+	ctx, &meta.Message(Body : []byte("usertoken"))
+)
+```
 
-	// 订阅一个集群中的主题
-	cc := braid.ClusterTopic("topic").Sub("name")
-	cc.Arrived(func(msg *pubsub.Message){ 
-		/* todo ... */
-	})
-	defer cc.Close()
-	```
-* Tracer
-	```go
-	// 在注册阶段将需要用到的 span 注册到 tracer
-	b.RegisterDepend(
-		depend.Tracer(
-			tracer.WithHTTP(jaegerAddr),
-			tracer.WithProbabilistic(jaegerProbabilistic),
-			tracer.WithSpanFactory(
-				tracer.TracerFactory{
-					Name:    mspan.Mongo,
-					Factory: mspan.CreateMongoSpanFactory(),
-				},
-			),
-		),
-	)
+* Sub
+```go
+lc, _ := braid.Topic(meta.TopicElectionChangeState).Sub(ctx, "serviceid")
+lc.Arrived(func(msg *meta.Message){ 
+	
+	scm := meta.DecodeStateChangeMsg(msg)
+	if scm.State == elector.EMaster {
+		// todo ...
+	}
 
-	span := braid.Tracer().GetSpan(mspan.Mongo)
-
-	span.Begin(ctx)
-	defer span.End()
-
-	// todo ...
-	span.SetTag("key", val)
-	```
+})
+defer lc.Close()
+```
 
 #### **Pub-sub** Benchmark
 *  ScopeProc
