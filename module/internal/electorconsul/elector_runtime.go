@@ -27,7 +27,7 @@ func BuildWithOption(name string, log *blog.Logger, ps pubsub.IPubsub, client *b
 	p := elector.Parm{
 		ServiceName:       name,
 		LockTick:          time.Second * 2,
-		RefushSessionTick: time.Second * 5,
+		RefushSessionTick: time.Second * 5, // renew 的时间最好保持在 session ttl 的一半时间以下
 	}
 	for _, opt := range opts {
 		opt(&p)
@@ -130,7 +130,10 @@ func (e *consulElection) refresh() {
 
 	for {
 		<-e.refushTicker.C
-		refushSession()
+
+		if e.locked { // 只有持有 session 的进程才需要定期去刷新 ttl
+			refushSession()
+		}
 	}
 }
 
