@@ -31,35 +31,34 @@
 ### Quick start
 
 ```go
-	b, _ := NewService(
-		"braid",
-		uuid.New().String(),
-		&components.DefaultDirector{
-			Opts: &components.DirectorOpts{
-				ClientOpts: []grpcclient.Option{
-					grpcclient.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-				},
-				ServerOpts: []grpcserver.Option{
-					grpcserver.WithListen(":14222"),
-					grpcserver.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-					grpcserver.RegisterHandler(func(srv *grpc.Server) {
-						// register grpc handler
-					}),
-				},
-				ElectorOpts: []electorconsul.Option{
-					electorconsul.WithLockTick(3 * time.Second),
-				},
-				LinkcacheOpts: []linkcacheredis.Option{
-					linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
-				},
+b, _ := NewService(
+	"braid",
+	uuid.New().String(),
+	&components.DefaultDirector{
+		Opts: &components.DirectorOpts{
+			ClientOpts: []grpcclient.Option{
+				grpcclient.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+			},
+			ServerOpts: []grpcserver.Option{
+				grpcserver.WithListen(":14222"),
+				grpcserver.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+				grpcserver.RegisterHandler(func(srv *grpc.Server) {
+					// register grpc handler
+				}),
+			},
+			ElectorOpts: []electorconsul.Option{
+				electorconsul.WithLockTick(3 * time.Second),
+			},
+			LinkcacheOpts: []linkcacheredis.Option{
+				linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
 			},
 		},
-	)
+	},
+)
 
-	b.Init()
-	b.Run()
-	b.Close()
-
+b.Init()
+b.Run()
+b.Close()
 ```
 
 * Rpc
