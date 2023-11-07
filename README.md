@@ -75,23 +75,24 @@ err := braid.Send(
 
 * Pub
 ```go
-braid.Topic(meta.TopicLinkcacheUnlink).Pub(
-	ctx, &meta.Message(Body : []byte("usertoken"))
-)
+braid.Topic(meta.TopicLinkcacheUnlink).Pub(ctx, &meta.Message(Body : []byte("usertoken")))
 ```
 
 * Sub
 ```go
 lc, _ := braid.Topic(meta.TopicElectionChangeState).Sub(ctx, "serviceid")
-lc.Arrived(func(msg *meta.Message){ 
+defer lc.Close()
+
+lc.Arrived(func(msg *meta.Message) error { 
 	
 	scm := meta.DecodeStateChangeMsg(msg)
 	if scm.State == elector.EMaster {
 		// todo ...
 	}
 
+	return nil
 })
-defer lc.Close()
+
 ```
 
 #### **Rpc** Benchmark
