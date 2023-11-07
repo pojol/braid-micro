@@ -33,38 +33,33 @@
 
 ```go
 b, _ := NewService(
-		"braid",
-		uuid.New().String(),
-		&components.DefaultDirector{
-			Opts: &components.DirectorOpts{
-				// gprc-client
-				ClientOpts: []grpcclient.Option{
-					grpcclient.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-				},
-				// grpc-server
-				ServerOpts: []grpcserver.Option{
-					grpcserver.WithListen(":14222"),
-					grpcserver.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-					grpcserver.RegisterHandler(func(srv *grpc.Server) {
-						// register grpc handler
-					}),
-				},
-				// 选举 elector
-				ElectorOpts: []electorconsul.Option{
-					electorconsul.WithLockTick(3 * time.Second),
-				},
-				// 链路缓存
-				LinkcacheOpts: []linkcacheredis.Option{
-					linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
-				},
+	"service-name",
+	"service-id",
+	&components.DefaultDirector{
+		Opts: &components.DirectorOpts{
+			ClientOpts: []grpcclient.Option{
+				grpcclient.AppendUnaryInterceptors(grpc_prometheus.UnaryClientInterceptor),
+			},
+			ServerOpts: []grpcserver.Option{
+				grpcserver.WithListen(":14222"),
+				grpcserver.AppendUnaryInterceptors(grpc_prometheus.UnaryServerInterceptor),
+				grpcserver.RegisterHandler(func(srv *grpc.Server) {
+					// register grpc handler
+				}),
+			},
+			ElectorOpts: []electork8s.Option{
+				electork8s.WithRefreshTick(time.Second * 5),
+			},
+			LinkcacheOpts: []linkcacheredis.Option{
+				linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
 			},
 		},
-	)
+	},
+)
 
-	b.Init()
-	b.Run()
-	b.Close()
-
+b.Init()
+b.Run()
+b.Close()
 ```
 
 * Rpc
@@ -80,48 +75,40 @@ err := braid.Send(
 ```
 * Pub
 ```go
-braid.Topic(meta.TopicLinkcacheUnlink).Pub(
-	ctx, &meta.Message(Body : []byte("usertoken"))
-)
+braid.Topic(meta.TopicLinkcacheUnlink).Pub(ctx, &meta.Message(Body : []byte("usertoken")))
 ```
 
 * Sub
 ```go
 lc, _ := braid.Topic(meta.TopicElectionChangeState).Sub(ctx, "serviceid")
-lc.Arrived(func(msg *meta.Message){ 
+defer lc.Close()
+
+lc.Arrived(func(msg *meta.Message) error {
 	
 	scm := meta.DecodeStateChangeMsg(msg)
 	if scm.State == elector.EMaster {
 		// todo ...
 	}
 
+	return nil
 })
-defer lc.Close()
+
 ```
 
-#### **Pub-sub** Benchmark
-*  ScopeProc
-
+#### **Rpc** Benchmark
 ```shell
-$ go test -benchmem -run=^$ -bench ^BenchmarkTestProc -cpu 2,4,8
-cpu: 2.2 GHz 4 Cores Intel Core i7
+
+```
+
+#### **Pubsub** Benchmark
+```shell
+$ go test -benchmem -run=^$ -bench ^BenchmarkPubsub -cpu 2,4,8
+cpu: 2.2 GHz 2.5
 goos: darwin
 goarch: amd64
-pkg: github.com/pojol/braid-go/modules/mailboxnsq
-BenchmarkTestProc-2   4340389   302 ns/op   109 B/op   3 allocs/op
-BenchmarkTestProc-4   8527536   151 ns/op   122 B/op   3 allocs/op
-BenchmarkTestProc-8   7564869   161 ns/op   118 B/op   3 allocs/op
+pkg: github.com/pojol/braid-go/components/pubsubredis
+BenchmarkPubsub-2   1959            724452 ns/op            7254 B/op        193 allocs/op
+BenchmarkPubsub-4	2506            525298 ns/op            7313 B/op        194 allocs/op
+BenchmarkPubsub-8	4233            282358 ns/op            3853 B/op        103 allocs/op
 PASS
-```
-
-* ScopeCluster
-
-```shell
-$ go test -benchmem -run=^$ -bench ^BenchmarkClusterBroadcast -cpu 2,4,8
-腾讯云 4 Cores
-goos: linux
-goarch: amd64
-BenchmarkClusterBroadcast-2   70556   17234 ns/op   540 B/op   16 allocs/op
-BenchmarkClusterBroadcast-4   71202   18975 ns/op   676 B/op   20 allocs/op
-BenchmarkClusterBroadcast-8   62098   19037 ns/op   662 B/op   20 allocs/op
 ```
