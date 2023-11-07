@@ -32,22 +32,22 @@
 
 ```go
 b, _ := NewService(
-	"braid",
-	uuid.New().String(),
+	"service-name",
+	"service-id",
 	&components.DefaultDirector{
 		Opts: &components.DirectorOpts{
 			ClientOpts: []grpcclient.Option{
-				grpcclient.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
+				grpcclient.AppendUnaryInterceptors(grpc_prometheus.UnaryClientInterceptor),
 			},
 			ServerOpts: []grpcserver.Option{
 				grpcserver.WithListen(":14222"),
-				grpcserver.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
+				grpcserver.AppendUnaryInterceptors(grpc_prometheus.UnaryServerInterceptor),
 				grpcserver.RegisterHandler(func(srv *grpc.Server) {
 					// register grpc handler
 				}),
 			},
-			ElectorOpts: []electorconsul.Option{
-				electorconsul.WithLockTick(3 * time.Second),
+			ElectorOpts: []electork8s.Option{
+				electork8s.WithRefreshTick(time.Second * 5),
 			},
 			LinkcacheOpts: []linkcacheredis.Option{
 				linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
