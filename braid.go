@@ -13,7 +13,7 @@ import (
 
 const (
 	// Version of braid-go
-	Version = "v1.3.1"
+	Version = "v1.4.0"
 
 	banner = `
  _               _     _ 
@@ -44,9 +44,10 @@ var (
 )
 
 // NewService - 创建一个新的 braid 服务
-//  name 服务名称
-//  id   服务id （唯一标识
-//  director 服务组件构建器
+//
+//	name 服务名称
+//	id   服务id （唯一标识
+//	director 服务组件构建器
 func NewService(name string, id string, director components.IDirector) (*Braid, error) {
 
 	director.SetServiceInfo(meta.ServiceInfo{ID: id, Name: name})
@@ -78,12 +79,13 @@ func Topic(name string) module.ITopic {
 }
 
 // Send 发送rpc请求
-//  target 目标服务名称
-//  methon 目标服务方法
-//  token  用户的唯一标识id
-//  args   请求参数
-//  reply  返回参数
-//  opts   rpc调用选项
+//
+//	target 目标服务名称
+//	methon 目标服务方法
+//	token  用户的唯一标识id
+//	args   请求参数
+//	reply  返回参数
+//	opts   rpc调用选项
 func Send(ctx context.Context, target, methon, token string,
 	args, reply interface{},
 	opts ...interface{}) error {
