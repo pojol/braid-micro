@@ -10,3 +10,4 @@ testNormal.log
 web_linux
 appendonly.aof
 .cover
+braid-go.code-workspace

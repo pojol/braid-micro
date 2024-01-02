@@ -46,6 +46,9 @@ func Init() {
 	ConsulAddr = os.Getenv(mockConsulEnv)
 	if ConsulAddr == "" {
 		ConsulAddr = "127.0.0.1:8500"
+
+		// local consul token
+		os.Setenv("CONSUL_HTTP_TOKEN", "5b7da133-41cc-bad6-2067-2e79373e1397")
 	}
 
 	// 构造测试环境

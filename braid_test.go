@@ -4,20 +4,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/pojol/braid-go/depend"
-	"github.com/pojol/braid-go/depend/bconsul"
-	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/depend/bredis"
-	"github.com/pojol/braid-go/depend/btracer"
+	"github.com/pojol/braid-go/components"
+	"github.com/pojol/braid-go/components/electork8s"
+	"github.com/pojol/braid-go/components/linkcacheredis"
+	"github.com/pojol/braid-go/components/rpcgrpc/grpcclient"
+	"github.com/pojol/braid-go/components/rpcgrpc/grpcserver"
 	"github.com/pojol/braid-go/mock"
-	"github.com/pojol/braid-go/module/elector"
-	"github.com/pojol/braid-go/module/linkcache"
-	"github.com/pojol/braid-go/module/modules"
-	"github.com/pojol/braid-go/module/pubsub"
-	"github.com/pojol/braid-go/module/rpc/client"
-	"github.com/pojol/braid-go/module/rpc/server"
-	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
 )
 
 func TestMain(m *testing.M) {
@@ -31,44 +26,30 @@ func TestInit(t *testing.T) {
 
 	b, _ := NewService(
 		"test_init",
-	)
-
-	trc := btracer.BuildWithOption(
-		btracer.WithHTTP(mock.JaegerAddr),
-		btracer.WithProbabilistic(1),
-	)
-
-	b.RegisterDepend(
-		depend.Logger(blog.BuildWithOption()),
-		depend.Redis(bredis.BuildWithOption(&redis.Options{Addr: mock.RedisAddr})),
-		depend.Tracer(trc),
-		depend.Consul(
-			bconsul.BuildWithOption(bconsul.WithAddress([]string{mock.ConsulAddr})),
-		),
-	)
-
-	b.RegisterModule(
-		modules.Pubsub(
-			pubsub.WithLookupAddr([]string{mock.NSQLookupdAddr}),
-			pubsub.WithNsqdAddr([]string{mock.NsqdAddr}, []string{mock.NsqdHttpAddr}),
-		),
-		modules.Client(
-			client.AppendInterceptors(grpc_prometheus.UnaryClientInterceptor),
-			client.WithTracer(trc),
-		),
-		modules.Server(
-			server.WithListen(":14222"),
-			server.AppendInterceptors(grpc_prometheus.UnaryServerInterceptor),
-		),
-		modules.Discover(),
-		modules.Elector(
-			elector.WithLockTick(3*time.Second)),
-		modules.LinkCache(
-			linkcache.WithMode(linkcache.LinkerRedisModeLocal),
-		),
+		uuid.New().String(),
+		&components.DefaultDirector{
+			Opts: &components.DirectorOpts{
+				ClientOpts: []grpcclient.Option{
+					grpcclient.AppendUnaryInterceptors(grpc_prometheus.UnaryClientInterceptor),
+				},
+				ServerOpts: []grpcserver.Option{
+					grpcserver.WithListen(":14222"),
+					grpcserver.AppendUnaryInterceptors(grpc_prometheus.UnaryServerInterceptor),
+					grpcserver.RegisterHandler(func(srv *grpc.Server) {
+						// register grpc handler
+					}),
+				},
+				ElectorOpts: []electork8s.Option{
+					electork8s.WithRefreshTick(time.Second * 5),
+				},
+				LinkcacheOpts: []linkcacheredis.Option{
+					linkcacheredis.WithMode(linkcacheredis.LinkerRedisModeLocal),
+				},
+			},
+		},
 	)
 
 	b.Init()
 	b.Run()
-	defer b.Close()
+	b.Close()
 }

@@ -1,3 +1,13 @@
+# v1.4.0
+1. 使用 components 概念代替原来的 module impl
+2. 引入了基于 k8s 的服务发现 & 选举
+3. 引入了基于 redis stream 实现的 pubsub 组件
+4. 调整了 braid 提供的接口
+5. 调整了组件初始化方式
+6. 调整了 pubsub 提供的接口（去掉了 local 的概念
+
+---
+
 # v1.2.26
 1. ~~为 discoverconsul 模块添加自动的不健康节点排除功能~~
 2. 为 grpc client & server 添加 AppendInterceptors Option方法

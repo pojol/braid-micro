@@ -1,20 +1,19 @@
 package braid
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
-	"github.com/pojol/braid-go/depend"
-	"github.com/pojol/braid-go/depend/blog"
-	"github.com/pojol/braid-go/module/modules"
-	"github.com/pojol/braid-go/module/pubsub"
-	"github.com/pojol/braid-go/module/rpc/client"
-	"github.com/pojol/braid-go/module/rpc/server"
+	"github.com/pojol/braid-go/components"
+	"github.com/pojol/braid-go/components/depends/blog"
+	"github.com/pojol/braid-go/module"
+	"github.com/pojol/braid-go/module/meta"
 )
 
 const (
 	// Version of braid-go
-	Version = "v1.2.26"
+	Version = "v1.4.0"
 
 	banner = `
  _               _     _ 
@@ -33,115 +32,69 @@ var (
 
 // Braid framework instance
 type Braid struct {
-	// service name
-	name string
+	info meta.ServiceInfo
 
-	// modules
-	mods *modules.BraidModule
+	log *blog.Logger
 
-	// depend
-	depends *depend.BraidDepend
+	director components.IDirector
 }
 
 var (
 	braidGlobal *Braid
 )
 
-func NewService(name string) (*Braid, error) {
+// NewService - 创建一个新的 braid 服务
+//
+//	name 服务名称
+//	id   服务id （唯一标识
+//	director 服务组件构建器
+func NewService(name string, id string, director components.IDirector) (*Braid, error) {
+
+	director.SetServiceInfo(meta.ServiceInfo{ID: id, Name: name})
+	director.Build()
 
 	braidGlobal = &Braid{
-		name: name,
+		info:     meta.ServiceInfo{Name: name, ID: id},
+		log:      director.Logger(),
+		director: director,
 	}
 
 	return braidGlobal, nil
 }
 
-func (b *Braid) RegisterDepend(depends ...depend.Depend) error {
-
-	d := &depend.BraidDepend{}
-
-	for _, opt := range depends {
-		opt(d)
-	}
-
-	if d.Logger == nil { // 日志是必选项
-		d.Logger = blog.BuildWithOption()
-	}
-
-	b.depends = d
-
-	return nil
-}
-
-func (b *Braid) RegisterModule(mods ...modules.Module) error {
-
-	p := &modules.BraidModule{
-		ServiceName: b.name,
-		Depends:     b.depends,
-	}
-
-	for _, opt := range mods {
-		opt(p)
-	}
-
-	b.mods = p
-
-	return nil
-}
-
 // Init braid init
 func (b *Braid) Init() error {
-	var err error
-
-	for _, mod := range b.mods.Mods() {
-		err = mod.Init()
-		if err != nil {
-			b.depends.Logger.Errf("braid init %v err %v", mod.Name(), err.Error())
-			return err
-		}
-	}
-
-	return err
+	return b.director.Init()
 }
 
 // Run 运行braid
 func (b *Braid) Run() {
 	fmt.Printf(banner, Version)
-
-	for _, mod := range b.mods.Mods() {
-		mod.Run()
-	}
-
+	b.director.Run()
 }
 
-// GetClient get client interface
-func Client() client.IClient {
-	if braidGlobal != nil && braidGlobal.mods.IClient != nil {
-		return braidGlobal.mods.IClient
-	}
-	return nil
+// Topic 获取或创建一个pubsub消息主题
+func Topic(name string) module.ITopic {
+	return braidGlobal.director.Pubsub().GetTopic(name)
 }
 
-func Server() server.IServer {
-	if braidGlobal != nil && braidGlobal.mods.IServer != nil {
-		return braidGlobal.mods.IServer
-	}
-	return nil
-}
-
-// Mailbox pub-sub
-func Pubsub() pubsub.IPubsub {
-	if braidGlobal != nil {
-		return braidGlobal.mods.Ipubsub
-	}
-	return nil
+// Send 发送rpc请求
+//
+//	target 目标服务名称
+//	methon 目标服务方法
+//	token  用户的唯一标识id
+//	args   请求参数
+//	reply  返回参数
+//	opts   rpc调用选项
+func Send(ctx context.Context, target, methon, token string,
+	args, reply interface{},
+	opts ...interface{}) error {
+	return braidGlobal.director.Client().Invoke(ctx, target, methon, token, args, reply, opts...)
 }
 
 // Close 关闭braid
 func (b *Braid) Close() {
 
-	for _, mod := range b.mods.Mods() {
-		mod.Close()
-	}
+	b.director.Close()
 
 }
