@@ -97,7 +97,19 @@ lc.Arrived(func(msg *meta.Message) error {
 
 #### **Rpc** Benchmark
 ```shell
+$ go test -benchmem -run=^$ -bench ^BenchmarkTest -cpu 2,4,8
+goos: darwin
+goarch: amd64
+pkg: github.com/pojol/braid-go/components/rpcgrpc/grpcserver
+cpu: VirtualApple @ 2.50GHz
+BenchmarkTest-2   34489             33163 ns/op            8841 B/op        175 allocs/op
+qps => 37576
+BenchmarkTest-4   61107             19695 ns/op            8859 B/op        175 allocs/op
+qps => 94882
+BenchmarkTest-8   63313             18462 ns/op            8927 B/op        175 allocs/op
+qps => 160513
 
+fmt.Println("qps =>", int(float64(atomic.LoadUint64(&recv_cnt))/time.Since(begin).Seconds()))
 ```
 
 #### **Pubsub** Benchmark
