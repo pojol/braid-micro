@@ -69,24 +69,24 @@ func TestLinkerTarget(t *testing.T) {
 		},
 	}
 
-	err := lc.Link("token01", nods[0])
+	err := lc.Link(context.TODO(), "token01", nods[0])
 	assert.Equal(t, err, nil)
 
-	err = lc.Link("token01", nods[1])
+	err = lc.Link(context.TODO(), "token01", nods[1])
 	assert.Equal(t, err, nil)
 
-	err = lc.Link("token02", nods[0])
+	err = lc.Link(context.TODO(), "token02", nods[0])
 	assert.Equal(t, err, nil)
 
-	addr, err := lc.Target("token01", "base")
+	addr, err := lc.Target(context.TODO(), "token01", "base")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1:12001")
 
-	_, err = lc.Target("unknowtoken", "base")
+	_, err = lc.Target(context.TODO(), "unknowtoken", "base")
 	assert.NotEqual(t, err, nil)
 
-	redisps.GetTopic("."+meta.TopicLinkcacheUnlink).Pub(context.TODO(), &meta.Message{Body: []byte("token01")})
-	redisps.GetTopic("."+meta.TopicLinkcacheUnlink).Pub(context.TODO(), &meta.Message{Body: []byte("token02")})
+	redisps.GetTopic(meta.TopicLinkcacheUnlink).Pub(context.TODO(), &meta.Message{Body: []byte("token01")})
+	redisps.GetTopic(meta.TopicLinkcacheUnlink).Pub(context.TODO(), &meta.Message{Body: []byte("token02")})
 
 	time.Sleep(time.Millisecond * 500)
 
@@ -95,7 +95,6 @@ func TestLinkerTarget(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 100)
-
 }
 
 func TestLocalTarget(t *testing.T) {
@@ -145,27 +144,27 @@ func TestLocalTarget(t *testing.T) {
 		},
 	}
 
-	err := lc.Link("localtoken01", nods[0])
+	err := lc.Link(context.TODO(), "localtoken01", nods[0])
 	assert.Equal(t, err, nil)
 
-	err = lc.Link("localtoken01", nods[1])
+	err = lc.Link(context.TODO(), "localtoken01", nods[1])
 	assert.Equal(t, err, nil)
 
-	err = lc.Link("localtoken02", nods[0])
+	err = lc.Link(context.TODO(), "localtoken02", nods[0])
 	assert.Equal(t, err, nil)
 
-	addr, err := lc.Target("localtoken01", "localbase")
+	addr, err := lc.Target(context.TODO(), "localtoken01", "localbase")
 	assert.Equal(t, err, nil)
 	assert.Equal(t, addr, "127.0.0.1:12001")
 
-	_, err = lc.Target("unknowtoken", "localbase")
+	_, err = lc.Target(context.TODO(), "unknowtoken", "localbase")
 	assert.NotEqual(t, err, nil)
 
-	lc.Unlink("localtoken01")
-
-	for _, v := range nods {
-		lc.Down(v)
-	}
-
+	lc.Unlink(context.TODO(), "localtoken01")
+	/*
+		for _, v := range nods {
+			lc.Down(v)
+		}
+	*/
 	time.Sleep(time.Millisecond * 500)
 }

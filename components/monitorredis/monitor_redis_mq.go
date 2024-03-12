@@ -34,7 +34,38 @@ type MQGroupInfo struct {
 	Consumers int64  `json:"consumers"`
 }
 
-type ServiceInfo struct {
+type DrawPos struct {
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+}
+
+type NodeInfo struct {
+	ServiceName string  `json:"service_name"`
+	Name        string  `json:"node_name"`
+	Num         int64   `json:"player_num"`
+	Status      string  `json:"status"`
+	Pos         DrawPos `json:"pos"`
+}
+
+type SerivceInfo struct {
+	Name  string     `json:"service_name"`
+	Pos   DrawPos    `json:"pos"`
+	Nodes []NodeInfo `json:"nodes"`
+}
+
+type NodeRelationInfo struct {
+	Org string `json:"org"`
+	Tar string `json:"tar"`
+}
+
+type RelationInfo struct {
+	Sendcnt  int64            `json:"send_cnt"`
+	Relation NodeRelationInfo `json:"relation"`
+}
+
+type MGServiceInfo struct {
+	ServiceLst  []SerivceInfo  `json:"service_lst"`
+	RelationLst []RelationInfo `json:"relation_lst"`
 }
 
 func BuildWithOption(log *blog.Logger, client *redis.Client, opts ...MqWatchOption) module.IMonitor {
@@ -106,8 +137,8 @@ func (rm *redisMqMonitor) mq_watch() ([]MQInfo, error) {
 	return infoarr, nil
 }
 
-func (rm *redisMqMonitor) services_watch() []ServiceInfo {
-	info := []ServiceInfo{}
+func (rm *redisMqMonitor) services_watch() []MGServiceInfo {
+	info := []MGServiceInfo{}
 	return info
 }
 
@@ -120,7 +151,8 @@ func (rm *redisMqMonitor) Run() {
 	})
 
 	rm.e.POST("/services", func(c echo.Context) error {
-
+		info := rm.services_watch()
+		c.JSON(http.StatusOK, info)
 		return nil
 	})
 

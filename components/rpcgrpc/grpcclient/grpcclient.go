@@ -199,7 +199,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 	var nod meta.Node
 
 	if (c.linkcache != nil) && token != "" {
-		address, _ = c.linkcache.Target(token, target)
+		address, _ = c.linkcache.Target(ctx, token, target)
 	}
 
 	if address == "" {
@@ -211,7 +211,7 @@ func (c *grpcClient) findTarget(ctx context.Context, token string, target string
 
 		address = nod.Address
 		if (c.linkcache != nil) && token != "" {
-			err = c.linkcache.Link(token, nod)
+			err = c.linkcache.Link(ctx, token, nod)
 			if err != nil {
 				c.log.Warnf("[braid.client] link warning %s %s %s", token, target, err.Error())
 			}
@@ -252,7 +252,7 @@ func (c *grpcClient) Invoke(ctx context.Context, nodName, methon, token string, 
 	if err != nil {
 		c.log.Warnf("[braid.client] invoke warning %s, target = %s, methon = %s, addr = %s, token = %s", err.Error(), nodName, methon, address, token)
 		if c.linkcache != nil {
-			c.linkcache.Unlink(token)
+			c.linkcache.Unlink(ctx, token)
 		}
 	}
 

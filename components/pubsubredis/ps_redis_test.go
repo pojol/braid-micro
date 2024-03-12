@@ -327,8 +327,10 @@ func TestThreadSafe(t *testing.T) {
 }
 
 // ack 相关
-//  ack 是否正确回复
-//  ack 是否在异常后能够重试
+//
+//	ack 是否正确回复
+//	ack 是否在异常后能够重试
+//
 // 网络断开测试
 // redis 宕机测试
 // 消费者 宕机测试

@@ -3,6 +3,8 @@ package grpcserver
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +20,8 @@ type rpcServer struct {
 	proto.ListenServer
 }
 
+var tick uint64
+
 func (rs *rpcServer) Routing(ctx context.Context, req *proto.RouteReq) (*proto.RouteRes, error) {
 	out := new(proto.RouteRes)
 	var err error
@@ -27,6 +31,8 @@ func (rs *rpcServer) Routing(ctx context.Context, req *proto.RouteReq) (*proto.R
 	} else {
 		err = errors.New("err")
 	}
+
+	atomic.AddUint64(&tick, 1)
 
 	return out, err
 }
@@ -71,6 +77,51 @@ func TestNew(t *testing.T) {
 	}, rres)
 
 	assert.NotEqual(t, err, errors.New("routing err"))
+}
+
+func BenchmarkTest(b *testing.B) {
+	log := blog.BuildWithOption()
+
+	grpcserver := BuildWithOption(
+		meta.ServiceInfo{
+			Name: "servergrpctest",
+			ID:   uuid.New().String(),
+		},
+		log,
+		WithListen(":14111"),
+		RegisterHandler(func(srv *grpc.Server) {
+			proto.RegisterListenServer(srv, &rpcServer{})
+		}),
+	)
+
+	grpcserver.Init()
+	grpcserver.Run()
+	defer grpcserver.Close()
+	time.Sleep(time.Millisecond * 10)
+
+	b.ResetTimer()
+	now := time.Now()
+
+	b.RunParallel(func(pb *testing.PB) {
+		conn, err := grpc.Dial(":14111", grpc.WithInsecure())
+		if err != nil {
+			b.Error(err)
+		}
+
+		for pb.Next() {
+			rres := new(proto.RouteRes)
+
+			err = conn.Invoke(context.Background(), "/proto.listen/routing", &proto.RouteReq{
+				Nod:     "normal",
+				Service: "test",
+				ReqBody: nil,
+			}, rres)
+		}
+
+	})
+
+	fmt.Println("recv :", atomic.LoadUint64(&tick))
+	fmt.Println("qps :", int(float64(atomic.LoadUint64(&tick))/time.Since(now).Seconds()))
 }
 
 func TestOpts(t *testing.T) {

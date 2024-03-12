@@ -31,6 +31,7 @@ const (
 	Name = "RedisLinker"
 
 	splitFlag = "-"
+	pointFlag = "->"
 
 	// sankey
 	//braid_linker-relation-parent-child : cnt
@@ -105,7 +106,7 @@ func (rl *redisLinker) Init() error {
 	rl.tokenUnlink.Arrived(func(msg *meta.Message) error {
 		token := string(msg.Body)
 		if token != "" && token != "nil" {
-			rl.Unlink(token)
+			rl.Unlink(context.TODO(), token)
 		}
 		return nil
 	})
@@ -315,7 +316,7 @@ func (rl *redisLinker) getLinkNumKey(child string, id string) string {
 	return LinkerRedisPrefix + linknumFlag + splitFlag + rl.info.Name + splitFlag + child + splitFlag + id
 }
 
-func (rl *redisLinker) Target(token string, serviceName string) (string, error) {
+func (rl *redisLinker) Target(ctx context.Context, token string, serviceName string) (string, error) {
 
 	rl.RLock()
 	defer rl.RUnlock()
@@ -332,7 +333,7 @@ func (rl *redisLinker) Target(token string, serviceName string) (string, error) 
 	return target, err
 }
 
-func (rl *redisLinker) Link(token string, target meta.Node) error {
+func (rl *redisLinker) Link(ctx context.Context, token string, target meta.Node) error {
 	rl.Lock()
 	defer rl.Unlock()
 
@@ -348,7 +349,7 @@ func (rl *redisLinker) Link(token string, target meta.Node) error {
 }
 
 // Unlink 当前节点所属的用户离线
-func (rl *redisLinker) Unlink(token string) error {
+func (rl *redisLinker) Unlink(ctx context.Context, token string) error {
 
 	rl.Lock()
 	defer rl.Unlock()
